@@ -157,6 +157,12 @@ temp/
 # Testing
 /coverage
 
+# Local data storage
+.artifacts/
+
 # Misc
 *.tgz
 *.tar.gz 
+
+# Artifacts (local DB)
+.artifacts/

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Trash2, Edit } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trash2, Edit, ChevronDown } from 'lucide-react';
 import { Expense } from '../types';
 import { formatCurrency, formatDate } from '../utils';
 
@@ -10,6 +10,11 @@ interface ExpenseListProps {
 }
 
 export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, onEdit }) => {
+  const [visibleCount, setVisibleCount] = useState(30);
+  const ITEMS_PER_PAGE = 30;
+  
+  const visibleExpenses = expenses.slice(0, visibleCount);
+  const hasMore = visibleCount < expenses.length;
   if (expenses.length === 0) {
     return (
       <div className="text-center py-12">
@@ -24,9 +29,24 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, on
     );
   }
 
+  const handleShowMore = () => {
+    setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
+  };
+
   return (
     <div className="space-y-3">
-      {expenses.map((expense) => (
+      {expenses.length > 0 && (
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Recent Transactions
+          </h3>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Showing {visibleExpenses.length} of {expenses.length}
+          </span>
+        </div>
+      )}
+      
+      {visibleExpenses.map((expense) => (
         <div
           key={expense.id}
           className="card hover:shadow-md transition-shadow duration-200"
@@ -81,6 +101,26 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, on
           </div>
         </div>
       ))}
+      
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <button
+            onClick={handleShowMore}
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+          >
+            <span>Show More</span>
+            <ChevronDown size={16} />
+          </button>
+        </div>
+      )}
+      
+      {!hasMore && expenses.length > 0 && (
+        <div className="text-center py-6">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            Showing all {expenses.length} transactions
+          </p>
+        </div>
+      )}
     </div>
   );
 }; 

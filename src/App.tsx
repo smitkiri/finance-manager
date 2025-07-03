@@ -8,7 +8,8 @@ import { StatsCard } from './components/StatsCard';
 import { Chart } from './components/Chart';
 import { CategoryTable } from './components/CategoryTable';
 import { DateRangePicker } from './components/DateRangePicker';
-import { calculateStats, parseCSV, generateId, filterExpensesByDateRange } from './utils';
+import { calculateStats, generateId, filterExpensesByDateRange } from './utils';
+import { LocalStorage } from './utils/storage';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -27,7 +28,21 @@ function AppContent() {
     setStats(calculateStats(filteredExpenses));
   }, [expenses, dateRange]);
 
-  const handleAddExpense = (formData: ExpenseFormData) => {
+  // Load expenses on component mount
+  useEffect(() => {
+    const loadExpenses = async () => {
+      try {
+        const loadedExpenses = await LocalStorage.loadExpenses();
+        setExpenses(loadedExpenses);
+      } catch (error) {
+        console.error('Error loading expenses:', error);
+      }
+    };
+    
+    loadExpenses();
+  }, []);
+
+  const handleAddExpense = async (formData: ExpenseFormData) => {
     const newExpense: Expense = {
       id: generateId(),
       date: formData.date,
@@ -38,8 +53,13 @@ function AppContent() {
       memo: formData.memo,
     };
 
-    setExpenses([newExpense, ...expenses]);
-    setIsFormOpen(false);
+    try {
+      const updatedExpenses = await LocalStorage.addExpense(newExpense);
+      setExpenses(updatedExpenses);
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error('Error adding expense:', error);
+    }
   };
 
   const handleEditExpense = (expense: Expense) => {
@@ -47,7 +67,7 @@ function AppContent() {
     setIsFormOpen(true);
   };
 
-  const handleUpdateExpense = (formData: ExpenseFormData) => {
+  const handleUpdateExpense = async (formData: ExpenseFormData) => {
     if (!editingExpense) return;
 
     const updatedExpense: Expense = {
@@ -60,49 +80,55 @@ function AppContent() {
       memo: formData.memo,
     };
 
-    setExpenses(expenses.map(exp => exp.id === editingExpense.id ? updatedExpense : exp));
-    setEditingExpense(null);
-    setIsFormOpen(false);
+    try {
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      setExpenses(updatedExpenses);
+      setEditingExpense(null);
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error('Error updating expense:', error);
+    }
   };
 
-  const handleDeleteExpense = (id: string) => {
-    setExpenses(expenses.filter(exp => exp.id !== id));
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      const updatedExpenses = await LocalStorage.deleteExpense(id);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const parsedExpenses = parseCSV(text);
-      setExpenses([...expenses, ...parsedExpenses]);
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const updatedExpenses = await LocalStorage.importCSVData(text);
+        setExpenses(updatedExpenses);
+      } catch (error) {
+        console.error('Error importing CSV:', error);
+      }
     };
     reader.readAsText(file);
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Memo'];
-    const csvContent = [
-      headers.join(','),
-      ...expenses.map(exp => [
-        exp.date,
-        exp.description,
-        exp.category,
-        exp.amount,
-        exp.type,
-        exp.memo || ''
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'expenses.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const handleExportCSV = async () => {
+    try {
+      const csvContent = await LocalStorage.exportData();
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'expenses.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+    }
   };
 
   const dateFilteredExpenses = filterExpensesByDateRange(expenses, dateRange);
