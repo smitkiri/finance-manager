@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, Download, Filter, Sun, Moon } from 'lucide-react';
+import { Plus, Upload, Download, Filter, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Expense, ExpenseFormData, DateRange, ColumnMapping, CSVPreview } from './types';
 import { ExpenseForm } from './components/ExpenseForm';
@@ -11,6 +11,7 @@ import { DateRangePicker } from './components/DateRangePicker';
 import { calculateStats, generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
 import { CSVMappingModal } from './components/CSVMappingModal';
+import { Settings } from './components/Settings';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -26,24 +27,54 @@ function AppContent() {
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<CSVPreview | null>(null);
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     const filteredExpenses = filterExpensesByDateRange(expenses, dateRange);
     setStats(calculateStats(filteredExpenses));
   }, [expenses, dateRange]);
 
-  // Load expenses and column mappings on component mount
+  // Save date range whenever it changes (but not during initial load)
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    
+    const saveDateRange = async () => {
+      try {
+        await LocalStorage.saveDateRange(dateRange);
+      } catch (error) {
+        console.error('Error saving date range:', error);
+      }
+    };
+    
+    saveDateRange();
+  }, [dateRange, isInitialLoadComplete]);
+
+  // Load expenses, column mappings, date range, and categories on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedExpenses, loadedMappings] = await Promise.all([
+        const [loadedExpenses, loadedMappings, loadedDateRange, loadedCategories] = await Promise.all([
           LocalStorage.loadExpenses(),
-          LocalStorage.loadColumnMappings()
+          LocalStorage.loadColumnMappings(),
+          LocalStorage.loadDateRange(),
+          LocalStorage.loadCategories()
         ]);
         setExpenses(loadedExpenses);
         setColumnMappings(loadedMappings);
+        setCategories(loadedCategories);
+        
+        // Set date range if loaded, otherwise use default
+        if (loadedDateRange) {
+          setDateRange(loadedDateRange);
+        }
+        
+        // Mark initial load as complete
+        setIsInitialLoadComplete(true);
       } catch (error) {
         console.error('Error loading data:', error);
+        setIsInitialLoadComplete(true);
       }
     };
     
@@ -104,6 +135,58 @@ function AppContent() {
       setExpenses(updatedExpenses);
     } catch (error) {
       console.error('Error deleting expense:', error);
+    }
+  };
+
+  const handleUpdateCategory = async (expenseId: string, newCategory: string) => {
+    try {
+      const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      if (!expenseToUpdate) return;
+
+      const updatedExpense: Expense = {
+        ...expenseToUpdate,
+        category: newCategory,
+      };
+
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error updating category:', error);
+    }
+  };
+
+  const handleAddCategory = async (category: string) => {
+    try {
+      const updatedCategories = await LocalStorage.addCategory(category);
+      setCategories(updatedCategories);
+    } catch (error) {
+      console.error('Error adding category:', error);
+    }
+  };
+
+  const handleDeleteCategory = async (category: string) => {
+    try {
+      const [updatedCategories, updatedExpenses] = await Promise.all([
+        LocalStorage.deleteCategory(category),
+        LocalStorage.loadExpenses()
+      ]);
+      setCategories(updatedCategories);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
+  };
+
+  const handleUpdateCategoryName = async (oldCategory: string, newCategory: string) => {
+    try {
+      const [updatedCategories, updatedExpenses] = await Promise.all([
+        LocalStorage.updateCategory(oldCategory, newCategory),
+        LocalStorage.loadExpenses()
+      ]);
+      setCategories(updatedCategories);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error updating category name:', error);
     }
   };
 
@@ -215,13 +298,20 @@ function AppContent() {
                   currentRange={dateRange}
                   onDateRangeChange={setDateRange}
                 />
-                <button
-                  onClick={toggleTheme}
-                  className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"
-                  title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                >
-                  {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-                </button>
+                              <button
+                onClick={toggleTheme}
+                className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"
+                title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              >
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"
+                title="Settings"
+              >
+                <SettingsIcon size={20} />
+              </button>
               <label className="cursor-pointer">
                 <input
                   type="file"
@@ -316,6 +406,8 @@ function AppContent() {
               expenses={filteredExpenses}
               onDelete={handleDeleteExpense}
               onEdit={handleEditExpense}
+              onUpdateCategory={handleUpdateCategory}
+              categories={categories}
             />
           </div>
         </div>
@@ -329,6 +421,8 @@ function AppContent() {
           setIsFormOpen(false);
           setEditingExpense(null);
         }}
+        editingExpense={editingExpense}
+        categories={categories}
       />
 
       {/* CSV Mapping Modal */}
@@ -345,6 +439,16 @@ function AppContent() {
           onImportWithMapping={handleImportWithMapping}
         />
       )}
+
+      {/* Settings Modal */}
+      <Settings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        categories={categories}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+        onUpdateCategory={handleUpdateCategoryName}
+      />
     </div>
   );
 }

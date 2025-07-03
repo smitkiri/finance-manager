@@ -73,10 +73,48 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
     const startStr = format(range.start, 'MMM d, yyyy');
     const endStr = format(range.end, 'MMM d, yyyy');
     
+    // Check if it's a quick range
+    const now = new Date();
+    const oneMonthAgo = subMonths(now, 1);
+    const threeMonthsAgo = subMonths(now, 3);
+    const sixMonthsAgo = subMonths(now, 6);
+    const oneYearAgo = subYears(now, 1);
+    
+    // Check for quick ranges
+    if (range.start.getTime() === startOfDay(oneMonthAgo).getTime() && 
+        range.end.getTime() === endOfDay(now).getTime()) {
+      return 'Last 1 month';
+    }
+    
+    if (range.start.getTime() === startOfDay(threeMonthsAgo).getTime() && 
+        range.end.getTime() === endOfDay(now).getTime()) {
+      return 'Last 3 months';
+    }
+    
+    if (range.start.getTime() === startOfDay(sixMonthsAgo).getTime() && 
+        range.end.getTime() === endOfDay(now).getTime()) {
+      return 'Last 6 months';
+    }
+    
+    if (range.start.getTime() === startOfDay(oneYearAgo).getTime() && 
+        range.end.getTime() === endOfDay(now).getTime()) {
+      return 'Last 1 year';
+    }
+    
+    // Check if it's a single month
+    const startMonth = startOfMonth(range.start);
+    const endMonth = endOfMonth(range.end);
+    if (range.start.getTime() === startMonth.getTime() && 
+        range.end.getTime() === endMonth.getTime()) {
+      return format(range.start, 'MMMM yyyy');
+    }
+    
+    // Check if it's a single day
     if (startStr === endStr) {
       return startStr;
     }
     
+    // Default to date range
     return `${startStr} - ${endStr}`;
   };
 

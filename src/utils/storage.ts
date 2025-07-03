@@ -273,7 +273,7 @@ export class LocalStorage {
 
   static parseCSVWithMapping(csvText: string, mapping: ColumnMapping): Expense[] {
     const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',');
+    const headers = this.parseCSVLine(lines[0]);
     
     // Create a mapping from CSV column index to standardized column
     const columnIndexMap = new Map<number, StandardizedColumn>();
@@ -288,7 +288,7 @@ export class LocalStorage {
 
     return lines.slice(1)
       .map((line, index) => {
-        const values = line.split(',');
+        const values = this.parseCSVLine(line);
         
         // Extract values based on mapping
         let date = '';
@@ -309,7 +309,7 @@ export class LocalStorage {
               category = value || 'Uncategorized';
               break;
             case 'Amount':
-              amount = parseFloat(value) || 0;
+              amount = parseFloat(value.replace(/[,$"]/g, '')) || 0;
               break;
           }
         });
@@ -327,15 +327,233 @@ export class LocalStorage {
       .filter(expense => expense.date && expense.description && expense.amount > 0);
   }
 
+  private static parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          // Escaped quote
+          current += '"';
+          i++; // Skip next quote
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // End of field
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    // Add the last field
+    result.push(current.trim());
+    
+    return result;
+  }
+
   static parseCSVPreview(csvText: string): CSVPreview {
     const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',');
+    const headers = this.parseCSVLine(lines[0]);
     const sampleRows = lines.slice(1, 6); // Show first 5 rows as preview
     
     return {
       headers,
-      sampleRows: sampleRows.map(line => line.split(',')),
+      sampleRows: sampleRows.map(line => this.parseCSVLine(line)),
       totalRows: lines.length - 1
     };
+  }
+
+  // Date Range Persistence Methods
+  static async saveDateRange(dateRange: { start: Date; end: Date }): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_BASE}/date-range`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          start: dateRange.start.toISOString(),
+          end: dateRange.end.toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save date range');
+      }
+
+      console.log('Saved date range to server');
+    } catch (error) {
+      console.error('Error saving date range to server:', error);
+      // Fallback to localStorage
+      localStorage.setItem('date-range', JSON.stringify({
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString()
+      }));
+      console.log('Saved date range to localStorage as fallback');
+    }
+  }
+
+  static async loadDateRange(): Promise<{ start: Date; end: Date } | null> {
+    try {
+      const response = await fetch(`${this.API_BASE}/date-range`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Loaded date range from server');
+        return {
+          start: new Date(data.start),
+          end: new Date(data.end)
+        };
+      }
+    } catch (error) {
+      console.error('Error loading date range from server:', error);
+    }
+    
+    // Fallback to localStorage
+    const stored = localStorage.getItem('date-range');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        console.log('Loaded date range from localStorage');
+        return {
+          start: new Date(data.start),
+          end: new Date(data.end)
+        };
+      } catch (error) {
+        console.error('Error parsing date range from localStorage:', error);
+      }
+    }
+    
+    return null;
+  }
+
+  // Category Management Methods
+  static async saveCategories(categories: string[]): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_BASE}/categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ categories }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save categories');
+      }
+
+      console.log('Saved categories to server');
+    } catch (error) {
+      console.error('Error saving categories to server:', error);
+      // Fallback to localStorage
+      localStorage.setItem('categories', JSON.stringify(categories));
+      console.log('Saved categories to localStorage as fallback');
+    }
+  }
+
+  static async loadCategories(): Promise<string[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/categories`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Loaded categories from server');
+        return data.categories || [];
+      }
+    } catch (error) {
+      console.error('Error loading categories from server:', error);
+    }
+    
+    // Fallback to localStorage
+    const stored = localStorage.getItem('categories');
+    if (stored) {
+      try {
+        const categories = JSON.parse(stored);
+        console.log('Loaded categories from localStorage');
+        return categories;
+      } catch (error) {
+        console.error('Error parsing categories from localStorage:', error);
+      }
+    }
+    
+    // Return default categories if none are stored
+    return [
+      'Food & Drink',
+      'Shopping',
+      'Travel',
+      'Health & Wellness',
+      'Groceries',
+      'Bills & Utilities',
+      'Entertainment',
+      'Personal',
+      'Professional Services',
+      'Uncategorized'
+    ];
+  }
+
+  static async addCategory(category: string): Promise<string[]> {
+    try {
+      const existingCategories = await this.loadCategories();
+      if (!existingCategories.includes(category)) {
+        const updatedCategories = [...existingCategories, category];
+        await this.saveCategories(updatedCategories);
+        console.log(`Added category: ${category}`);
+        return updatedCategories;
+      }
+      return existingCategories;
+    } catch (error) {
+      console.error('Error adding category:', error);
+      throw error;
+    }
+  }
+
+  static async deleteCategory(category: string): Promise<string[]> {
+    try {
+      const existingCategories = await this.loadCategories();
+      const updatedCategories = existingCategories.filter(cat => cat !== category);
+      await this.saveCategories(updatedCategories);
+      
+      // Update all expenses that use this category to "Uncategorized"
+      const expenses = await this.loadExpenses();
+      const updatedExpenses = expenses.map(exp => 
+        exp.category === category ? { ...exp, category: 'Uncategorized' } : exp
+      );
+      await this.saveExpenses(updatedExpenses);
+      
+      console.log(`Deleted category: ${category}`);
+      return updatedCategories;
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      throw error;
+    }
+  }
+
+  static async updateCategory(oldCategory: string, newCategory: string): Promise<string[]> {
+    try {
+      const existingCategories = await this.loadCategories();
+      const updatedCategories = existingCategories.map(cat => 
+        cat === oldCategory ? newCategory : cat
+      );
+      await this.saveCategories(updatedCategories);
+      
+      // Update all expenses that use this category
+      const expenses = await this.loadExpenses();
+      const updatedExpenses = expenses.map(exp => 
+        exp.category === oldCategory ? { ...exp, category: newCategory } : exp
+      );
+      await this.saveExpenses(updatedExpenses);
+      
+      console.log(`Updated category: ${oldCategory} -> ${newCategory}`);
+      return updatedCategories;
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
   }
 } 

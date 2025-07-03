@@ -57,12 +57,14 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
   const validateMappings = (): string[] => {
     const newErrors: string[] = [];
     
-    // Check if all required standardized columns are mapped
+    // Check if all required standardized columns are mapped (Category is optional)
     const mappedColumns = columnMappings
       .filter(m => m.standardColumn !== 'Ignore')
       .map(m => m.standardColumn);
     
-    const missingColumns = STANDARDIZED_COLUMNS.filter(col => !mappedColumns.includes(col));
+    // Define required columns (excluding Category which is optional)
+    const requiredColumns: StandardizedColumn[] = ['Transaction Date', 'Description', 'Amount'];
+    const missingColumns = requiredColumns.filter(col => !mappedColumns.includes(col));
     if (missingColumns.length > 0) {
       newErrors.push(`Missing required columns: ${missingColumns.join(', ')}`);
     }

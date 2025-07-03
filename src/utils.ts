@@ -34,7 +34,8 @@ export const calculateStats = (expenses: Expense[]): ExpenseStats => {
   expenses
     .filter(exp => exp.type === 'expense')
     .forEach(exp => {
-      categoryBreakdown[exp.category] = (categoryBreakdown[exp.category] || 0) + Math.abs(exp.amount);
+      const category = exp.category || 'Uncategorized';
+      categoryBreakdown[category] = (categoryBreakdown[category] || 0) + Math.abs(exp.amount);
     });
     
   const monthlyData = expenses.reduce((acc, exp) => {

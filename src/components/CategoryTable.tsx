@@ -9,7 +9,7 @@ interface CategoryTableProps {
 export const CategoryTable: React.FC<CategoryTableProps> = ({ categoryBreakdown, totalExpenses }) => {
   const categories = Object.entries(categoryBreakdown)
     .map(([name, amount]) => ({
-      name,
+      name: name || 'Uncategorized',
       amount,
       percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
     }))

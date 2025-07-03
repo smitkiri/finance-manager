@@ -15,6 +15,8 @@ const ARTIFACTS_DIR = '.artifacts';
 const EXPENSES_FILE = path.join(ARTIFACTS_DIR, 'expenses.json');
 const METADATA_FILE = path.join(ARTIFACTS_DIR, 'metadata.json');
 const MAPPINGS_FILE = path.join(ARTIFACTS_DIR, 'column-mappings.json');
+const DATE_RANGE_FILE = path.join(ARTIFACTS_DIR, 'date-range.json');
+const CATEGORIES_FILE = path.join(ARTIFACTS_DIR, 'categories.json');
 
 if (!fs.existsSync(ARTIFACTS_DIR)) {
   fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
@@ -187,20 +189,92 @@ app.post('/api/import-with-mapping', (req, res) => {
   }
 });
 
+// Date Range Routes
+app.get('/api/date-range', (req, res) => {
+  try {
+    if (!fs.existsSync(DATE_RANGE_FILE)) {
+      return res.status(404).json({ error: 'No date range found' });
+    }
+    
+    const data = fs.readFileSync(DATE_RANGE_FILE, 'utf8');
+    const dateRange = JSON.parse(data);
+    res.json(dateRange);
+  } catch (error) {
+    console.error('Error reading date range:', error);
+    res.status(500).json({ error: 'Failed to read date range' });
+  }
+});
+
+app.post('/api/date-range', (req, res) => {
+  try {
+    const { start, end } = req.body;
+    
+    const dateRange = { start, end };
+    fs.writeFileSync(DATE_RANGE_FILE, JSON.stringify(dateRange, null, 2));
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving date range:', error);
+    res.status(500).json({ error: 'Failed to save date range' });
+  }
+});
+
+// Category Routes
+app.get('/api/categories', (req, res) => {
+  try {
+    if (!fs.existsSync(CATEGORIES_FILE)) {
+      // Return default categories if file doesn't exist
+      const defaultCategories = [
+        'Food & Drink',
+        'Shopping',
+        'Travel',
+        'Health & Wellness',
+        'Groceries',
+        'Bills & Utilities',
+        'Entertainment',
+        'Personal',
+        'Professional Services',
+        'Uncategorized'
+      ];
+      return res.json({ categories: defaultCategories });
+    }
+    
+    const data = fs.readFileSync(CATEGORIES_FILE, 'utf8');
+    const categories = JSON.parse(data);
+    res.json({ categories });
+  } catch (error) {
+    console.error('Error reading categories:', error);
+    res.status(500).json({ error: 'Failed to read categories' });
+  }
+});
+
+app.post('/api/categories', (req, res) => {
+  try {
+    const { categories } = req.body;
+    
+    fs.writeFileSync(CATEGORIES_FILE, JSON.stringify(categories, null, 2));
+    
+    res.json({ success: true, count: categories.length });
+  } catch (error) {
+    console.error('Error saving categories:', error);
+    res.status(500).json({ error: 'Failed to save categories' });
+  }
+});
+
 // Helper functions
 function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
-  const headers = lines[0].split(',');
+  const headers = parseCSVLine(lines[0]);
   
   return lines.slice(1)
     .filter((line) => {
-      const values = line.split(',');
+      const values = parseCSVLine(line);
       const type = values[4] || '';
       return type !== 'Payment';
     })
     .map((line, index) => {
-      const values = line.split(',');
-      const amount = parseFloat(values[5]) || 0;
+      const values = parseCSVLine(line);
+      const amount = parseFloat(values[5] ? values[5].replace(/[,$"]/g, '') : '0') || 0;
       
       return {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2),
@@ -212,6 +286,38 @@ function parseCSV(csvText) {
         memo: values[6] || '',
       };
     });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // End of field
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  // Add the last field
+  result.push(current.trim());
+  
+  return result;
 }
 
 function mergeExpenses(existing, newExpenses) {
@@ -235,7 +341,7 @@ function mergeExpenses(existing, newExpenses) {
 
 function parseCSVWithMapping(csvText, mapping) {
   const lines = csvText.trim().split('\n');
-  const headers = lines[0].split(',');
+  const headers = parseCSVLine(lines[0]);
   
   // Create a mapping from CSV column index to standardized column
   const columnIndexMap = new Map();
@@ -250,7 +356,7 @@ function parseCSVWithMapping(csvText, mapping) {
 
   return lines.slice(1)
     .map((line, index) => {
-      const values = line.split(',');
+      const values = parseCSVLine(line);
       
       // Extract values based on mapping
       let date = '';
@@ -271,7 +377,7 @@ function parseCSVWithMapping(csvText, mapping) {
             category = value || 'Uncategorized';
             break;
           case 'Amount':
-            amount = parseFloat(value) || 0;
+            amount = parseFloat(value.replace(/[,$"]/g, '')) || 0;
             break;
         }
       });

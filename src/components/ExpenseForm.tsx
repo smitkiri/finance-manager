@@ -1,27 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
-import { ExpenseFormData } from '../types';
+import { ExpenseFormData, Expense } from '../types';
 
 interface ExpenseFormProps {
   onSubmit: (data: ExpenseFormData) => void;
   onCancel: () => void;
   isOpen: boolean;
+  editingExpense?: Expense | null;
+  categories: string[];
 }
 
-const categories = [
-  'Food & Drink',
-  'Shopping',
-  'Travel',
-  'Health & Wellness',
-  'Groceries',
-  'Bills & Utilities',
-  'Entertainment',
-  'Personal',
-  'Professional Services',
-  'Uncategorized'
-];
-
-export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, isOpen }) => {
+export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, isOpen, editingExpense, categories }) => {
   const [formData, setFormData] = useState<ExpenseFormData>({
     date: new Date().toISOString().split('T')[0],
     description: '',
@@ -30,6 +19,41 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, is
     type: 'expense',
     memo: '',
   });
+
+  // Update form data when editingExpense changes
+  useEffect(() => {
+    if (editingExpense) {
+      // Ensure date is in YYYY-MM-DD format for the HTML date input
+      const formatDateForInput = (dateString: string): string => {
+        try {
+          const date = new Date(dateString);
+          return date.toISOString().split('T')[0];
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          return new Date().toISOString().split('T')[0];
+        }
+      };
+
+      setFormData({
+        date: formatDateForInput(editingExpense.date),
+        description: editingExpense.description,
+        category: editingExpense.category,
+        amount: editingExpense.amount.toString(),
+        type: editingExpense.type,
+        memo: editingExpense.memo || '',
+      });
+    } else {
+      // Reset to default values when not editing
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        category: 'Uncategorized',
+        amount: '',
+        type: 'expense',
+        memo: '',
+      });
+    }
+  }, [editingExpense]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +76,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, is
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-slide-up border border-white/20 dark:border-slate-700/50">
         <div className="flex items-center justify-between p-8 border-b border-white/20 dark:border-slate-700/50">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Add New Transaction</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+            {editingExpense ? 'Edit Transaction' : 'Add New Transaction'}
+          </h2>
           <button
             onClick={onCancel}
             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -178,7 +204,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, is
               className="btn-primary flex-1 flex items-center justify-center space-x-2"
             >
               <Plus size={16} />
-              <span>Add Transaction</span>
+              <span>{editingExpense ? 'Update Transaction' : 'Add Transaction'}</span>
             </button>
           </div>
         </form>
