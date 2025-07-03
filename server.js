@@ -14,6 +14,7 @@ app.use(express.json({ limit: '10mb' }));
 const ARTIFACTS_DIR = '.artifacts';
 const EXPENSES_FILE = path.join(ARTIFACTS_DIR, 'expenses.json');
 const METADATA_FILE = path.join(ARTIFACTS_DIR, 'metadata.json');
+const MAPPINGS_FILE = path.join(ARTIFACTS_DIR, 'column-mappings.json');
 
 if (!fs.existsSync(ARTIFACTS_DIR)) {
   fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
@@ -115,6 +116,77 @@ app.get('/api/export-csv', (req, res) => {
   }
 });
 
+// Column Mapping Routes
+app.get('/api/column-mappings', (req, res) => {
+  try {
+    if (!fs.existsSync(MAPPINGS_FILE)) {
+      return res.json([]);
+    }
+    
+    const data = fs.readFileSync(MAPPINGS_FILE, 'utf8');
+    const mappings = JSON.parse(data);
+    res.json(mappings);
+  } catch (error) {
+    console.error('Error reading column mappings:', error);
+    res.status(500).json({ error: 'Failed to read column mappings' });
+  }
+});
+
+app.post('/api/column-mappings', (req, res) => {
+  try {
+    const { mapping } = req.body;
+    
+    // Load existing mappings
+    let mappings = [];
+    if (fs.existsSync(MAPPINGS_FILE)) {
+      const data = fs.readFileSync(MAPPINGS_FILE, 'utf8');
+      mappings = JSON.parse(data);
+    }
+    
+    // Add new mapping
+    mappings.push(mapping);
+    
+    // Save mappings
+    fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
+    
+    res.json({ success: true, count: mappings.length });
+  } catch (error) {
+    console.error('Error saving column mapping:', error);
+    res.status(500).json({ error: 'Failed to save column mapping' });
+  }
+});
+
+app.post('/api/import-with-mapping', (req, res) => {
+  try {
+    const { csvText, mapping } = req.body;
+    
+    // Parse CSV with mapping
+    const expenses = parseCSVWithMapping(csvText, mapping);
+    
+    // Load existing expenses
+    let existingExpenses = [];
+    if (fs.existsSync(EXPENSES_FILE)) {
+      const data = fs.readFileSync(EXPENSES_FILE, 'utf8');
+      existingExpenses = JSON.parse(data);
+    }
+    
+    // Merge expenses
+    const mergedExpenses = mergeExpenses(existingExpenses, expenses);
+    
+    // Save merged data
+    fs.writeFileSync(EXPENSES_FILE, JSON.stringify(mergedExpenses, null, 2));
+    
+    res.json({ 
+      success: true, 
+      imported: expenses.length,
+      total: mergedExpenses.length 
+    });
+  } catch (error) {
+    console.error('Error importing CSV with mapping:', error);
+    res.status(500).json({ error: 'Failed to import CSV with mapping' });
+  }
+});
+
 // Helper functions
 function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
@@ -159,6 +231,62 @@ function mergeExpenses(existing, newExpenses) {
   }
   
   return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+function parseCSVWithMapping(csvText, mapping) {
+  const lines = csvText.trim().split('\n');
+  const headers = lines[0].split(',');
+  
+  // Create a mapping from CSV column index to standardized column
+  const columnIndexMap = new Map();
+  mapping.mappings.forEach(m => {
+    if (m.standardColumn !== 'Ignore') {
+      const csvIndex = headers.findIndex(h => h === m.csvColumn);
+      if (csvIndex !== -1) {
+        columnIndexMap.set(csvIndex, m.standardColumn);
+      }
+    }
+  });
+
+  return lines.slice(1)
+    .map((line, index) => {
+      const values = line.split(',');
+      
+      // Extract values based on mapping
+      let date = '';
+      let description = '';
+      let category = '';
+      let amount = 0;
+
+      columnIndexMap.forEach((standardCol, csvIndex) => {
+        const value = values[csvIndex] || '';
+        switch (standardCol) {
+          case 'Transaction Date':
+            date = value;
+            break;
+          case 'Description':
+            description = value;
+            break;
+          case 'Category':
+            category = value || 'Uncategorized';
+            break;
+          case 'Amount':
+            amount = parseFloat(value) || 0;
+            break;
+        }
+      });
+
+      return {
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+        date,
+        description,
+        category,
+        amount: Math.abs(amount),
+        type: amount < 0 ? 'expense' : 'income',
+        memo: '',
+      };
+    })
+    .filter(expense => expense.date && expense.description && expense.amount > 0);
 }
 
 app.listen(PORT, () => {

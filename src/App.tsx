@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Download, Filter, Sun, Moon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { Expense, ExpenseFormData, DateRange } from './types';
+import { Expense, ExpenseFormData, DateRange, ColumnMapping, CSVPreview } from './types';
 import { ExpenseForm } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
 import { StatsCard } from './components/StatsCard';
@@ -10,6 +10,7 @@ import { CategoryTable } from './components/CategoryTable';
 import { DateRangePicker } from './components/DateRangePicker';
 import { calculateStats, generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
+import { CSVMappingModal } from './components/CSVMappingModal';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -22,24 +23,31 @@ function AppContent() {
     end: new Date() // Today
   });
   const [stats, setStats] = useState(calculateStats([]));
+  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<CSVPreview | null>(null);
+  const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
 
   useEffect(() => {
     const filteredExpenses = filterExpensesByDateRange(expenses, dateRange);
     setStats(calculateStats(filteredExpenses));
   }, [expenses, dateRange]);
 
-  // Load expenses on component mount
+  // Load expenses and column mappings on component mount
   useEffect(() => {
-    const loadExpenses = async () => {
+    const loadData = async () => {
       try {
-        const loadedExpenses = await LocalStorage.loadExpenses();
+        const [loadedExpenses, loadedMappings] = await Promise.all([
+          LocalStorage.loadExpenses(),
+          LocalStorage.loadColumnMappings()
+        ]);
         setExpenses(loadedExpenses);
+        setColumnMappings(loadedMappings);
       } catch (error) {
-        console.error('Error loading expenses:', error);
+        console.error('Error loading data:', error);
       }
     };
     
-    loadExpenses();
+    loadData();
   }, []);
 
   const handleAddExpense = async (formData: ExpenseFormData) => {
@@ -107,13 +115,65 @@ function AppContent() {
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
-        const updatedExpenses = await LocalStorage.importCSVData(text);
-        setExpenses(updatedExpenses);
+        const preview = LocalStorage.parseCSVPreview(text);
+        setCsvPreview(preview);
+        setIsMappingModalOpen(true);
       } catch (error) {
-        console.error('Error importing CSV:', error);
+        console.error('Error parsing CSV:', error);
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleSaveMapping = async (mapping: ColumnMapping) => {
+    try {
+      await LocalStorage.saveColumnMapping(mapping);
+      setColumnMappings(prev => [...prev, mapping]);
+      
+      // Import the CSV with the new mapping
+      if (csvPreview) {
+        const csvText = await getCSVTextFromFile();
+        const newExpenses = LocalStorage.parseCSVWithMapping(csvText, mapping);
+        const existingExpenses = await LocalStorage.loadExpenses();
+        const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
+        await LocalStorage.saveExpenses(mergedExpenses);
+        setExpenses(mergedExpenses);
+      }
+      
+      setIsMappingModalOpen(false);
+      setCsvPreview(null);
+    } catch (error) {
+      console.error('Error saving mapping:', error);
+    }
+  };
+
+  const handleImportWithMapping = async (mapping: ColumnMapping) => {
+    try {
+      const csvText = await getCSVTextFromFile();
+      const newExpenses = LocalStorage.parseCSVWithMapping(csvText, mapping);
+      const existingExpenses = await LocalStorage.loadExpenses();
+      const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
+      await LocalStorage.saveExpenses(mergedExpenses);
+      setExpenses(mergedExpenses);
+      
+      setIsMappingModalOpen(false);
+      setCsvPreview(null);
+    } catch (error) {
+      console.error('Error importing with mapping:', error);
+    }
+  };
+
+  const getCSVTextFromFile = async (): Promise<string> => {
+    return new Promise((resolve) => {
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (input && input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve(e.target?.result as string);
+        };
+        reader.readAsText(input.files[0]);
+      }
+    });
   };
 
   const handleExportCSV = async () => {
@@ -270,6 +330,21 @@ function AppContent() {
           setEditingExpense(null);
         }}
       />
+
+      {/* CSV Mapping Modal */}
+      {csvPreview && (
+        <CSVMappingModal
+          isOpen={isMappingModalOpen}
+          onClose={() => {
+            setIsMappingModalOpen(false);
+            setCsvPreview(null);
+          }}
+          csvPreview={csvPreview}
+          existingMappings={columnMappings}
+          onSaveMapping={handleSaveMapping}
+          onImportWithMapping={handleImportWithMapping}
+        />
+      )}
     </div>
   );
 }
