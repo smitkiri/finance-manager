@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Calendar, Tag, DollarSign, Filter } from 'lucide-react';
-import { Report, ReportFilter, Expense, DateRange } from '../../types';
+import { Report, ReportFilter, Expense, DateRange, Source } from '../../types';
 import { createReport, applyReportFilters } from '../../utils/reportUtils';
 import { DateRangePicker } from '../DateRangePicker';
 
 interface ReportCreatorProps {
   expenses: Expense[];
   categories: string[];
+  sources: Source[];
   onCreateReport: (report: Report) => void;
   onCancel: () => void;
   globalDateRange: DateRange;
@@ -15,6 +16,7 @@ interface ReportCreatorProps {
 export const ReportCreator: React.FC<ReportCreatorProps> = ({
   expenses,
   categories,
+  sources,
   onCreateReport,
   onCancel,
   globalDateRange
@@ -77,6 +79,16 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
         ? [...currentTypes, type]
         : currentTypes.filter(t => t !== type);
       return { ...prev, types: newTypes.length > 0 ? newTypes : undefined };
+    });
+  };
+
+  const handleSourceChange = (sourceId: string, checked: boolean) => {
+    setFilters(prev => {
+      const currentSources = prev.sources || [];
+      const newSources = checked
+        ? [...currentSources, sourceId]
+        : currentSources.filter(s => s !== sourceId);
+      return { ...prev, sources: newSources.length > 0 ? newSources : undefined };
     });
   };
 
@@ -252,6 +264,29 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
               </label>
             </div>
           </div>
+
+          {/* Source Filter */}
+          {sources.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <Filter size={20} className="text-blue-600 dark:text-blue-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sources</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {sources.map((source) => (
+                  <label key={source.id} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.sources?.includes(source.id) || false}
+                      onChange={(e) => handleSourceChange(source.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{source.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Amount Range Filter */}
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">

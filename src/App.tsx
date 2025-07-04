@@ -292,7 +292,7 @@ function AppContent() {
         throw new Error('Failed to import CSV with source');
       }
 
-      const result = await response.json();
+      await response.json();
       
       // Reload expenses from backend
       const updatedExpenses = await LocalStorage.loadExpenses();
@@ -451,6 +451,7 @@ function AppContent() {
           <Reports
             expenses={expenses}
             categories={categories}
+            sources={sources}
             globalDateRange={dateRange}
           />
         ) : (

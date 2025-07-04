@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Calendar, DollarSign, Tag, Filter } from 'lucide-react';
-import { Report, Expense, DateRange } from '../../types';
+import { Report, Expense, DateRange, Source } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { ReportCreator } from './ReportCreator';
 import { ReportViewer } from './ReportViewer';
@@ -9,10 +9,11 @@ import { formatCurrency, formatDate } from '../../utils';
 interface ReportsProps {
   expenses: Expense[];
   categories: string[];
+  sources: Source[];
   globalDateRange: DateRange;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ expenses, categories, globalDateRange }) => {
+export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources, globalDateRange }) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -73,6 +74,9 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, globalDa
     if (filters.types && filters.types.length > 0) {
       summary.push(`${filters.types.length} types`);
     }
+    if (filters.sources && filters.sources.length > 0) {
+      summary.push(`${filters.sources.length} sources`);
+    }
     if (filters.minAmount !== undefined || filters.maxAmount !== undefined) {
       summary.push('Amount range');
     }
@@ -104,6 +108,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, globalDa
       <ReportCreator
         expenses={expenses}
         categories={categories}
+        sources={sources}
         onCreateReport={handleCreateReport}
         onCancel={() => setIsCreatingReport(false)}
         globalDateRange={globalDateRange}

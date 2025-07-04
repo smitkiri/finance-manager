@@ -87,6 +87,7 @@ export interface ReportFilter {
   categories?: string[];
   labels?: string[];
   types?: ('expense' | 'income')[];
+  sources?: string[];
   minAmount?: number;
   maxAmount?: number;
 }

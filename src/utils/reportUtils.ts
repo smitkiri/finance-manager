@@ -33,6 +33,14 @@ export const applyReportFilters = (expenses: Expense[], filters: ReportFilter): 
       }
     }
 
+    // Source filter
+    if (filters.sources && filters.sources.length > 0) {
+      const expenseSourceId = expense.metadata?.sourceId;
+      if (!expenseSourceId || !filters.sources.includes(expenseSourceId)) {
+        return false;
+      }
+    }
+
     // Amount range filter
     if (filters.minAmount !== undefined && expense.amount < filters.minAmount) {
       return false;
