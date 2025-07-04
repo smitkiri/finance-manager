@@ -4,7 +4,7 @@ import { formatCurrency } from '../../utils';
 
 interface ChartProps {
   data: any[];
-  type: 'line' | 'bar' | 'pie' | 'savings-bar' | 'donut';
+  type: 'line' | 'savings-bar' | 'donut';
   title: string;
   height?: number;
   categoryMode?: boolean;
@@ -83,26 +83,6 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
           </LineChart>
         );
       
-      case 'bar':
-        return (
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-            <XAxis 
-              dataKey="month" 
-              stroke="#6b7280"
-              fontSize={12}
-            />
-            <YAxis 
-              stroke="#6b7280"
-              fontSize={12}
-              tickFormatter={(value) => `$${value}`}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        );
-      
       case 'savings-bar':
         return (
           <BarChart data={data}>
@@ -131,27 +111,6 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
               ))}
             </Bar>
           </BarChart>
-        );
-      
-      case 'pie':
-        return (
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
         );
       
       case 'donut':

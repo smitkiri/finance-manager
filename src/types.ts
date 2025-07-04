@@ -80,8 +80,6 @@ export interface Source {
   lastUsed: string;
 }
 
-export type ColumnMapping = Source; // For backward compatibility
-
 export interface CSVPreview {
   headers: string[];
   sampleRows: string[][];

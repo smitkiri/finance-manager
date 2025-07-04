@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Trash2, Edit, Check, X as XIcon } from 'lucide-react';
+import { X, Save, Trash2, Check } from 'lucide-react';
 import { CSVPreview, Source, StandardizedColumn } from '../../types';
 
 interface CSVPreviewEditorProps {
@@ -41,7 +41,6 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
 }) => {
   const [editedRows, setEditedRows] = useState<string[][]>(csvPreview.sampleRows);
   const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
-  const [editingRow, setEditingRow] = useState<number | null>(null);
   const [editingCell, setEditingCell] = useState<{ row: number; col: number } | null>(null);
   const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({});
 
@@ -54,8 +53,6 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   };
 
   const getAmountIndex = () => getColumnIndex('Amount');
-  const getDescriptionIndex = () => getColumnIndex('Description');
-  const getDateIndex = () => getColumnIndex('Transaction Date');
 
   const isValidRow = (row: string[], rowIndex: number): boolean => {
     const amountIndex = getAmountIndex();
@@ -113,13 +110,6 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
       }
       return newRow;
     });
-
-    // Create new CSV content
-    const newHeaders = categoryIndex === -1 ? [...csvPreview.headers, 'Category'] : csvPreview.headers;
-    const csvContent = [
-      newHeaders.join(','),
-      ...rowsWithCategories.map(row => row.join(','))
-    ].join('\n');
 
     onImport(rowsWithCategories, source);
     onClose();

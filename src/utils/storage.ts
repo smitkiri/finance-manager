@@ -1,4 +1,4 @@
-import { Expense, ColumnMapping, CSVPreview, StandardizedColumn, Report, ReportData } from '../types';
+import { Expense, CSVPreview, StandardizedColumn, Report, ReportData } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -252,18 +252,7 @@ export class LocalStorage {
     return stored ? JSON.parse(stored) : [];
   }
 
-  // Column Mapping Methods
-  static async saveColumnMapping(mapping: import('../types').Source, isTestMode: boolean = false): Promise<void> {
-    await this.saveSource(mapping, isTestMode);
-  }
 
-  static async loadColumnMappings(isTestMode: boolean = false): Promise<import('../types').Source[]> {
-    return await this.loadSources(isTestMode);
-  }
-
-  private static getColumnMappingsFromStorage(): import('../types').Source[] {
-    return this.getSourcesFromStorage();
-  }
 
   static parseCSVWithMapping(csvText: string, mapping: import('../types').Source): Expense[] {
     const lines = csvText.trim().split('\n');
