@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, Download, Filter, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Upload, Download, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
+import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
-import { generateId, filterExpensesByDateRange } from './utils';
+import { generateId } from './utils';
 import { LocalStorage } from './utils/storage';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
@@ -19,8 +20,7 @@ function AppContent() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [filter, setFilter] = useState('all');
-  const [labelFilter, setLabelFilter] = useState<string[]>([]);
+  const [transactionFilters, setTransactionFilters] = useState<FilterType>({});
   const [dateRange, setDateRange] = useState<DateRange>({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Start of current month
     end: new Date() // Today
@@ -337,26 +337,60 @@ function AppContent() {
     expenses.flatMap(expense => expense.labels || [])
   ));
 
-  const dateFilteredExpenses = filterExpensesByDateRange(expenses, dateRange);
-  const filteredExpenses = dateFilteredExpenses.filter(exp => {
-    // Type filter
-    if (filter === 'all') {
-      // Continue to label filter
-    } else if (filter === 'expenses') {
-      if (exp.type !== 'expense') return false;
-    } else if (filter === 'income') {
-      if (exp.type !== 'income') return false;
+  // Apply all filters using the new filter system
+  const filteredExpenses = expenses.filter(exp => {
+    // Date range filter
+    if (transactionFilters.dateRange) {
+      const expenseDate = new Date(exp.date);
+      if (expenseDate < transactionFilters.dateRange.start || expenseDate > transactionFilters.dateRange.end) {
+        return false;
+      }
     } else {
-      if (exp.category !== filter) return false;
+      // Use global date range if no specific date range in filters
+      const expenseDate = new Date(exp.date);
+      if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
+        return false;
+      }
     }
-    
+
+    // Category filter
+    if (transactionFilters.categories && transactionFilters.categories.length > 0) {
+      if (!transactionFilters.categories.includes(exp.category)) {
+        return false;
+      }
+    }
+
     // Label filter
-    if (labelFilter.length > 0) {
+    if (transactionFilters.labels && transactionFilters.labels.length > 0) {
       const expenseLabels = exp.labels || [];
-      // Show transactions that have ANY of the selected labels
-      return labelFilter.some(label => expenseLabels.includes(label));
+      if (!transactionFilters.labels.some(label => expenseLabels.includes(label))) {
+        return false;
+      }
     }
-    
+
+    // Type filter
+    if (transactionFilters.types && transactionFilters.types.length > 0) {
+      if (!transactionFilters.types.includes(exp.type)) {
+        return false;
+      }
+    }
+
+    // Source filter
+    if (transactionFilters.sources && transactionFilters.sources.length > 0) {
+      const expenseSourceId = exp.metadata?.sourceId;
+      if (!expenseSourceId || !transactionFilters.sources.includes(expenseSourceId)) {
+        return false;
+      }
+    }
+
+    // Amount range filter
+    if (transactionFilters.minAmount !== undefined && exp.amount < transactionFilters.minAmount) {
+      return false;
+    }
+    if (transactionFilters.maxAmount !== undefined && exp.amount > transactionFilters.maxAmount) {
+      return false;
+    }
+
     return true;
   });
 
@@ -392,10 +426,12 @@ function AppContent() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Expense Tracker</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <DateRangePicker
-                currentRange={dateRange}
-                onDateRangeChange={setDateRange}
-              />
+              {activeTab === 'dashboard' && (
+                <DateRangePicker
+                  currentRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                />
+              )}
               <button
                 onClick={toggleTheme}
                 className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"
@@ -455,92 +491,35 @@ function AppContent() {
             globalDateRange={dateRange}
           />
         ) : (
-          <div className="space-y-6">
-            {/* Filter Controls */}
-            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Filter Transactions</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Type/Category Filter */}
-                <div className="flex items-center space-x-3">
-                  <Filter size={18} className="text-slate-400" />
-                  <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="input flex-1"
-                  >
-                    <option value="all">All Transactions</option>
-                    <option value="expenses">Expenses Only</option>
-                    <option value="income">Income Only</option>
-                    {Array.from(new Set(expenses.map(exp => exp.category))).map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                {/* Label Filter */}
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Labels:</span>
-                  <div className="flex flex-wrap gap-2 flex-1">
-                    {allLabels.length > 0 ? (
-                      allLabels.map((label) => {
-                        const isSelected = labelFilter.includes(label);
-                        return (
-                          <button
-                            key={label}
-                            onClick={() => {
-                              if (isSelected) {
-                                setLabelFilter(labelFilter.filter(l => l !== label));
-                              } else {
-                                setLabelFilter([...labelFilter, label]);
-                              }
-                            }}
-                            className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
-                              isSelected
-                                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">No labels available</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Clear Filters */}
-              {(filter !== 'all' || labelFilter.length > 0) && (
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
-                  <button
-                    onClick={() => {
-                      setFilter('all');
-                      setLabelFilter([]);
-                    }}
-                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    Clear all filters
-                  </button>
-                </div>
-              )}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Transactions List */}
+            <div className="lg:col-span-3">
+              <Transactions
+                expenses={filteredExpenses}
+                onDelete={handleDeleteExpense}
+                onEdit={handleEditExpense}
+                onUpdateCategory={handleUpdateCategory}
+                onAddLabel={handleAddLabel}
+                onRemoveLabel={handleRemoveLabel}
+                onViewDetails={handleViewTransactionDetails}
+                categories={categories}
+              />
             </div>
 
-            {/* Transactions */}
-            <Transactions
-              expenses={filteredExpenses}
-              onDelete={handleDeleteExpense}
-              onEdit={handleEditExpense}
-              onUpdateCategory={handleUpdateCategory}
-              onAddLabel={handleAddLabel}
-              onRemoveLabel={handleRemoveLabel}
-              onViewDetails={handleViewTransactionDetails}
-              categories={categories}
-            />
+            {/* Filters Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-6">
+                <TransactionFiltersComponent
+                  filters={transactionFilters}
+                  onFiltersChange={setTransactionFilters}
+                  categories={categories}
+                  sources={sources}
+                  allLabels={allLabels}
+                  isCompact={true}
+                  onClearFilters={() => setTransactionFilters({})}
+                />
+              </div>
+            </div>
           </div>
         )}
       </main>
