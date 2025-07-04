@@ -3,12 +3,11 @@ import { Plus, Upload, Download, Filter, Sun, Moon, Settings as SettingsIcon } f
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Expense, ExpenseFormData, DateRange, ColumnMapping, CSVPreview } from './types';
 import { ExpenseForm } from './components/ExpenseForm';
-import { ExpenseList } from './components/ExpenseList';
-import { StatsCard } from './components/StatsCard';
-import { Chart } from './components/Chart';
-import { CategoryTable } from './components/CategoryTable';
 import { DateRangePicker } from './components/DateRangePicker';
-import { calculateStats, generateId, filterExpensesByDateRange } from './utils';
+import { Sidebar } from './components/Sidebar';
+import { Dashboard } from './components/Dashboard';
+import { Transactions } from './components/Transactions';
+import { generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
 import { CSVMappingModal } from './components/CSVMappingModal';
 import { Settings } from './components/Settings';
@@ -23,18 +22,16 @@ function AppContent() {
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Start of current month
     end: new Date() // Today
   });
-  const [stats, setStats] = useState(calculateStats([]));
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<CSVPreview | null>(null);
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
-  useEffect(() => {
-    const filteredExpenses = filterExpensesByDateRange(expenses, dateRange);
-    setStats(calculateStats(filteredExpenses));
-  }, [expenses, dateRange]);
+
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -286,19 +283,27 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
       {/* Header */}
       <header className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                      <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Expense Tracker</h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <DateRangePicker
-                  currentRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                />
-                              <button
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Expense Tracker</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <DateRangePicker
+                currentRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+              <button
                 onClick={toggleTheme}
                 className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"
                 title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
@@ -343,66 +348,40 @@ function AppContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          <StatsCard
-            title="Total Expenses"
-            value={stats.totalExpenses}
-            type="expense"
+      <main className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12`}>
+        {activeTab === 'dashboard' ? (
+          <Dashboard
+            expenses={filteredExpenses}
+            categories={categories}
           />
-          <StatsCard
-            title="Total Income"
-            value={stats.totalIncome}
-            type="income"
-          />
-          <StatsCard
-            title="Net Amount"
-            value={stats.netAmount}
-            type="net"
-          />
-        </div>
-
-        {/* Charts and Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          <Chart
-            data={stats.monthlyData}
-            type="line"
-            title="Monthly Overview"
-            height={300}
-          />
-          <CategoryTable
-            categoryBreakdown={stats.categoryBreakdown}
-            totalExpenses={stats.totalExpenses}
-          />
-        </div>
-
-        {/* Filter and Transactions */}
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50">
-          <div className="p-8 border-b border-white/20 dark:border-slate-700/50">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Transactions</h2>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-3">
-                  <Filter size={18} className="text-slate-400" />
-                  <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="input max-w-xs"
-                  >
-                    <option value="all">All Transactions</option>
-                    <option value="expenses">Expenses Only</option>
-                    <option value="income">Income Only</option>
-                    {Array.from(new Set(expenses.map(exp => exp.category))).map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
+        ) : (
+          <div className="space-y-6">
+            {/* Filter Controls */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50 p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Filter Transactions</h2>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
+                    <Filter size={18} className="text-slate-400" />
+                    <select
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="input max-w-xs"
+                    >
+                      <option value="all">All Transactions</option>
+                      <option value="expenses">Expenses Only</option>
+                      <option value="income">Income Only</option>
+                      {Array.from(new Set(expenses.map(exp => exp.category))).map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="p-8 max-h-96 overflow-y-auto">
-            <ExpenseList
+
+            {/* Transactions */}
+            <Transactions
               expenses={filteredExpenses}
               onDelete={handleDeleteExpense}
               onEdit={handleEditExpense}
@@ -410,7 +389,7 @@ function AppContent() {
               categories={categories}
             />
           </div>
-        </div>
+        )}
       </main>
 
       {/* Form Modal */}
