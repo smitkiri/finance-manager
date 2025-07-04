@@ -366,7 +366,8 @@ function AppContent() {
 
     // Category filter
     if (transactionFilters.categories && transactionFilters.categories.length > 0) {
-      if (!transactionFilters.categories.includes(exp.category)) {
+      const expenseCategory = exp.category || 'Uncategorized';
+      if (!transactionFilters.categories.includes(expenseCategory)) {
         return false;
       }
     }
