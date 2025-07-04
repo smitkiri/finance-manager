@@ -57,17 +57,14 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
     if (!reportData) return;
 
     const csvContent = [
-      // Header
-      ['Date', 'Description', 'Category', 'Amount', 'Type', 'Memo', 'Labels'].join(','),
-      // Data rows
+      ['Date', 'Description', 'Category', 'Amount', 'Type', 'Labels'].join(','),
       ...reportData.transactions.map(expense => [
         expense.date,
         `"${expense.description}"`,
-        expense.category,
-        expense.amount,
+        `"${expense.category}"`,
+        expense.amount.toString(),
         expense.type,
-        `"${expense.memo}"`,
-        `"${(expense.labels || []).join(', ')}"`
+        `"${(expense.labels || []).join('; ')}"`
       ].join(','))
     ].join('\n');
 

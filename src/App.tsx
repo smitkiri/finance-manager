@@ -91,7 +91,6 @@ function AppContent() {
       category: formData.category,
       amount: parseFloat(formData.amount),
       type: formData.type,
-      memo: formData.memo,
       metadata: {
         sourceName: 'Manual Entry',
         importedAt: new Date().toISOString()
@@ -122,7 +121,6 @@ function AppContent() {
       category: formData.category,
       amount: parseFloat(formData.amount),
       type: formData.type,
-      memo: formData.memo,
     };
 
     try {

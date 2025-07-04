@@ -14,59 +14,46 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   const [formData, setFormData] = useState<TransactionFormData>({
     date: new Date().toISOString().split('T')[0],
     description: '',
-    category: 'Uncategorized',
+    category: '',
     amount: '',
-    type: 'expense',
-    memo: '',
+    type: 'expense'
   });
 
   // Update form data when editingExpense changes
   useEffect(() => {
     if (editingExpense) {
-      // Ensure date is in YYYY-MM-DD format for the HTML date input
-      const formatDateForInput = (dateString: string): string => {
-        try {
-          const date = new Date(dateString);
-          return date.toISOString().split('T')[0];
-        } catch (error) {
-          console.error('Error formatting date:', error);
-          return new Date().toISOString().split('T')[0];
-        }
-      };
-
       setFormData({
-        date: formatDateForInput(editingExpense.date),
+        date: editingExpense.date,
         description: editingExpense.description,
         category: editingExpense.category,
         amount: editingExpense.amount.toString(),
-        type: editingExpense.type,
-        memo: editingExpense.memo || '',
+        type: editingExpense.type
       });
     } else {
-      // Reset to default values when not editing
       setFormData({
         date: new Date().toISOString().split('T')[0],
         description: '',
-        category: 'Uncategorized',
+        category: '',
         amount: '',
-        type: 'expense',
-        memo: '',
+        type: 'expense'
       });
     }
-  }, [editingExpense]);
+  }, [editingExpense, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.description || !formData.amount) return;
     
+    if (!formData.description.trim() || !formData.amount.trim() || !formData.category.trim()) {
+      return;
+    }
+
     onSubmit(formData);
     setFormData({
       date: new Date().toISOString().split('T')[0],
       description: '',
-      category: 'Uncategorized',
+      category: '',
       amount: '',
-      type: 'expense',
-      memo: '',
+      type: 'expense'
     });
   };
 
@@ -175,19 +162,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
               step="0.01"
               min="0"
               required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Memo (Optional)
-            </label>
-            <textarea
-              value={formData.memo}
-              onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-              className="input resize-none"
-              rows={3}
-              placeholder="Add a note..."
             />
           </div>
 

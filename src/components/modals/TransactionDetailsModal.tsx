@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, Tag, DollarSign, FileText, Clock, Database, ArrowRightLeft } from 'lucide-react';
+import { X, Calendar, Tag, DollarSign, Clock, Database, ArrowRightLeft } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
 import { getTransferPair } from '../../utils/transferDetection';
@@ -259,15 +259,15 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
             {/* Labels */}
             {transaction.labels && transaction.labels.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Labels
-                </h3>
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {transaction.labels.map((label, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full border border-blue-200 dark:border-blue-700"
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                     >
                       {label}
                     </span>
@@ -276,20 +276,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               </div>
             )}
 
-            {/* Memo */}
-            {transaction.memo && (
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                  Memo
-                </h3>
-                <div className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <FileText size={16} className="text-gray-500 dark:text-gray-400 mt-0.5" />
-                  <p className="text-gray-700 dark:text-gray-300">
-                    {transaction.memo}
-                  </p>
-                </div>
-              </div>
-            )}
+
 
             {/* Metadata Details */}
             {transaction.metadata && (

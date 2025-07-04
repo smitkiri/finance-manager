@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Trash2, Edit, ChevronDown, Plus } from 'lucide-react';
 import { Expense } from '../../types';
-import { formatCurrency, formatDate } from '../../utils';
+import { formatCurrency } from '../../utils';
 import { LabelSelector } from '../ui/LabelSelector';
-import { LabelBadge } from '../ui/LabelBadge';
 
 interface TransactionListProps {
   expenses: Expense[];
@@ -18,7 +17,6 @@ interface TransactionListProps {
 
 export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories }) => {
   const [visibleCount, setVisibleCount] = useState(30);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [labelSelectorState, setLabelSelectorState] = useState<{
     isOpen: boolean;
     expenseId: string | null;
@@ -28,38 +26,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
     expenseId: null,
     position: { x: 0, y: 0 }
   });
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_PAGE = 30;
-  
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setEditingCategoryId(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [editingCategoryId]);
-
-  // Handle escape key to close dropdown
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setEditingCategoryId(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [editingCategoryId]);
   
   const visibleExpenses = expenses.slice(0, visibleCount);
   const hasMore = visibleCount < expenses.length;
@@ -82,15 +49,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
     setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
   };
 
-  const handleCategoryClick = (expenseId: string) => {
-    setEditingCategoryId(expenseId);
-  };
-
-  const handleCategoryChange = (expenseId: string, newCategory: string) => {
-    onUpdateCategory(expenseId, newCategory);
-    setEditingCategoryId(null);
-  };
-
   const handleAddLabelClick = (expenseId: string, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
     setLabelSelectorState({
@@ -104,10 +62,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
     if (labelSelectorState.expenseId) {
       onAddLabel(labelSelectorState.expenseId, label);
     }
-  };
-
-  const handleRemoveLabel = (expenseId: string, label: string) => {
-    onRemoveLabel(expenseId, label);
   };
 
   const handleCloseLabelSelector = () => {
@@ -150,73 +104,26 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{expense.description}</h3>
-                    <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      <span>{formatDate(expense.date)}</span>
-                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-medium text-gray-600 dark:text-gray-300">
-                        {expense.metadata?.sourceName || 'Manual Entry'}
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {expense.description}
+                    </p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {expense.category}
                       </span>
-                      {expense.transferInfo?.isTransfer && (
-                        <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded text-xs font-medium text-orange-700 dark:text-orange-300">
-                          Transfer
-                        </span>
-                      )}
-                      {expense.excludedFromCalculations && (
-                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-xs font-medium text-red-700 dark:text-red-300">
-                          Excluded
-                        </span>
-                      )}
-                      <div className="relative group" ref={editingCategoryId === expense.id ? dropdownRef : null}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCategoryClick(expense.id);
-                          }}
-                          className="px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-md text-xs font-medium text-blue-700 dark:text-blue-300 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-800/30 dark:hover:to-indigo-800/30 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex items-center space-x-1"
-                          title="Click to change category"
-                        >
-                          <span>{expense.category || 'Uncategorized'}</span>
-                          <ChevronDown size={10} className="text-blue-500 dark:text-blue-400" />
-                        </button>
-                        
-                        {editingCategoryId === expense.id && (
-                          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 py-1 min-w-48 max-h-48 overflow-y-auto animate-in slide-in-from-top-1 duration-200">
-                            {categories.map((category) => (
-                              <button
-                                key={category}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCategoryChange(expense.id, category);
-                                }}
-                                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
-                                  (expense.category || 'Uncategorized') === category
-                                    ? 'bg-blue-100 dark:bg-blue-800/30 text-blue-700 dark:text-blue-300 font-medium'
-                                    : 'text-gray-700 dark:text-gray-300'
-                                }`}
-                              >
-                                {category}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Labels */}
-                      {(expense.labels && expense.labels.length > 0) && (
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {expense.labels.map((label) => (
-                            <LabelBadge
-                              key={label}
-                              label={label}
-                              onRemove={() => handleRemoveLabel(expense.id, label)}
-                            />
+                      {expense.labels && expense.labels.length > 0 && (
+                        <div className="flex space-x-1">
+                          {expense.labels.map((label, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            >
+                              {label}
+                            </span>
                           ))}
                         </div>
                       )}
                     </div>
-                    {expense.memo && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 italic truncate">"{expense.memo}"</p>
-                    )}
                   </div>
                   
                   <div className="text-right flex-shrink-0">

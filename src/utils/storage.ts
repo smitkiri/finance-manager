@@ -332,7 +332,6 @@ export class LocalStorage {
           category,
           amount: Math.abs(amount),
           type: (amount < 0 ? 'expense' : 'income') as 'expense' | 'income',
-          memo: '',
           metadata: {
             sourceId: mapping.id,
             sourceName: mapping.name,

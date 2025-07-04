@@ -5,7 +5,6 @@ export interface Expense {
   category: string;
   amount: number;
   type: 'expense' | 'income';
-  memo: string;
   labels?: string[];
   metadata?: {
     sourceId?: string;
@@ -33,7 +32,6 @@ export interface TransactionFormData {
   category: string;
   amount: string;
   type: 'expense' | 'income';
-  memo: string;
 }
 
 export interface DateRange {

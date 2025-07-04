@@ -164,16 +164,15 @@ app.get('/api/export-csv', (req, res) => {
     const expenses = JSON.parse(data);
     
     // Create CSV content
-    const headers = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Memo'];
+    const headers = ['Date', 'Description', 'Category', 'Amount', 'Type'];
     const csvContent = [
       headers.join(','),
       ...expenses.map(exp => [
         exp.date,
-        exp.description,
-        exp.category,
-        exp.amount,
-        exp.type,
-        exp.memo || ''
+        `"${exp.description}"`,
+        `"${exp.category}"`,
+        exp.amount.toString(),
+        exp.type
       ].join(','))
     ].join('\n');
     
@@ -743,7 +742,6 @@ function parseCSV(csvText) {
         category: values[3] || 'Uncategorized',
         amount: Math.abs(amount),
         type: amount < 0 ? 'expense' : 'income',
-        memo: values[6] || '',
         metadata: {
           sourceName: 'Manual Import',
           importedAt: new Date().toISOString()
@@ -853,7 +851,6 @@ function parseCSVWithMapping(csvText, mapping) {
         category,
         amount: Math.abs(amount),
         type: amount < 0 ? 'expense' : 'income',
-        memo: '',
         metadata: {
           sourceId: mapping.id,
           sourceName: mapping.name,
