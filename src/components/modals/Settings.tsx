@@ -13,6 +13,7 @@ interface SettingsProps {
   sources: any[];
   onRefreshData: () => void;
   onExportCSV: () => void;
+  onUpdateSource: (source: any) => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -25,13 +26,14 @@ export const Settings: React.FC<SettingsProps> = ({
   expenses,
   sources,
   onRefreshData,
-  onExportCSV
+  onExportCSV,
+  onUpdateSource
 }) => {
   const { isTestMode, toggleTestMode } = useTestMode();
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [activeSection, setActiveSection] = useState<'categories' | 'general'>('general');
+  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources'>('general');
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [showSelectDelete, setShowSelectDelete] = useState(false);
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
@@ -41,6 +43,8 @@ export const Settings: React.FC<SettingsProps> = ({
   const [deleteSources, setDeleteSources] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingSource, setEditingSource] = useState<string | null>(null);
+  const [editSourceName, setEditSourceName] = useState('');
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
@@ -65,6 +69,28 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleCancelEdit = () => {
     setEditingCategory(null);
     setEditValue('');
+  };
+
+  const handleStartEditSource = (source: any) => {
+    setEditingSource(source.id);
+    setEditSourceName(source.name);
+  };
+
+  const handleSaveEditSource = () => {
+    if (editingSource && editSourceName.trim() && editSourceName.trim() !== sources.find(s => s.id === editingSource)?.name) {
+      const sourceToUpdate = sources.find(s => s.id === editingSource);
+      if (sourceToUpdate) {
+        const updatedSource = { ...sourceToUpdate, name: editSourceName.trim() };
+        onUpdateSource(updatedSource);
+      }
+    }
+    setEditingSource(null);
+    setEditSourceName('');
+  };
+
+  const handleCancelEditSource = () => {
+    setEditingSource(null);
+    setEditSourceName('');
   };
 
   const handleDeleteCategory = (category: string) => {
@@ -135,6 +161,12 @@ export const Settings: React.FC<SettingsProps> = ({
             onClick={() => setActiveSection('categories')}
           >
             Categories
+          </button>
+          <button
+            className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'sources' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            onClick={() => setActiveSection('sources')}
+          >
+            Sources
           </button>
         </div>
         {/* Main Content */}
@@ -246,6 +278,90 @@ export const Settings: React.FC<SettingsProps> = ({
                   {categories.length === 0 && (
                     <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                       <p className="text-sm">No categories yet. Add your first category above.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            {activeSection === 'sources' && (
+              <>
+                {/* Sources Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Sources</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Manage your CSV import sources. You can edit the name of each source.
+                  </p>
+                  {/* Sources List */}
+                  <div className="space-y-1">
+                    {sources.map((source) => (
+                      <div
+                        key={source.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
+                        {editingSource === source.id ? (
+                          <div className="flex items-center space-x-1 flex-1">
+                            <input
+                              type="text"
+                              value={editSourceName}
+                              onChange={(e) => setEditSourceName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveEditSource();
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEditSource();
+                                }
+                              }}
+                              onBlur={handleSaveEditSource}
+                              autoFocus
+                              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                            <button
+                              onClick={handleSaveEditSource}
+                              className="p-1 text-green-600 hover:text-green-700 transition-colors"
+                              title="Save"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={handleCancelEditSource}
+                              className="p-1 text-gray-600 hover:text-gray-700 transition-colors"
+                              title="Cancel"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-900 dark:text-white text-sm">{source.name}</span>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Created: {new Date(source.createdAt).toLocaleDateString()}
+                                {source.lastUsed && (
+                                  <span className="ml-2">
+                                    • Last used: {new Date(source.lastUsed).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => handleStartEditSource(source)}
+                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                title="Edit source name"
+                              >
+                                <Edit size={12} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {sources.length === 0 && (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      <p className="text-sm">No sources yet. Sources are created when you import CSV files.</p>
                     </div>
                   )}
                 </div>

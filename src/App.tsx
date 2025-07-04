@@ -428,6 +428,15 @@ function AppContent() {
     }
   };
 
+  const handleUpdateSource = async (updatedSource: Source) => {
+    try {
+      const updatedSources = await LocalStorage.updateSource(updatedSource, isTestMode);
+      setSources(updatedSources);
+    } catch (error) {
+      console.error('Error updating source:', error);
+    }
+  };
+
   const handleViewTransactionDetails = (transaction: Expense) => {
     setSelectedTransaction(transaction);
     setIsTransactionDetailsOpen(true);
@@ -644,6 +653,7 @@ function AppContent() {
           setCategories(loadedCategories);
         }}
         onExportCSV={handleExportCSV}
+        onUpdateSource={handleUpdateSource}
       />
 
       {/* Transaction Details Modal */}

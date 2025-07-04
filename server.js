@@ -637,6 +637,45 @@ app.delete('/api/sources/:sourceName', (req, res) => {
   }
 });
 
+// Update source
+app.put('/api/sources/:sourceId', (req, res) => {
+  try {
+    const { sourceId } = req.params;
+    const { source, isTestMode } = req.body;
+    
+    const sourcesFile = getFilePath('source.json');
+    
+    if (!fs.existsSync(sourcesFile)) {
+      return res.status(404).json({ error: 'No sources found' });
+    }
+    
+    const data = fs.readFileSync(sourcesFile, 'utf8');
+    let sources = JSON.parse(data);
+    
+    // Find and update the source
+    const sourceIndex = sources.findIndex(s => s.id === sourceId);
+    if (sourceIndex === -1) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+    
+    // Check if the new name conflicts with other sources
+    const nameConflict = sources.some(s => s.id !== sourceId && s.name === source.name);
+    if (nameConflict) {
+      return res.status(400).json({ error: 'Source name already exists' });
+    }
+    
+    // Update the source
+    sources[sourceIndex] = source;
+    
+    fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
+    
+    res.json({ success: true, sources });
+  } catch (error) {
+    console.error('Error updating source:', error);
+    res.status(500).json({ error: 'Failed to update source' });
+  }
+});
+
 // Delete all data (transactions and sources)
 app.delete('/api/delete-all', (req, res) => {
   try {

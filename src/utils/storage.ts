@@ -229,6 +229,36 @@ export class LocalStorage {
     }
   }
 
+  static async updateSource(updatedSource: import('../types').Source, isTestMode: boolean = false): Promise<import('../types').Source[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ source: updatedSource, isTestMode }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update source');
+      }
+
+      console.log(`Updated source ${updatedSource.name} (test mode: ${isTestMode})`);
+      
+      // Reload all sources to get the updated list
+      return await this.loadSources(isTestMode);
+    } catch (error) {
+      console.error('Error updating source:', error);
+      // Fallback to localStorage
+      const sources = this.getSourcesFromStorage();
+      const updatedSources = sources.map(source => 
+        source.id === updatedSource.id ? updatedSource : source
+      );
+      localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(updatedSources));
+      return updatedSources;
+    }
+  }
+
   static async loadSources(isTestMode: boolean = false): Promise<import('../types').Source[]> {
     try {
       const response = await fetch(`${this.API_BASE}/sources?testMode=${isTestMode}`);
@@ -251,8 +281,6 @@ export class LocalStorage {
     const stored = localStorage.getItem(SOURCES_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   }
-
-
 
   static parseCSVWithMapping(csvText: string, mapping: import('../types').Source): Expense[] {
     const lines = csvText.trim().split('\n');
