@@ -17,9 +17,14 @@ const METADATA_FILE = path.join(ARTIFACTS_DIR, 'metadata.json');
 const MAPPINGS_FILE = path.join(ARTIFACTS_DIR, 'column-mappings.json');
 const DATE_RANGE_FILE = path.join(ARTIFACTS_DIR, 'date-range.json');
 const CATEGORIES_FILE = path.join(ARTIFACTS_DIR, 'categories.json');
+const REPORTS_DIR = path.join(ARTIFACTS_DIR, 'reports');
 
 if (!fs.existsSync(ARTIFACTS_DIR)) {
   fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
+}
+
+if (!fs.existsSync(REPORTS_DIR)) {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
 }
 
 // Routes
@@ -258,6 +263,102 @@ app.post('/api/categories', (req, res) => {
   } catch (error) {
     console.error('Error saving categories:', error);
     res.status(500).json({ error: 'Failed to save categories' });
+  }
+});
+
+// Report Routes
+app.get('/api/reports', (req, res) => {
+  try {
+    const reports = [];
+    
+    if (fs.existsSync(REPORTS_DIR)) {
+      const files = fs.readdirSync(REPORTS_DIR);
+      
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const filePath = path.join(REPORTS_DIR, file);
+          const data = fs.readFileSync(filePath, 'utf8');
+          const report = JSON.parse(data);
+          reports.push(report);
+        }
+      }
+    }
+    
+    res.json(reports);
+  } catch (error) {
+    console.error('Error reading reports:', error);
+    res.status(500).json({ error: 'Failed to read reports' });
+  }
+});
+
+app.post('/api/reports', (req, res) => {
+  try {
+    const { report } = req.body;
+    
+    const reportFile = path.join(REPORTS_DIR, `${report.id}.json`);
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+    
+    res.json({ success: true, reportId: report.id });
+  } catch (error) {
+    console.error('Error saving report:', error);
+    res.status(500).json({ error: 'Failed to save report' });
+  }
+});
+
+app.delete('/api/reports/:reportId', (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const reportFile = path.join(REPORTS_DIR, `${reportId}.json`);
+    const reportDataFile = path.join(REPORTS_DIR, `${reportId}_data.json`);
+    
+    // Delete report file
+    if (fs.existsSync(reportFile)) {
+      fs.unlinkSync(reportFile);
+    }
+    
+    // Delete report data file
+    if (fs.existsSync(reportDataFile)) {
+      fs.unlinkSync(reportDataFile);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting report:', error);
+    res.status(500).json({ error: 'Failed to delete report' });
+  }
+});
+
+app.post('/api/reports/:reportId/data', (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { reportData } = req.body;
+    
+    const reportDataFile = path.join(REPORTS_DIR, `${reportId}_data.json`);
+    fs.writeFileSync(reportDataFile, JSON.stringify(reportData, null, 2));
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving report data:', error);
+    res.status(500).json({ error: 'Failed to save report data' });
+  }
+});
+
+app.get('/api/reports/:reportId/data', (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const reportDataFile = path.join(REPORTS_DIR, `${reportId}_data.json`);
+    
+    if (!fs.existsSync(reportDataFile)) {
+      return res.status(404).json({ error: 'Report data not found' });
+    }
+    
+    const data = fs.readFileSync(reportDataFile, 'utf8');
+    const reportData = JSON.parse(data);
+    
+    res.json(reportData);
+  } catch (error) {
+    console.error('Error reading report data:', error);
+    res.status(500).json({ error: 'Failed to read report data' });
   }
 });
 

@@ -3,6 +3,11 @@ export { TransactionList } from './transactions/TransactionList';
 export { TransactionForm } from './transactions/TransactionForm';
 export { Transactions } from './transactions/Transactions';
 
+// Report components
+export { Reports } from './reports/Reports';
+export { ReportCreator } from './reports/ReportCreator';
+export { ReportViewer } from './reports/ReportViewer';
+
 // UI components
 export { LabelBadge } from './ui/LabelBadge';
 export { LabelSelector } from './ui/LabelSelector';

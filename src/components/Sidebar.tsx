@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, BarChart3, Receipt } from 'lucide-react';
+import { Menu, X, BarChart3, Receipt, FileText } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, o
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'transactions', label: 'Transactions', icon: Receipt },
+    { id: 'reports', label: 'Reports', icon: FileText },
   ];
 
   return (

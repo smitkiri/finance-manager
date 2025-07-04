@@ -5,7 +5,7 @@ export interface Expense {
   category: string;
   amount: number;
   type: 'expense' | 'income';
-  memo?: string;
+  memo: string;
   labels?: string[];
 }
 
@@ -72,4 +72,34 @@ export interface CSVPreview {
   headers: string[];
   sampleRows: string[][];
   totalRows: number;
+}
+
+// New types for reports
+export interface ReportFilter {
+  dateRange?: DateRange;
+  categories?: string[];
+  labels?: string[];
+  types?: ('expense' | 'income')[];
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface Report {
+  id: string;
+  name: string;
+  description?: string;
+  filters: ReportFilter;
+  createdAt: string;
+  lastModified: string;
+  transactionCount: number;
+  totalAmount: number;
+}
+
+export interface ReportData {
+  report: Report;
+  transactions: Expense[];
+  categoryBreakdown: { [category: string]: number };
+  totalExpenses: number;
+  totalIncome: number;
+  netAmount: number;
 } 

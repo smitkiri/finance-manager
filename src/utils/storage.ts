@@ -1,4 +1,4 @@
-import { Expense, ColumnMapping, CSVPreview, StandardizedColumn } from '../types';
+import { Expense, ColumnMapping, CSVPreview, StandardizedColumn, Report, ReportData } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -554,6 +554,130 @@ export class LocalStorage {
     } catch (error) {
       console.error('Error updating category:', error);
       throw error;
+    }
+  }
+
+  // Report Methods
+  static async saveReport(report: Report): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_BASE}/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ report }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save report');
+      }
+
+      console.log(`Saved report: ${report.name}`);
+    } catch (error) {
+      console.error('Error saving report:', error);
+      // Fallback to localStorage
+      const existingReports = this.getReportsFromStorage();
+      const updatedReports = existingReports.filter(r => r.id !== report.id);
+      updatedReports.push(report);
+      localStorage.setItem('reports', JSON.stringify(updatedReports));
+    }
+  }
+
+  static async loadReports(): Promise<Report[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/reports`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load reports');
+      }
+
+      const reports = await response.json();
+      console.log(`Loaded ${reports.length} reports from server`);
+      return reports;
+    } catch (error) {
+      console.error('Error loading reports from server:', error);
+      // Fallback to localStorage
+      return this.getReportsFromStorage();
+    }
+  }
+
+  static async deleteReport(reportId: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_BASE}/reports/${reportId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete report');
+      }
+
+      console.log(`Deleted report: ${reportId}`);
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      // Fallback to localStorage
+      const existingReports = this.getReportsFromStorage();
+      const updatedReports = existingReports.filter(r => r.id !== reportId);
+      localStorage.setItem('reports', JSON.stringify(updatedReports));
+    }
+  }
+
+  static async saveReportData(reportData: ReportData): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_BASE}/reports/${reportData.report.id}/data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reportData }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save report data');
+      }
+
+      console.log(`Saved report data: ${reportData.report.name}`);
+    } catch (error) {
+      console.error('Error saving report data:', error);
+      // Fallback to localStorage
+      localStorage.setItem(`report_data_${reportData.report.id}`, JSON.stringify(reportData));
+    }
+  }
+
+  static async loadReportData(reportId: string): Promise<ReportData | null> {
+    try {
+      const response = await fetch(`${this.API_BASE}/reports/${reportId}/data`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load report data');
+      }
+
+      const reportData = await response.json();
+      console.log(`Loaded report data: ${reportId}`);
+      return reportData;
+    } catch (error) {
+      console.error('Error loading report data from server:', error);
+      // Fallback to localStorage
+      return this.getReportDataFromStorage(reportId);
+    }
+  }
+
+  private static getReportsFromStorage(): Report[] {
+    try {
+      const stored = localStorage.getItem('reports');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading reports from localStorage:', error);
+      return [];
+    }
+  }
+
+  private static getReportDataFromStorage(reportId: string): ReportData | null {
+    try {
+      const stored = localStorage.getItem(`report_data_${reportId}`);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error('Error loading report data from localStorage:', error);
+      return null;
     }
   }
 } 

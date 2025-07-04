@@ -7,6 +7,7 @@ import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
+import { Reports } from './components/reports/Reports';
 import { generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
 import { CSVMappingModal } from './components/modals/CSVMappingModal';
@@ -414,6 +415,11 @@ function AppContent() {
         {activeTab === 'dashboard' ? (
           <Dashboard
             expenses={filteredExpenses}
+            categories={categories}
+          />
+        ) : activeTab === 'reports' ? (
+          <Reports
+            expenses={expenses}
             categories={categories}
           />
         ) : (
