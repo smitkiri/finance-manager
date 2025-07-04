@@ -12,6 +12,7 @@ import { generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
+import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -32,6 +33,8 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sources, setSources] = useState<Source[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<Expense | null>(null);
+  const [isTransactionDetailsOpen, setIsTransactionDetailsOpen] = useState(false);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -87,6 +90,10 @@ function AppContent() {
       amount: parseFloat(formData.amount),
       type: formData.type,
       memo: formData.memo,
+      metadata: {
+        sourceName: 'Manual Entry',
+        importedAt: new Date().toISOString()
+      }
     };
 
     try {
@@ -268,11 +275,28 @@ function AppContent() {
   const handleImportWithSource = async (source: Source) => {
     try {
       const csvText = await getCSVTextFromFile();
-      const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
-      const existingExpenses = await LocalStorage.loadExpenses();
-      const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
-      await LocalStorage.saveExpenses(mergedExpenses);
-      setExpenses(mergedExpenses);
+      
+      // Call backend API to import with source (which adds metadata)
+      const response = await fetch('http://localhost:3001/api/import-with-mapping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          csvText,
+          mapping: source
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to import CSV with source');
+      }
+
+      const result = await response.json();
+      
+      // Reload expenses from backend
+      const updatedExpenses = await LocalStorage.loadExpenses();
+      setExpenses(updatedExpenses);
       setIsSourceModalOpen(false);
       setCsvPreview(null);
     } catch (error) {
@@ -343,6 +367,11 @@ function AppContent() {
     } catch (error) {
       console.error('Error deleting source:', error);
     }
+  };
+
+  const handleViewTransactionDetails = (transaction: Expense) => {
+    setSelectedTransaction(transaction);
+    setIsTransactionDetailsOpen(true);
   };
 
   return (
@@ -508,6 +537,7 @@ function AppContent() {
               onUpdateCategory={handleUpdateCategory}
               onAddLabel={handleAddLabel}
               onRemoveLabel={handleRemoveLabel}
+              onViewDetails={handleViewTransactionDetails}
               categories={categories}
             />
           </div>
@@ -561,6 +591,16 @@ function AppContent() {
           setExpenses(loadedExpenses);
           setSources(loadedSources);
           setCategories(loadedCategories);
+        }}
+      />
+
+      {/* Transaction Details Modal */}
+      <TransactionDetailsModal
+        transaction={selectedTransaction}
+        isOpen={isTransactionDetailsOpen}
+        onClose={() => {
+          setIsTransactionDetailsOpen(false);
+          setSelectedTransaction(null);
         }}
       />
     </div>

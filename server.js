@@ -482,6 +482,10 @@ function parseCSV(csvText) {
         amount: Math.abs(amount),
         type: amount < 0 ? 'expense' : 'income',
         memo: values[6] || '',
+        metadata: {
+          sourceName: 'Manual Import',
+          importedAt: new Date().toISOString()
+        }
       };
     });
 }
@@ -588,6 +592,11 @@ function parseCSVWithMapping(csvText, mapping) {
         amount: Math.abs(amount),
         type: amount < 0 ? 'expense' : 'income',
         memo: '',
+        metadata: {
+          sourceId: mapping.id,
+          sourceName: mapping.name,
+          importedAt: new Date().toISOString()
+        }
       };
     })
     .filter(expense => expense.date && expense.description && expense.amount > 0);

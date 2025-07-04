@@ -335,6 +335,11 @@ export class LocalStorage {
           amount: Math.abs(amount),
           type: (amount < 0 ? 'expense' : 'income') as 'expense' | 'income',
           memo: '',
+          metadata: {
+            sourceId: mapping.id,
+            sourceName: mapping.name,
+            importedAt: new Date().toISOString()
+          }
         };
       })
       .filter(expense => expense.date && expense.description && expense.amount > 0);

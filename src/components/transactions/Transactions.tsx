@@ -9,6 +9,7 @@ interface TransactionsProps {
   onUpdateCategory: (expenseId: string, newCategory: string) => void;
   onAddLabel: (expenseId: string, label: string) => void;
   onRemoveLabel: (expenseId: string, label: string) => void;
+  onViewDetails: (expense: Expense) => void;
   categories: string[];
 }
 
@@ -19,6 +20,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
   onUpdateCategory,
   onAddLabel,
   onRemoveLabel,
+  onViewDetails,
   categories
 }) => {
   return (
@@ -41,6 +43,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         onUpdateCategory={onUpdateCategory}
         onAddLabel={onAddLabel}
         onRemoveLabel={onRemoveLabel}
+        onViewDetails={onViewDetails}
         categories={categories}
       />
     </div>

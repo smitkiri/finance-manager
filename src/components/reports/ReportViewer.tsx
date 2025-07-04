@@ -242,6 +242,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           onUpdateCategory={() => {}} // No category updates in report view
           onAddLabel={() => {}} // No label updates in report view
           onRemoveLabel={() => {}} // No label updates in report view
+          onViewDetails={() => {}} // No details view in report view
           categories={[]} // Not needed for read-only view
         />
       </div>

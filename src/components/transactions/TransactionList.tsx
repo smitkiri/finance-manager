@@ -12,10 +12,11 @@ interface TransactionListProps {
   onUpdateCategory: (expenseId: string, newCategory: string) => void;
   onAddLabel: (expenseId: string, label: string) => void;
   onRemoveLabel: (expenseId: string, label: string) => void;
+  onViewDetails: (expense: Expense) => void;
   categories: string[];
 }
 
-export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, categories }) => {
+export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories }) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [labelSelectorState, setLabelSelectorState] = useState<{
@@ -138,7 +139,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
       {visibleExpenses.map((expense) => (
         <div
           key={expense.id}
-          className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:shadow-sm transition-shadow duration-200 p-3"
+          className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:shadow-sm transition-shadow duration-200 p-3 cursor-pointer"
+          onClick={() => onViewDetails(expense)}
         >
                       <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
@@ -147,9 +149,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                     <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{expense.description}</h3>
                     <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       <span>{formatDate(expense.date)}</span>
+                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-medium text-gray-600 dark:text-gray-300">
+                        {expense.metadata?.sourceName || 'Manual Entry'}
+                      </span>
                       <div className="relative group" ref={editingCategoryId === expense.id ? dropdownRef : null}>
                         <button
-                          onClick={() => handleCategoryClick(expense.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCategoryClick(expense.id);
+                          }}
                           className="px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-md text-xs font-medium text-blue-700 dark:text-blue-300 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-800/30 dark:hover:to-indigo-800/30 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex items-center space-x-1"
                           title="Click to change category"
                         >
@@ -162,7 +170,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                             {categories.map((category) => (
                               <button
                                 key={category}
-                                onClick={() => handleCategoryChange(expense.id, category)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCategoryChange(expense.id, category);
+                                }}
                                 className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
                                   (expense.category || 'Uncategorized') === category
                                     ? 'bg-blue-100 dark:bg-blue-800/30 text-blue-700 dark:text-blue-300 font-medium'
@@ -213,11 +224,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
             <div className="flex items-center space-x-1 ml-2">
               {/* Add Label Button */}
               {(expense.labels?.length || 0) < 3 && (
-                <button
-                  onClick={(e) => handleAddLabelClick(expense.id, e)}
-                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
-                  title="Add label"
-                >
+                              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddLabelClick(expense.id, e);
+                }}
+                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
+                title="Add label"
+              >
                   <div className="relative">
                     <Plus size={14} />
                     <div className="absolute inset-0 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -225,14 +239,20 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                 </button>
               )}
               <button
-                onClick={() => onEdit(expense)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(expense);
+                }}
                 className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                 title="Edit transaction"
               >
                 <Edit size={14} />
               </button>
               <button
-                onClick={() => onDelete(expense.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(expense.id);
+                }}
                 className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                 title="Delete transaction"
               >

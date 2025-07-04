@@ -7,6 +7,11 @@ export interface Expense {
   type: 'expense' | 'income';
   memo: string;
   labels?: string[];
+  metadata?: {
+    sourceId?: string;
+    sourceName?: string;
+    importedAt: string;
+  };
 }
 
 export interface Category {
