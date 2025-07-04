@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download } from 'lucide-react';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface SettingsProps {
   expenses: any[];
   sources: any[];
   onRefreshData: () => void;
+  onExportCSV: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -22,7 +23,8 @@ export const Settings: React.FC<SettingsProps> = ({
   onUpdateCategory,
   expenses,
   sources,
-  onRefreshData
+  onRefreshData,
+  onExportCSV
 }) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -248,6 +250,21 @@ export const Settings: React.FC<SettingsProps> = ({
             )}
             {activeSection === 'general' && (
               <>
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Export Data</h3>
+                  <div className="space-y-4">
+                    <button
+                      onClick={onExportCSV}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <Download size={16} />
+                      <span>Export CSV</span>
+                    </button>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Export all your transactions to a CSV file for backup or analysis.
+                    </p>
+                  </div>
+                </div>
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Delete Data</h3>
                   <div className="space-y-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, Download, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
@@ -459,13 +459,6 @@ function AppContent() {
                 </div>
               </label>
               <button
-                onClick={handleExportCSV}
-                className="flex items-center space-x-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
-              >
-                <Download size={16} />
-                <span>Export CSV</span>
-              </button>
-              <button
                 onClick={() => setIsFormOpen(true)}
                 className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 title="Add Transaction"
@@ -572,6 +565,7 @@ function AppContent() {
           setSources(loadedSources);
           setCategories(loadedCategories);
         }}
+        onExportCSV={handleExportCSV}
       />
 
       {/* Transaction Details Modal */}

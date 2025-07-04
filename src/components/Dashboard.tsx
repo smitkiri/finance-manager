@@ -11,7 +11,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) => {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
 
   // Calculate statistics using the utility function
   const stats = calculateStats(expenses);
