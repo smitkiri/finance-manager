@@ -109,7 +109,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Date Range</span>
             </div>
             <DateRangePicker
-              currentRange={filters.dateRange || { start: new Date(), end: new Date() }}
+              currentRange={filters.dateRange || { start: new Date(0), end: new Date() }}
               onDateRangeChange={handleDateRangeChange}
             />
           </div>
@@ -255,7 +255,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Date Range</h3>
         </div>
         <DateRangePicker
-          currentRange={filters.dateRange || { start: new Date(), end: new Date() }}
+          currentRange={filters.dateRange || { start: new Date(0), end: new Date() }}
           onDateRangeChange={handleDateRangeChange}
         />
       </div>

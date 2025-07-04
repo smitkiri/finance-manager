@@ -71,6 +71,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
     const startStr = format(range.start, 'MMM d, yyyy');
     const endStr = format(range.end, 'MMM d, yyyy');
     
+    // Check if it's "since the beginning" (start date is epoch)
+    if (range.start.getTime() === 0) {
+      return 'Since the Beginning';
+    }
+    
     // Check if it's a quick range
     const now = new Date();
     const oneMonthAgo = subMonths(now, 1);
