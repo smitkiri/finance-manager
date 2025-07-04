@@ -1,19 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Edit, ChevronDown } from 'lucide-react';
+import { Trash2, Edit, ChevronDown, Plus } from 'lucide-react';
 import { Expense } from '../types';
 import { formatCurrency, formatDate } from '../utils';
+import { LabelSelector } from './LabelSelector';
+import { LabelBadge } from './LabelBadge';
 
 interface ExpenseListProps {
   expenses: Expense[];
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
   onUpdateCategory: (expenseId: string, newCategory: string) => void;
+  onAddLabel: (expenseId: string, label: string) => void;
+  onRemoveLabel: (expenseId: string, label: string) => void;
   categories: string[];
 }
 
-export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, categories }) => {
+export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, categories }) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [labelSelectorState, setLabelSelectorState] = useState<{
+    isOpen: boolean;
+    expenseId: string | null;
+    position: { x: number; y: number };
+  }>({
+    isOpen: false,
+    expenseId: null,
+    position: { x: 0, y: 0 }
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_PAGE = 30;
   
@@ -77,6 +90,38 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, on
     setEditingCategoryId(null);
   };
 
+  const handleAddLabelClick = (expenseId: string, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setLabelSelectorState({
+      isOpen: true,
+      expenseId,
+      position: { x: rect.left + rect.width / 2, y: rect.top }
+    });
+  };
+
+  const handleAddLabel = (label: string) => {
+    if (labelSelectorState.expenseId) {
+      onAddLabel(labelSelectorState.expenseId, label);
+    }
+  };
+
+  const handleRemoveLabel = (expenseId: string, label: string) => {
+    onRemoveLabel(expenseId, label);
+  };
+
+  const handleCloseLabelSelector = () => {
+    setLabelSelectorState({
+      isOpen: false,
+      expenseId: null,
+      position: { x: 0, y: 0 }
+    });
+  };
+
+  // Get all unique labels from all expenses
+  const allLabels = Array.from(new Set(
+    expenses.flatMap(expense => expense.labels || [])
+  ));
+
   return (
     <div className="space-y-2">
       {expenses.length > 0 && (
@@ -130,11 +175,25 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, on
                           </div>
                         )}
                       </div>
+                      
+                      {/* Labels */}
+                      {(expense.labels && expense.labels.length > 0) && (
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {expense.labels.map((label) => (
+                            <LabelBadge
+                              key={label}
+                              label={label}
+                              onRemove={() => handleRemoveLabel(expense.id, label)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {expense.memo && (
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 italic truncate">"{expense.memo}"</p>
                     )}
                   </div>
+                  
                   <div className="text-right flex-shrink-0">
                     <div
                       className={`font-semibold text-sm ${
@@ -152,6 +211,19 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, on
               </div>
             
             <div className="flex items-center space-x-1 ml-2">
+              {/* Add Label Button */}
+              {(expense.labels?.length || 0) < 3 && (
+                <button
+                  onClick={(e) => handleAddLabelClick(expense.id, e)}
+                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
+                  title="Add label"
+                >
+                  <div className="relative">
+                    <Plus size={14} />
+                    <div className="absolute inset-0 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </button>
+              )}
               <button
                 onClick={() => onEdit(expense)}
                 className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
@@ -190,6 +262,17 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, on
           </p>
         </div>
       )}
+      
+      {/* Label Selector */}
+      <LabelSelector
+        isOpen={labelSelectorState.isOpen}
+        onClose={handleCloseLabelSelector}
+        onAddLabel={handleAddLabel}
+        existingLabels={labelSelectorState.expenseId ? (expenses.find(e => e.id === labelSelectorState.expenseId)?.labels || []) : []}
+        allLabels={allLabels}
+        maxLabels={3}
+        position={labelSelectorState.position}
+      />
     </div>
   );
 }; 

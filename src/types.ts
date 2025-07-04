@@ -6,6 +6,7 @@ export interface Expense {
   amount: number;
   type: 'expense' | 'income';
   memo?: string;
+  labels?: string[];
 }
 
 export interface Category {

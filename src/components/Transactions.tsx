@@ -7,6 +7,8 @@ interface TransactionsProps {
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
   onUpdateCategory: (expenseId: string, newCategory: string) => void;
+  onAddLabel: (expenseId: string, label: string) => void;
+  onRemoveLabel: (expenseId: string, label: string) => void;
   categories: string[];
 }
 
@@ -15,6 +17,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
   onDelete,
   onEdit,
   onUpdateCategory,
+  onAddLabel,
+  onRemoveLabel,
   categories
 }) => {
   return (
@@ -35,6 +39,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
         onDelete={onDelete}
         onEdit={onEdit}
         onUpdateCategory={onUpdateCategory}
+        onAddLabel={onAddLabel}
+        onRemoveLabel={onRemoveLabel}
         categories={categories}
       />
     </div>

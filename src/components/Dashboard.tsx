@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StatsCard } from './StatsCard';
 import { Chart } from './Chart';
 import { Expense } from '../types';
 import { calculateStats } from '../utils';
+import { Check } from 'lucide-react';
 
 interface DashboardProps {
   expenses: Expense[];
@@ -10,6 +11,8 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) => {
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
   // Calculate statistics using the utility function
   const stats = calculateStats(expenses);
 
@@ -28,11 +31,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
     };
   }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
 
-  // Prepare chart data
-  const pieData = categoryBreakdown.map(item => ({
-    name: item.category,
-    value: item.amount
-  }));
+  // Prepare category line chart data
+  const categoriesToShow = selectedCategories.length > 0 ? selectedCategories : categories;
+  const categoryLineData = prepareCategoryLineData(expenses, categoriesToShow);
+
+  // Function to prepare category line chart data
+  function prepareCategoryLineData(expenses: Expense[], categoriesToShow: string[]) {
+    const monthlyData: { [key: string]: { [key: string]: number } } = {};
+    
+    // Initialize all months with 0 values for all categories
+    expenses.forEach(expense => {
+      if (expense.type === 'expense') {
+        const month = new Date(expense.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+        if (!monthlyData[month]) {
+          monthlyData[month] = {};
+          categoriesToShow.forEach(cat => {
+            monthlyData[month][cat] = 0;
+          });
+        }
+        
+        const category = expense.category || 'Uncategorized';
+        if (categoriesToShow.includes(category)) {
+          monthlyData[month][category] += expense.amount;
+        }
+      }
+    });
+
+    // Convert to array format for chart
+    return Object.keys(monthlyData)
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+      .map(month => ({
+        month,
+        ...monthlyData[month]
+      }));
+  }
+
+  const handleCategoryToggle = (category: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(cat => cat !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedCategories(categories);
+  };
+
+  const handleClearAll = () => {
+    setSelectedCategories([]);
+  };
 
   return (
     <div className="space-y-6">
@@ -63,11 +113,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
           title="Monthly Overview"
         />
         
-        <Chart
-          data={pieData}
-          type="pie"
-          title="Category Breakdown"
-        />
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Category Trends
+            </h3>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleSelectAll}
+                className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors"
+              >
+                Select All
+              </button>
+              <button
+                onClick={handleClearAll}
+                className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+          
+          <Chart
+            data={categoryLineData}
+            type="line"
+            title=""
+            categoryMode={true}
+          />
+          
+          {/* Category Selector */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Select Categories:
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((category) => {
+                const isSelected = selectedCategories.includes(category);
+                return (
+                  <button
+                    key={category}
+                    onClick={() => handleCategoryToggle(category)}
+                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {isSelected && <Check size={12} />}
+                    <span>{category}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Category Breakdown Table */}

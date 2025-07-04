@@ -18,6 +18,7 @@ function AppContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [filter, setFilter] = useState('all');
+  const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Start of current month
     end: new Date() // Today
@@ -152,6 +153,47 @@ function AppContent() {
     }
   };
 
+  const handleAddLabel = async (expenseId: string, label: string) => {
+    try {
+      const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      if (!expenseToUpdate) return;
+
+      const currentLabels = expenseToUpdate.labels || [];
+      if (currentLabels.length >= 3) return; // Max 3 labels
+      if (currentLabels.includes(label)) return; // Don't add duplicate
+
+      const updatedExpense: Expense = {
+        ...expenseToUpdate,
+        labels: [...currentLabels, label],
+      };
+
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error adding label:', error);
+    }
+  };
+
+  const handleRemoveLabel = async (expenseId: string, label: string) => {
+    try {
+      const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      if (!expenseToUpdate) return;
+
+      const currentLabels = expenseToUpdate.labels || [];
+      const updatedLabels = currentLabels.filter(l => l !== label);
+
+      const updatedExpense: Expense = {
+        ...expenseToUpdate,
+        labels: updatedLabels,
+      };
+
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error removing label:', error);
+    }
+  };
+
   const handleAddCategory = async (category: string) => {
     try {
       const updatedCategories = await LocalStorage.addCategory(category);
@@ -271,12 +313,32 @@ function AppContent() {
     }
   };
 
+  // Get all unique labels from all expenses
+  const allLabels = Array.from(new Set(
+    expenses.flatMap(expense => expense.labels || [])
+  ));
+
   const dateFilteredExpenses = filterExpensesByDateRange(expenses, dateRange);
   const filteredExpenses = dateFilteredExpenses.filter(exp => {
-    if (filter === 'all') return true;
-    if (filter === 'expenses') return exp.type === 'expense';
-    if (filter === 'income') return exp.type === 'income';
-    return exp.category === filter;
+    // Type filter
+    if (filter === 'all') {
+      // Continue to label filter
+    } else if (filter === 'expenses') {
+      if (exp.type !== 'expense') return false;
+    } else if (filter === 'income') {
+      if (exp.type !== 'income') return false;
+    } else {
+      if (exp.category !== filter) return false;
+    }
+    
+    // Label filter
+    if (labelFilter.length > 0) {
+      const expenseLabels = exp.labels || [];
+      // Show transactions that have ANY of the selected labels
+      return labelFilter.some(label => expenseLabels.includes(label));
+    }
+    
+    return true;
   });
 
 
@@ -358,26 +420,76 @@ function AppContent() {
           <div className="space-y-6">
             {/* Filter Controls */}
             <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50 p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Filter Transactions</h2>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-3">
-                    <Filter size={18} className="text-slate-400" />
-                    <select
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                      className="input max-w-xs"
-                    >
-                      <option value="all">All Transactions</option>
-                      <option value="expenses">Expenses Only</option>
-                      <option value="income">Income Only</option>
-                      {Array.from(new Set(expenses.map(exp => exp.category))).map(category => (
-                        <option key={category} value={category}>{category}</option>
-                      ))}
-                    </select>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Type/Category Filter */}
+                <div className="flex items-center space-x-3">
+                  <Filter size={18} className="text-slate-400" />
+                  <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="input flex-1"
+                  >
+                    <option value="all">All Transactions</option>
+                    <option value="expenses">Expenses Only</option>
+                    <option value="income">Income Only</option>
+                    {Array.from(new Set(expenses.map(exp => exp.category))).map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Label Filter */}
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Labels:</span>
+                  <div className="flex flex-wrap gap-2 flex-1">
+                    {allLabels.length > 0 ? (
+                      allLabels.map((label) => {
+                        const isSelected = labelFilter.includes(label);
+                        return (
+                          <button
+                            key={label}
+                            onClick={() => {
+                              if (isSelected) {
+                                setLabelFilter(labelFilter.filter(l => l !== label));
+                              } else {
+                                setLabelFilter([...labelFilter, label]);
+                              }
+                            }}
+                            className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
+                              isSelected
+                                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <span className="text-sm text-gray-500 dark:text-gray-400">No labels available</span>
+                    )}
                   </div>
                 </div>
               </div>
+              
+              {/* Clear Filters */}
+              {(filter !== 'all' || labelFilter.length > 0) && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+                  <button
+                    onClick={() => {
+                      setFilter('all');
+                      setLabelFilter([]);
+                    }}
+                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Transactions */}
@@ -386,6 +498,8 @@ function AppContent() {
               onDelete={handleDeleteExpense}
               onEdit={handleEditExpense}
               onUpdateCategory={handleUpdateCategory}
+              onAddLabel={handleAddLabel}
+              onRemoveLabel={handleRemoveLabel}
               categories={categories}
             />
           </div>

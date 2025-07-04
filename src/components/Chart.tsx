@@ -7,11 +7,12 @@ interface ChartProps {
   type: 'line' | 'bar' | 'pie';
   title: string;
   height?: number;
+  categoryMode?: boolean;
 }
 
 const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
-export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300 }) => {
+export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, categoryMode = false }) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -45,20 +46,38 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300 })
               tickFormatter={(value) => `$${value}`}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Line 
-              type="monotone" 
-              dataKey="expenses" 
-              stroke="#ef4444" 
-              strokeWidth={2}
-              dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="income" 
-              stroke="#22c55e" 
-              strokeWidth={2}
-              dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
-            />
+            {categoryMode ? (
+              // Dynamic category lines
+              Object.keys(data[0] || {}).filter(key => key !== 'month').map((category, index) => (
+                <Line 
+                  key={category}
+                  type="monotone" 
+                  dataKey={category} 
+                  stroke={COLORS[index % COLORS.length]} 
+                  strokeWidth={2}
+                  dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 2, r: 4 }}
+                  name={category}
+                />
+              ))
+            ) : (
+              // Standard expenses/income lines
+              <>
+                <Line 
+                  type="monotone" 
+                  dataKey="expenses" 
+                  stroke="#ef4444" 
+                  strokeWidth={2}
+                  dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="income" 
+                  stroke="#22c55e" 
+                  strokeWidth={2}
+                  dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
+                />
+              </>
+            )}
           </LineChart>
         );
       
