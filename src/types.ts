@@ -110,4 +110,5 @@ export interface ReportData {
   totalExpenses: number;
   totalIncome: number;
   netAmount: number;
+  monthlyData: { month: string; expenses: number; income: number }[];
 } 

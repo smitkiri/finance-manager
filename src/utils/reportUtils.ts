@@ -71,13 +71,36 @@ export const generateReportData = (
     }
   });
 
+  // Calculate monthly data
+  const monthlyData = filteredExpenses.reduce((acc, exp) => {
+    const month = new Date(exp.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    const existing = acc.find(item => item.month === month);
+    
+    if (existing) {
+      if (exp.type === 'expense') {
+        existing.expenses += Math.abs(exp.amount);
+      } else {
+        existing.income += exp.amount;
+      }
+    } else {
+      acc.push({
+        month,
+        expenses: exp.type === 'expense' ? Math.abs(exp.amount) : 0,
+        income: exp.type === 'income' ? exp.amount : 0,
+      });
+    }
+    
+    return acc;
+  }, [] as { month: string; expenses: number; income: number }[]);
+
   return {
     report,
     transactions: filteredExpenses,
     categoryBreakdown,
     totalExpenses,
     totalIncome,
-    netAmount: totalIncome - totalExpenses
+    netAmount: totalIncome - totalExpenses,
+    monthlyData: monthlyData.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
   };
 };
 

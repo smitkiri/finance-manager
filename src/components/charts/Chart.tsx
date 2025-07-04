@@ -4,7 +4,7 @@ import { formatCurrency } from '../../utils';
 
 interface ChartProps {
   data: any[];
-  type: 'line' | 'bar' | 'pie';
+  type: 'line' | 'bar' | 'pie' | 'savings-bar' | 'donut';
   title: string;
   height?: number;
   categoryMode?: boolean;
@@ -19,7 +19,9 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }}>
+            <p key={index} style={{ 
+              color: entry.dataKey === 'savings' && entry.value < 0 ? '#ef4444' : entry.color 
+            }}>
               {entry.name}: {formatCurrency(entry.value)}
             </p>
           ))}
@@ -101,6 +103,36 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
           </BarChart>
         );
       
+      case 'savings-bar':
+        return (
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <XAxis 
+              dataKey="month" 
+              stroke="#6b7280"
+              fontSize={12}
+            />
+            <YAxis 
+              stroke="#6b7280"
+              fontSize={12}
+              tickFormatter={(value) => `$${value}`}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar 
+              dataKey="savings" 
+              fill="#22c55e"
+              radius={[4, 4, 0, 0]} 
+            >
+              {data.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.savings >= 0 ? '#22c55e' : '#ef4444'} 
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        );
+      
       case 'pie':
         return (
           <PieChart>
@@ -111,6 +143,28 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
               labelLine={false}
               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+          </PieChart>
+        );
+      
+      case 'donut':
+        return (
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              outerRadius={80}
+              innerRadius={40}
               fill="#8884d8"
               dataKey="value"
             >

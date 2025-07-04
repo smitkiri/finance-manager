@@ -35,6 +35,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
   const categoriesToShow = selectedCategories.length > 0 ? selectedCategories : categories;
   const categoryLineData = prepareCategoryLineData(expenses, categoriesToShow);
 
+  // Prepare savings month-over-month data
+  const savingsMonthlyData = stats.monthlyData.map(month => ({
+    month: month.month,
+    savings: month.income - month.expenses
+  }));
+
+  // Prepare donut chart data for savings vs expenses
+  const donutData = stats.netAmount >= 0 
+    ? [
+        { name: 'Savings', value: stats.netAmount },
+        { name: 'Expenses', value: stats.totalExpenses }
+      ]
+    : [
+        { name: 'Expenses', value: stats.totalExpenses }
+      ];
+
   // Function to prepare category line chart data
   function prepareCategoryLineData(expenses: Expense[], categoriesToShow: string[]) {
     const monthlyData: { [key: string]: { [key: string]: number } } = {};
@@ -99,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
           type="income"
         />
         <StatsCard
-          title="Net Amount"
+          title="Savings"
           value={stats.netAmount}
           type="net"
         />
@@ -111,6 +127,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
           data={stats.monthlyData}
           type="line"
           title="Monthly Overview"
+        />
+        
+        <Chart
+          data={savingsMonthlyData}
+          type="savings-bar"
+          title="Savings"
         />
         
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
@@ -167,6 +189,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
             </div>
           </div>
         </div>
+
+        <Chart
+          data={donutData}
+          type="donut"
+          title="Savings vs Expenses"
+        />
       </div>
 
       {/* Category Breakdown Table */}

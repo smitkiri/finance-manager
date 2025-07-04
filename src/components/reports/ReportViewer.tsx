@@ -5,6 +5,7 @@ import { LocalStorage } from '../../utils/storage';
 import { applyReportFilters, generateReportData } from '../../utils/reportUtils';
 import { TransactionList } from '../transactions/TransactionList';
 import { CategoryTable } from '../charts/CategoryTable';
+import { Chart } from '../charts/Chart';
 import { formatCurrency, formatDate } from '../../utils';
 
 interface ReportViewerProps {
@@ -219,6 +220,17 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Charts */}
+      {reportData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Chart
+            data={reportData.monthlyData}
+            type="line"
+            title="Monthly Overview"
+          />
+        </div>
+      )}
 
       {/* Category Breakdown */}
       {Object.keys(reportData.categoryBreakdown).length > 0 && (
