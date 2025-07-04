@@ -73,10 +73,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-slide-up border border-white/20 dark:border-slate-700/50">
-        <div className="flex items-center justify-between p-8 border-b border-white/20 dark:border-slate-700/50">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50 flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50 flex-shrink-0">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             {editingExpense ? 'Edit Transaction' : 'Add New Transaction'}
           </h2>
           <button
@@ -87,7 +87,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Type
@@ -191,7 +191,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
             />
           </div>
 
-          <div className="flex space-x-4 pt-6">
+          <div className="flex space-x-4 pt-4 flex-shrink-0">
             <button
               type="button"
               onClick={onCancel}
@@ -204,7 +204,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
               className="btn-primary flex-1 flex items-center justify-center space-x-2"
             >
               <Plus size={16} />
-              <span>{editingExpense ? 'Update Transaction' : 'Add Transaction'}</span>
+              <span>Add</span>
             </button>
           </div>
         </form>

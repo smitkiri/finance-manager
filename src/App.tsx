@@ -467,10 +467,10 @@ function AppContent() {
               </button>
               <button
                 onClick={() => setIsFormOpen(true)}
-                className="btn-primary flex items-center space-x-2"
+                className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                title="Add Transaction"
               >
-                <Plus size={16} />
-                <span>Add Transaction</span>
+                <Plus size={24} />
               </button>
             </div>
           </div>
