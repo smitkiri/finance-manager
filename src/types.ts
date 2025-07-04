@@ -18,6 +18,7 @@ export interface Expense {
     excludedFromCalculations: boolean;
     userOverride?: boolean;
   };
+  excludedFromCalculations?: boolean;
 }
 
 export interface Category {

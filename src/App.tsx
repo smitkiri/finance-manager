@@ -467,6 +467,25 @@ function AppContent() {
     }
   };
 
+  const handleExcludeToggle = async (transactionId: string, exclude: boolean) => {
+    try {
+      const expenseToUpdate = expenses.find(exp => exp.id === transactionId);
+      if (!expenseToUpdate) return;
+      const updatedExpense = {
+        ...expenseToUpdate,
+        excludedFromCalculations: exclude,
+      };
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
+      setExpenses(updatedExpenses);
+      // If the selected transaction is open, update it in state as well
+      if (selectedTransaction && selectedTransaction.id === transactionId) {
+        setSelectedTransaction(updatedExpense);
+      }
+    } catch (error) {
+      console.error('Error updating excludedFromCalculations:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       {/* Sidebar */}
@@ -646,6 +665,7 @@ function AppContent() {
           setSelectedTransaction(null);
         }}
         onTransferOverride={handleTransferOverride}
+        onExcludeToggle={handleExcludeToggle}
         allTransactions={expenses}
       />
     </div>

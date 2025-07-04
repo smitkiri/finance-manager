@@ -126,13 +126,6 @@ function isTransferPair(t1: Expense, t2: Expense): boolean {
   const daysDiff = Math.abs(date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24);
   if (daysDiff > 4) return false;
   
-  // Check for similar descriptions (optional, for higher confidence)
-  const desc1 = t1.description.toLowerCase();
-  const desc2 = t2.description.toLowerCase();
-  const hasSimilarDescription = desc1.includes('transfer') || desc2.includes('transfer') ||
-                               desc1.includes('move') || desc2.includes('move') ||
-                               desc1.includes('send') || desc2.includes('send');
-  
   return true;
 }
 
@@ -171,15 +164,21 @@ function calculateTransferConfidence(t1: Expense, t2: Expense): number {
  */
 export function filterTransfersForCalculations(transactions: Expense[]): Expense[] {
   return transactions.filter(transaction => {
-    if (!transaction.transferInfo?.isTransfer) return true;
+    // Exclude if top-level excludedFromCalculations is true (manual exclusion)
+    if (transaction.excludedFromCalculations === true) return false;
     
-    // Include if user has explicitly overridden the exclusion
-    if (transaction.transferInfo.userOverride !== undefined) {
+    // For transfers, check transfer-specific exclusion logic
+    if (transaction.transferInfo?.isTransfer) {
+      // Include if user has explicitly overridden the exclusion
+      if (transaction.transferInfo.userOverride !== undefined) {
+        return !transaction.transferInfo.excludedFromCalculations;
+      }
+      // Default behavior: exclude transfers from calculations
       return !transaction.transferInfo.excludedFromCalculations;
     }
     
-    // Default behavior: exclude transfers from calculations
-    return !transaction.transferInfo.excludedFromCalculations;
+    // Non-transfer transactions are included unless manually excluded
+    return true;
   });
 }
 

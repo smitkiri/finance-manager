@@ -140,7 +140,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
         <div
           key={expense.id}
           className={`rounded-lg border transition-shadow duration-200 p-3 cursor-pointer ${
-            expense.transferInfo?.isTransfer && expense.transferInfo.excludedFromCalculations
+            (expense.excludedFromCalculations || (expense.transferInfo?.isTransfer && expense.transferInfo.excludedFromCalculations))
               ? 'bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-600 opacity-50'
               : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:shadow-sm'
           }`}
@@ -159,6 +159,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                       {expense.transferInfo?.isTransfer && (
                         <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded text-xs font-medium text-orange-700 dark:text-orange-300">
                           Transfer
+                        </span>
+                      )}
+                      {expense.excludedFromCalculations && (
+                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-xs font-medium text-red-700 dark:text-red-300">
+                          Excluded
                         </span>
                       )}
                       <div className="relative group" ref={editingCategoryId === expense.id ? dropdownRef : null}>

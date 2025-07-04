@@ -3,6 +3,7 @@ import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
 import { Expense } from '../types';
 import { calculateStats } from '../utils';
+import { filterTransfersForCalculations } from '../utils/transferDetection';
 import { Check } from 'lucide-react';
 
 interface DashboardProps {
@@ -13,12 +14,15 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
 
+  // Filter out excluded transactions for all calculations
+  const filteredExpenses = filterTransfersForCalculations(expenses);
+
   // Calculate statistics using the utility function
   const stats = calculateStats(expenses);
 
-  // Calculate category breakdown
+  // Calculate category breakdown using filtered expenses
   const categoryBreakdown = categories.map(category => {
-    const categoryExpenses = expenses.filter(expense => 
+    const categoryExpenses = filteredExpenses.filter(expense => 
       expense.type === 'expense' && expense.category === category
     );
     const total = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -31,9 +35,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
     };
   }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
 
-  // Prepare category line chart data
+  // Prepare category line chart data using filtered expenses
   const categoriesToShow = selectedCategories.length > 0 ? selectedCategories : categories;
-  const categoryLineData = prepareCategoryLineData(expenses, categoriesToShow);
+  const categoryLineData = prepareCategoryLineData(filteredExpenses, categoriesToShow);
 
   // Prepare savings month-over-month data
   const savingsMonthlyData = stats.monthlyData.map(month => ({
