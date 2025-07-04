@@ -12,7 +12,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // Ensure artifacts directory exists
 const ARTIFACTS_DIR = '.artifacts';
-const EXPENSES_FILE = path.join(ARTIFACTS_DIR, 'expenses.json');
+const TRANSACTIONS_FILE = path.join(ARTIFACTS_DIR, 'transactions.json');
 const METADATA_FILE = path.join(ARTIFACTS_DIR, 'metadata.json');
 const MAPPINGS_FILE = path.join(ARTIFACTS_DIR, 'column-mappings.json');
 const DATE_RANGE_FILE = path.join(ARTIFACTS_DIR, 'date-range.json');
@@ -31,11 +31,11 @@ if (!fs.existsSync(REPORTS_DIR)) {
 // Routes
 app.get('/api/expenses', (req, res) => {
   try {
-    if (!fs.existsSync(EXPENSES_FILE)) {
+    if (!fs.existsSync(TRANSACTIONS_FILE)) {
       return res.json([]);
     }
     
-    const data = fs.readFileSync(EXPENSES_FILE, 'utf8');
+    const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
     const expenses = JSON.parse(data);
     res.json(expenses);
   } catch (error) {
@@ -48,7 +48,7 @@ app.post('/api/expenses', (req, res) => {
   try {
     const { expenses, metadata } = req.body;
     
-    fs.writeFileSync(EXPENSES_FILE, JSON.stringify(expenses, null, 2));
+    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(expenses, null, 2));
     
     if (metadata) {
       fs.writeFileSync(METADATA_FILE, JSON.stringify(metadata, null, 2));
@@ -70,8 +70,8 @@ app.post('/api/import-csv', (req, res) => {
     
     // Load existing expenses
     let existingExpenses = [];
-    if (fs.existsSync(EXPENSES_FILE)) {
-      const data = fs.readFileSync(EXPENSES_FILE, 'utf8');
+    if (fs.existsSync(TRANSACTIONS_FILE)) {
+      const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
       existingExpenses = JSON.parse(data);
     }
     
@@ -79,7 +79,7 @@ app.post('/api/import-csv', (req, res) => {
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
     
     // Save merged data
-    fs.writeFileSync(EXPENSES_FILE, JSON.stringify(mergedExpenses, null, 2));
+    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(mergedExpenses, null, 2));
     
     res.json({ 
       success: true, 
@@ -94,11 +94,11 @@ app.post('/api/import-csv', (req, res) => {
 
 app.get('/api/export-csv', (req, res) => {
   try {
-    if (!fs.existsSync(EXPENSES_FILE)) {
+    if (!fs.existsSync(TRANSACTIONS_FILE)) {
       return res.status(404).json({ error: 'No expenses found' });
     }
     
-    const data = fs.readFileSync(EXPENSES_FILE, 'utf8');
+    const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
     const expenses = JSON.parse(data);
     
     // Create CSV content
@@ -173,8 +173,8 @@ app.post('/api/import-with-mapping', (req, res) => {
     
     // Load existing expenses
     let existingExpenses = [];
-    if (fs.existsSync(EXPENSES_FILE)) {
-      const data = fs.readFileSync(EXPENSES_FILE, 'utf8');
+    if (fs.existsSync(TRANSACTIONS_FILE)) {
+      const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
       existingExpenses = JSON.parse(data);
     }
     
@@ -182,7 +182,7 @@ app.post('/api/import-with-mapping', (req, res) => {
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
     
     // Save merged data
-    fs.writeFileSync(EXPENSES_FILE, JSON.stringify(mergedExpenses, null, 2));
+    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(mergedExpenses, null, 2));
     
     res.json({ 
       success: true, 
@@ -416,6 +416,46 @@ app.delete('/api/sources/:id', (req, res) => {
   } catch (error) {
     console.error('Error deleting source:', error);
     res.status(500).json({ error: 'Failed to delete source' });
+  }
+});
+
+// Delete all data (transactions and sources)
+app.delete('/api/delete-all', (req, res) => {
+  try {
+    if (fs.existsSync(TRANSACTIONS_FILE)) fs.unlinkSync(TRANSACTIONS_FILE);
+    if (fs.existsSync(SOURCES_FILE)) fs.unlinkSync(SOURCES_FILE);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting all data:', error);
+    res.status(500).json({ error: 'Failed to delete all data' });
+  }
+});
+
+// Delete selected data
+app.post('/api/delete-selected', (req, res) => {
+  try {
+    const { deleteTransactions, deleteSources, sourceIds } = req.body;
+    
+    // Delete all transactions
+    if (deleteTransactions) {
+      if (fs.existsSync(TRANSACTIONS_FILE)) {
+        fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify([], null, 2));
+      }
+    }
+    
+    // Delete selected sources
+    if (deleteSources && Array.isArray(sourceIds)) {
+      if (fs.existsSync(SOURCES_FILE)) {
+        let sources = JSON.parse(fs.readFileSync(SOURCES_FILE, 'utf8'));
+        sources = sources.filter(source => !sourceIds.includes(source.id));
+        fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+      }
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting selected data:', error);
+    res.status(500).json({ error: 'Failed to delete selected data' });
   }
 });
 

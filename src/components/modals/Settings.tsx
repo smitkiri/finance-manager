@@ -8,6 +8,9 @@ interface SettingsProps {
   onAddCategory: (category: string) => void;
   onDeleteCategory: (category: string) => void;
   onUpdateCategory: (oldCategory: string, newCategory: string) => void;
+  expenses: any[];
+  sources: any[];
+  onRefreshData: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -16,12 +19,23 @@ export const Settings: React.FC<SettingsProps> = ({
   categories,
   onAddCategory,
   onDeleteCategory,
-  onUpdateCategory
+  onUpdateCategory,
+  expenses,
+  sources,
+  onRefreshData
 }) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [activeSection, setActiveSection] = useState<'categories'>('categories');
+  const [activeSection, setActiveSection] = useState<'categories' | 'general'>('general');
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [showSelectDelete, setShowSelectDelete] = useState(false);
+  const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deleteTransactions, setDeleteTransactions] = useState(false);
+  const [deleteSources, setDeleteSources] = useState(false);
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
@@ -68,6 +82,36 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
+  const handleDeleteAll = async () => {
+    setIsDeleting(true);
+    await fetch('http://localhost:3001/api/delete-all', { method: 'DELETE' });
+    setIsDeleting(false);
+    setShowDeleteAllConfirm(false);
+    onRefreshData();
+    setShowDeleteSuccess(true);
+  };
+
+  const handleDeleteSelected = async () => {
+    setIsDeleting(true);
+    await fetch('http://localhost:3001/api/delete-selected', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deleteTransactions,
+        deleteSources,
+        sourceIds: deleteSources ? selectedSourceIds : [],
+      }),
+    });
+    setIsDeleting(false);
+    setShowSelectDelete(false);
+    setShowDeleteSelectedConfirm(false);
+    setDeleteTransactions(false);
+    setDeleteSources(false);
+    setSelectedSourceIds([]);
+    onRefreshData();
+    setShowDeleteSuccess(true);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -76,12 +120,17 @@ export const Settings: React.FC<SettingsProps> = ({
         {/* Sidebar */}
         <div className="w-48 bg-gray-50 dark:bg-gray-900/80 border-r border-white/20 dark:border-slate-700/50 flex flex-col py-6">
           <button
+            className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'general' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            onClick={() => setActiveSection('general')}
+          >
+            General
+          </button>
+          <button
             className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'categories' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             onClick={() => setActiveSection('categories')}
           >
             Categories
           </button>
-          {/* Future sections can be added here */}
         </div>
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
@@ -195,6 +244,175 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                   )}
                 </div>
+              </>
+            )}
+            {activeSection === 'general' && (
+              <>
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Delete Data</h3>
+                  <div className="space-y-4">
+                    <button
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      onClick={() => setShowDeleteAllConfirm(true)}
+                    >
+                      Delete All Data
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium ml-4"
+                      onClick={() => setShowSelectDelete(true)}
+                    >
+                      Select data to delete
+                    </button>
+                  </div>
+                </div>
+                {/* Delete All Confirmation Dialog */}
+                {showDeleteAllConfirm && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Delete All Data?</h3>
+                      <p className="mb-6 text-gray-700 dark:text-gray-300">Are you sure you want to delete <b>all</b> transactions and sources? This action cannot be undone.</p>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          onClick={() => setShowDeleteAllConfirm(false)}
+                          disabled={isDeleting}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                          onClick={handleDeleteAll}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete All'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Select Data to Delete Dialog */}
+                {showSelectDelete && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+                    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg ${deleteTransactions ? 'max-h-[95vh]' : 'max-h-[80vh]'} overflow-y-auto`}>
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Select Data to Delete</h3>
+                      <div className="mb-4 space-y-2">
+                                <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={deleteTransactions}
+            onChange={e => setDeleteTransactions(e.target.checked)}
+          />
+          <span>Transactions</span>
+        </label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={deleteSources}
+                            onChange={e => setDeleteSources(e.target.checked)}
+                          />
+                          <span>Sources</span>
+                        </label>
+                        {deleteSources && (
+                          <div className="ml-6 my-2 max-h-40 overflow-y-auto border rounded p-2 bg-gray-50 dark:bg-gray-900">
+                            {sources.length === 0 && <div className="text-gray-500 text-sm">No sources available.</div>}
+                            {sources.map(source => (
+                              <label key={source.id} className="flex items-center space-x-2 mb-1">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSourceIds.includes(source.id)}
+                                  onChange={e => {
+                                    if (e.target.checked) {
+                                      setSelectedSourceIds(ids => [...ids, source.id]);
+                                    } else {
+                                      setSelectedSourceIds(ids => ids.filter(id => id !== source.id));
+                                    }
+                                  }}
+                                />
+                                <span>{source.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          onClick={() => setShowSelectDelete(false)}
+                          disabled={isDeleting}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                          onClick={() => setShowDeleteSelectedConfirm(true)}
+                          disabled={isDeleting || (!deleteTransactions && !deleteSources) || (deleteSources && selectedSourceIds.length === 0 && !deleteTransactions)}
+                        >
+                          Delete Selected
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Delete Selected Confirmation Dialog */}
+                {showDeleteSelectedConfirm && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Delete Selected Data?</h3>
+                      <p className="mb-6 text-gray-700 dark:text-gray-300">
+                        Are you sure you want to delete the selected data?
+                        {deleteTransactions && <><br /><b>• All transactions</b></>}
+                        {deleteSources && selectedSourceIds.length > 0 && (
+                          <>
+                            <br /><b>• Selected sources: {selectedSourceIds.length}</b>
+                          </>
+                        )}
+                        <br />This action cannot be undone.
+                      </p>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          onClick={() => setShowDeleteSelectedConfirm(false)}
+                          disabled={isDeleting}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                          onClick={handleDeleteSelected}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete Selected'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Delete Success Dialog */}
+                {showDeleteSuccess && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Data Deleted Successfully</h3>
+                      </div>
+                      <p className="mb-6 text-gray-700 dark:text-gray-300">
+                        The selected data has been successfully deleted from your database.
+                      </p>
+                      <div className="flex justify-end">
+                        <button
+                          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                          onClick={() => setShowDeleteSuccess(false)}
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

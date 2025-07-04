@@ -161,7 +161,7 @@ expense_tracker/
 │       ├── csv.js          # CSV import/export
 │       └── dateRange.js    # Date range persistence
 ├── .artifacts/             # Local data storage
-│   ├── expenses.json       # Transaction data
+│   ├── transactions.json   # Transaction data
 │   ├── categories.json     # Category data
 │   ├── column-mappings.json # CSV column mappings
 │   └── date-range.json     # Date range preferences

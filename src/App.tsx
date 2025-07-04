@@ -550,6 +550,18 @@ function AppContent() {
         onAddCategory={handleAddCategory}
         onDeleteCategory={handleDeleteCategory}
         onUpdateCategory={handleUpdateCategoryName}
+        expenses={expenses}
+        sources={sources}
+        onRefreshData={async () => {
+          const [loadedExpenses, loadedSources, loadedCategories] = await Promise.all([
+            LocalStorage.loadExpenses(),
+            LocalStorage.loadSources(),
+            LocalStorage.loadCategories()
+          ]);
+          setExpenses(loadedExpenses);
+          setSources(loadedSources);
+          setCategories(loadedCategories);
+        }}
       />
     </div>
   );
