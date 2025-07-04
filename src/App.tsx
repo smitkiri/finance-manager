@@ -421,6 +421,7 @@ function AppContent() {
           <Reports
             expenses={expenses}
             categories={categories}
+            globalDateRange={dateRange}
           />
         ) : (
           <div className="space-y-6">

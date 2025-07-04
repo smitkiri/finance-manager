@@ -9,19 +9,30 @@ interface ReportCreatorProps {
   categories: string[];
   onCreateReport: (report: Report) => void;
   onCancel: () => void;
+  globalDateRange: DateRange;
 }
 
 export const ReportCreator: React.FC<ReportCreatorProps> = ({
   expenses,
   categories,
   onCreateReport,
-  onCancel
+  onCancel,
+  globalDateRange
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [filters, setFilters] = useState<ReportFilter>({});
   const [previewCount, setPreviewCount] = useState(0);
   const [previewAmount, setPreviewAmount] = useState(0);
+
+  // Set default date range to globalDateRange on mount
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      dateRange: prev.dateRange || globalDateRange
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalDateRange]);
 
   // Get all unique labels from expenses
   const allLabels = Array.from(new Set(
@@ -305,6 +316,18 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Bottom Create Report Button */}
+      <div className="flex justify-end mt-8">
+        <button
+          onClick={handleCreateReport}
+          disabled={!name.trim()}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <Save size={16} />
+          <span>Create Report</span>
+        </button>
       </div>
     </div>
   );

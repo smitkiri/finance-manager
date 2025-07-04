@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Calendar, DollarSign, Tag, Filter } from 'lucide-react';
-import { Report, Expense } from '../../types';
+import { Report, Expense, DateRange } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { ReportCreator } from './ReportCreator';
 import { ReportViewer } from './ReportViewer';
@@ -9,9 +9,10 @@ import { formatCurrency, formatDate } from '../../utils';
 interface ReportsProps {
   expenses: Expense[];
   categories: string[];
+  globalDateRange: DateRange;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ expenses, categories }) => {
+export const Reports: React.FC<ReportsProps> = ({ expenses, categories, globalDateRange }) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -105,6 +106,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories }) => {
         categories={categories}
         onCreateReport={handleCreateReport}
         onCancel={() => setIsCreatingReport(false)}
+        globalDateRange={globalDateRange}
       />
     );
   }
