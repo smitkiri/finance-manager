@@ -10,33 +10,57 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Test mode state
+let isTestMode = false;
+
+// Function to get the appropriate artifacts directory
+const getArtifactsDir = () => {
+  return isTestMode ? '.test_artifacts' : '.artifacts';
+};
+
+// Function to get file paths based on test mode
+const getFilePath = (filename) => {
+  const artifactsDir = getArtifactsDir();
+  return path.join(artifactsDir, filename);
+};
+
 // Ensure artifacts directory exists
-const ARTIFACTS_DIR = '.artifacts';
-const TRANSACTIONS_FILE = path.join(ARTIFACTS_DIR, 'transactions.json');
-const METADATA_FILE = path.join(ARTIFACTS_DIR, 'metadata.json');
-const MAPPINGS_FILE = path.join(ARTIFACTS_DIR, 'column-mappings.json');
-const DATE_RANGE_FILE = path.join(ARTIFACTS_DIR, 'date-range.json');
-const CATEGORIES_FILE = path.join(ARTIFACTS_DIR, 'categories.json');
-const REPORTS_DIR = path.join(ARTIFACTS_DIR, 'reports');
-const SOURCES_FILE = path.join(ARTIFACTS_DIR, 'source.json');
-
-if (!fs.existsSync(ARTIFACTS_DIR)) {
-  fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(REPORTS_DIR)) {
-  fs.mkdirSync(REPORTS_DIR, { recursive: true });
-}
+const ensureArtifactsDir = () => {
+  const artifactsDir = getArtifactsDir();
+  if (!fs.existsSync(artifactsDir)) {
+    fs.mkdirSync(artifactsDir, { recursive: true });
+  }
+  
+  const reportsDir = path.join(artifactsDir, 'reports');
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+};
 
 // Routes
 app.get('/api/expenses', (req, res) => {
   try {
-    if (!fs.existsSync(TRANSACTIONS_FILE)) {
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const transactionsFile = getFilePath('transactions.json');
+    if (!fs.existsSync(transactionsFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
       return res.json([]);
     }
     
-    const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
+    const data = fs.readFileSync(transactionsFile, 'utf8');
     const expenses = JSON.parse(data);
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json(expenses);
   } catch (error) {
     console.error('Error reading expenses:', error);
@@ -46,14 +70,26 @@ app.get('/api/expenses', (req, res) => {
 
 app.post('/api/expenses', (req, res) => {
   try {
-    const { expenses, metadata } = req.body;
+    const { expenses, metadata, isTestMode: requestTestMode } = req.body;
     
-    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(expenses, null, 2));
-    
-    if (metadata) {
-      fs.writeFileSync(METADATA_FILE, JSON.stringify(metadata, null, 2));
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
     }
     
+    ensureArtifactsDir();
+    const transactionsFile = getFilePath('transactions.json');
+    const metadataFile = getFilePath('metadata.json');
+    
+    fs.writeFileSync(transactionsFile, JSON.stringify(expenses, null, 2));
+    
+    if (metadata) {
+      fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
+    }
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ success: true, count: expenses.length });
   } catch (error) {
     console.error('Error saving expenses:', error);
@@ -63,15 +99,22 @@ app.post('/api/expenses', (req, res) => {
 
 app.post('/api/import-csv', (req, res) => {
   try {
-    const { csvText } = req.body;
+    const { csvText, isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
     
     // Parse CSV and save
     const expenses = parseCSV(csvText);
     
     // Load existing expenses
     let existingExpenses = [];
-    if (fs.existsSync(TRANSACTIONS_FILE)) {
-      const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
+    const transactionsFile = getFilePath('transactions.json');
+    if (fs.existsSync(transactionsFile)) {
+      const data = fs.readFileSync(transactionsFile, 'utf8');
       existingExpenses = JSON.parse(data);
     }
     
@@ -79,8 +122,11 @@ app.post('/api/import-csv', (req, res) => {
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
     
     // Save merged data
-    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(mergedExpenses, null, 2));
+    ensureArtifactsDir();
+    fs.writeFileSync(transactionsFile, JSON.stringify(mergedExpenses, null, 2));
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ 
       success: true, 
       imported: expenses.length,
@@ -94,11 +140,23 @@ app.post('/api/import-csv', (req, res) => {
 
 app.get('/api/export-csv', (req, res) => {
   try {
-    if (!fs.existsSync(TRANSACTIONS_FILE)) {
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const transactionsFile = getFilePath('transactions.json');
+    if (!fs.existsSync(transactionsFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
       return res.status(404).json({ error: 'No expenses found' });
     }
     
-    const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
+    const data = fs.readFileSync(transactionsFile, 'utf8');
     const expenses = JSON.parse(data);
     
     // Create CSV content
@@ -115,6 +173,8 @@ app.get('/api/export-csv', (req, res) => {
       ].join(','))
     ].join('\n');
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=expenses.csv');
     res.send(csvContent);
@@ -127,11 +187,12 @@ app.get('/api/export-csv', (req, res) => {
 // Column Mapping Routes
 app.get('/api/column-mappings', (req, res) => {
   try {
-    if (!fs.existsSync(MAPPINGS_FILE)) {
+    const mappingsFile = getFilePath('mappings.json');
+    if (!fs.existsSync(mappingsFile)) {
       return res.json([]);
     }
     
-    const data = fs.readFileSync(MAPPINGS_FILE, 'utf8');
+    const data = fs.readFileSync(mappingsFile, 'utf8');
     const mappings = JSON.parse(data);
     res.json(mappings);
   } catch (error) {
@@ -146,8 +207,9 @@ app.post('/api/column-mappings', (req, res) => {
     
     // Load existing mappings
     let mappings = [];
-    if (fs.existsSync(MAPPINGS_FILE)) {
-      const data = fs.readFileSync(MAPPINGS_FILE, 'utf8');
+    const mappingsFile = getFilePath('mappings.json');
+    if (fs.existsSync(mappingsFile)) {
+      const data = fs.readFileSync(mappingsFile, 'utf8');
       mappings = JSON.parse(data);
     }
     
@@ -155,7 +217,8 @@ app.post('/api/column-mappings', (req, res) => {
     mappings.push(mapping);
     
     // Save mappings
-    fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
+    ensureArtifactsDir();
+    fs.writeFileSync(mappingsFile, JSON.stringify(mappings, null, 2));
     
     res.json({ success: true, count: mappings.length });
   } catch (error) {
@@ -166,15 +229,22 @@ app.post('/api/column-mappings', (req, res) => {
 
 app.post('/api/import-with-mapping', (req, res) => {
   try {
-    const { csvText, mapping } = req.body;
+    const { csvText, mapping, isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
     
     // Parse CSV with mapping
     const expenses = parseCSVWithMapping(csvText, mapping);
     
     // Load existing expenses
     let existingExpenses = [];
-    if (fs.existsSync(TRANSACTIONS_FILE)) {
-      const data = fs.readFileSync(TRANSACTIONS_FILE, 'utf8');
+    const transactionsFile = getFilePath('transactions.json');
+    if (fs.existsSync(transactionsFile)) {
+      const data = fs.readFileSync(transactionsFile, 'utf8');
       existingExpenses = JSON.parse(data);
     }
     
@@ -182,8 +252,11 @@ app.post('/api/import-with-mapping', (req, res) => {
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
     
     // Save merged data
-    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(mergedExpenses, null, 2));
+    ensureArtifactsDir();
+    fs.writeFileSync(transactionsFile, JSON.stringify(mergedExpenses, null, 2));
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ 
       success: true, 
       imported: expenses.length,
@@ -198,12 +271,27 @@ app.post('/api/import-with-mapping', (req, res) => {
 // Date Range Routes
 app.get('/api/date-range', (req, res) => {
   try {
-    if (!fs.existsSync(DATE_RANGE_FILE)) {
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const dateRangeFile = getFilePath('date-range.json');
+    if (!fs.existsSync(dateRangeFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
       return res.status(404).json({ error: 'No date range found' });
     }
     
-    const data = fs.readFileSync(DATE_RANGE_FILE, 'utf8');
+    const data = fs.readFileSync(dateRangeFile, 'utf8');
     const dateRange = JSON.parse(data);
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json(dateRange);
   } catch (error) {
     console.error('Error reading date range:', error);
@@ -213,11 +301,21 @@ app.get('/api/date-range', (req, res) => {
 
 app.post('/api/date-range', (req, res) => {
   try {
-    const { start, end } = req.body;
+    const { start, end, isTestMode: requestTestMode } = req.body;
     
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    ensureArtifactsDir();
+    const dateRangeFile = getFilePath('date-range.json');
     const dateRange = { start, end };
-    fs.writeFileSync(DATE_RANGE_FILE, JSON.stringify(dateRange, null, 2));
+    fs.writeFileSync(dateRangeFile, JSON.stringify(dateRange, null, 2));
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving date range:', error);
@@ -228,7 +326,19 @@ app.post('/api/date-range', (req, res) => {
 // Category Routes
 app.get('/api/categories', (req, res) => {
   try {
-    if (!fs.existsSync(CATEGORIES_FILE)) {
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const categoriesFile = getFilePath('categories.json');
+    if (!fs.existsSync(categoriesFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
       // Return default categories if file doesn't exist
       const defaultCategories = [
         'Food & Drink',
@@ -245,8 +355,11 @@ app.get('/api/categories', (req, res) => {
       return res.json({ categories: defaultCategories });
     }
     
-    const data = fs.readFileSync(CATEGORIES_FILE, 'utf8');
+    const data = fs.readFileSync(categoriesFile, 'utf8');
     const categories = JSON.parse(data);
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ categories });
   } catch (error) {
     console.error('Error reading categories:', error);
@@ -256,10 +369,20 @@ app.get('/api/categories', (req, res) => {
 
 app.post('/api/categories', (req, res) => {
   try {
-    const { categories } = req.body;
+    const { categories, isTestMode: requestTestMode } = req.body;
     
-    fs.writeFileSync(CATEGORIES_FILE, JSON.stringify(categories, null, 2));
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
     
+    ensureArtifactsDir();
+    const categoriesFile = getFilePath('categories.json');
+    fs.writeFileSync(categoriesFile, JSON.stringify(categories, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ success: true, count: categories.length });
   } catch (error) {
     console.error('Error saving categories:', error);
@@ -270,14 +393,24 @@ app.post('/api/categories', (req, res) => {
 // Report Routes
 app.get('/api/reports', (req, res) => {
   try {
-    const reports = [];
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
     
-    if (fs.existsSync(REPORTS_DIR)) {
-      const files = fs.readdirSync(REPORTS_DIR);
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const reports = [];
+    const reportsDir = path.join(getArtifactsDir(), 'reports');
+    
+    if (fs.existsSync(reportsDir)) {
+      const files = fs.readdirSync(reportsDir);
       
       for (const file of files) {
         if (file.endsWith('.json')) {
-          const filePath = path.join(REPORTS_DIR, file);
+          const filePath = path.join(reportsDir, file);
           const data = fs.readFileSync(filePath, 'utf8');
           const report = JSON.parse(data);
           reports.push(report);
@@ -285,6 +418,8 @@ app.get('/api/reports', (req, res) => {
       }
     }
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json(reports);
   } catch (error) {
     console.error('Error reading reports:', error);
@@ -294,11 +429,21 @@ app.get('/api/reports', (req, res) => {
 
 app.post('/api/reports', (req, res) => {
   try {
-    const { report } = req.body;
+    const { report, isTestMode: requestTestMode } = req.body;
     
-    const reportFile = path.join(REPORTS_DIR, `${report.id}.json`);
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    ensureArtifactsDir();
+    const reportsDir = path.join(getArtifactsDir(), 'reports');
+    const reportFile = path.join(reportsDir, `${report.id}.json`);
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ success: true, reportId: report.id });
   } catch (error) {
     console.error('Error saving report:', error);
@@ -309,8 +454,9 @@ app.post('/api/reports', (req, res) => {
 app.delete('/api/reports/:reportId', (req, res) => {
   try {
     const { reportId } = req.params;
-    const reportFile = path.join(REPORTS_DIR, `${reportId}.json`);
-    const reportDataFile = path.join(REPORTS_DIR, `${reportId}_data.json`);
+    const reportsDir = path.join(getArtifactsDir(), 'reports');
+    const reportFile = path.join(reportsDir, `${reportId}.json`);
+    const reportDataFile = path.join(reportsDir, `${reportId}_data.json`);
     
     // Delete report file
     if (fs.existsSync(reportFile)) {
@@ -332,11 +478,21 @@ app.delete('/api/reports/:reportId', (req, res) => {
 app.post('/api/reports/:reportId/data', (req, res) => {
   try {
     const { reportId } = req.params;
-    const { reportData } = req.body;
+    const { reportData, isTestMode: requestTestMode } = req.body;
     
-    const reportDataFile = path.join(REPORTS_DIR, `${reportId}_data.json`);
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    ensureArtifactsDir();
+    const reportsDir = path.join(getArtifactsDir(), 'reports');
+    const reportDataFile = path.join(reportsDir, `${reportId}_data.json`);
     fs.writeFileSync(reportDataFile, JSON.stringify(reportData, null, 2));
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving report data:', error);
@@ -347,15 +503,30 @@ app.post('/api/reports/:reportId/data', (req, res) => {
 app.get('/api/reports/:reportId/data', (req, res) => {
   try {
     const { reportId } = req.params;
-    const reportDataFile = path.join(REPORTS_DIR, `${reportId}_data.json`);
+    
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const reportsDir = path.join(getArtifactsDir(), 'reports');
+    const reportDataFile = path.join(reportsDir, `${reportId}_data.json`);
     
     if (!fs.existsSync(reportDataFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
       return res.status(404).json({ error: 'Report data not found' });
     }
     
     const data = fs.readFileSync(reportDataFile, 'utf8');
     const reportData = JSON.parse(data);
     
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json(reportData);
   } catch (error) {
     console.error('Error reading report data:', error);
@@ -366,11 +537,26 @@ app.get('/api/reports/:reportId/data', (req, res) => {
 // Source Routes
 app.get('/api/sources', (req, res) => {
   try {
-    if (!fs.existsSync(SOURCES_FILE)) {
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const sourcesFile = getFilePath('source.json');
+    if (!fs.existsSync(sourcesFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
       return res.json([]);
     }
-    const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+    const data = fs.readFileSync(sourcesFile, 'utf8');
     const sources = JSON.parse(data);
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
     res.json(sources);
   } catch (error) {
     console.error('Error reading sources:', error);
@@ -380,39 +566,63 @@ app.get('/api/sources', (req, res) => {
 
 app.post('/api/sources', (req, res) => {
   try {
-    const { source } = req.body;
+    const { source, isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
     // Load existing sources
     let sources = [];
-    if (fs.existsSync(SOURCES_FILE)) {
-      const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+    const sourcesFile = getFilePath('source.json');
+    
+    if (fs.existsSync(sourcesFile)) {
+      const data = fs.readFileSync(sourcesFile, 'utf8');
       sources = JSON.parse(data);
     }
+    
+    // Check if source name already exists
+    if (sources.some(s => s.name === source.name)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(400).json({ error: 'Source name already exists' });
+    }
+    
     // Add new source
     sources.push(source);
-    // Save sources
-    fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
-    res.json({ success: true, count: sources.length });
+    
+    ensureArtifactsDir();
+    fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    res.json({ success: true, sources });
   } catch (error) {
     console.error('Error saving source:', error);
     res.status(500).json({ error: 'Failed to save source' });
   }
 });
 
-app.delete('/api/sources/:id', (req, res) => {
+app.delete('/api/sources/:sourceName', (req, res) => {
   try {
-    const { id } = req.params;
-    if (!fs.existsSync(SOURCES_FILE)) {
+    const { sourceName } = req.params;
+    const sourcesFile = getFilePath('source.json');
+    
+    if (!fs.existsSync(sourcesFile)) {
       return res.status(404).json({ error: 'No sources found' });
     }
-    const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+    
+    const data = fs.readFileSync(sourcesFile, 'utf8');
     let sources = JSON.parse(data);
-    const initialLength = sources.length;
-    sources = sources.filter(source => source.id !== id);
-    if (sources.length === initialLength) {
-      return res.status(404).json({ error: 'Source not found' });
-    }
-    fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
-    res.json({ success: true, count: sources.length });
+    
+    // Remove the source
+    sources = sources.filter(s => s.name !== sourceName);
+    
+    fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
+    
+    res.json({ success: true, sources });
   } catch (error) {
     console.error('Error deleting source:', error);
     res.status(500).json({ error: 'Failed to delete source' });
@@ -422,8 +632,11 @@ app.delete('/api/sources/:id', (req, res) => {
 // Delete all data (transactions and sources)
 app.delete('/api/delete-all', (req, res) => {
   try {
-    if (fs.existsSync(TRANSACTIONS_FILE)) fs.unlinkSync(TRANSACTIONS_FILE);
-    if (fs.existsSync(SOURCES_FILE)) fs.unlinkSync(SOURCES_FILE);
+    const transactionsFile = getFilePath('transactions.json');
+    const sourcesFile = getFilePath('source.json');
+    
+    if (fs.existsSync(transactionsFile)) fs.unlinkSync(transactionsFile);
+    if (fs.existsSync(sourcesFile)) fs.unlinkSync(sourcesFile);
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting all data:', error);
@@ -438,17 +651,19 @@ app.post('/api/delete-selected', (req, res) => {
     
     // Delete all transactions
     if (deleteTransactions) {
-      if (fs.existsSync(TRANSACTIONS_FILE)) {
-        fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify([], null, 2));
+      const transactionsFile = getFilePath('transactions.json');
+      if (fs.existsSync(transactionsFile)) {
+        fs.writeFileSync(transactionsFile, JSON.stringify([], null, 2));
       }
     }
     
     // Delete selected sources
     if (deleteSources && Array.isArray(sourceIds)) {
-      if (fs.existsSync(SOURCES_FILE)) {
-        let sources = JSON.parse(fs.readFileSync(SOURCES_FILE, 'utf8'));
+      const sourcesFile = getFilePath('source.json');
+      if (fs.existsSync(sourcesFile)) {
+        let sources = JSON.parse(fs.readFileSync(sourcesFile, 'utf8'));
         sources = sources.filter(source => !sourceIds.includes(source.id));
-        fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+        fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
       }
     }
     
@@ -602,7 +817,27 @@ function parseCSVWithMapping(csvText, mapping) {
     .filter(expense => expense.date && expense.description && expense.amount > 0);
 }
 
+// Test mode endpoint
+app.get('/api/test-mode', (req, res) => {
+  res.json({ isTestMode });
+});
+
+app.post('/api/test-mode', (req, res) => {
+  try {
+    const { isTestMode: newTestMode } = req.body;
+    isTestMode = newTestMode;
+    
+    // Ensure the new artifacts directory exists
+    ensureArtifactsDir();
+    
+    res.json({ success: true, isTestMode });
+  } catch (error) {
+    console.error('Error setting test mode:', error);
+    res.status(500).json({ error: 'Failed to set test mode' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Artifacts directory: ${path.resolve(ARTIFACTS_DIR)}`);
+  console.log(`Artifacts directory: ${path.resolve(getArtifactsDir())}`);
 }); 

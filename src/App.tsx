@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { TestModeProvider, useTestMode } from './contexts/TestModeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
@@ -17,6 +18,7 @@ import { TransactionDetailsModal } from './components/modals/TransactionDetailsM
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
+  const { isTestMode } = useTestMode();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -42,24 +44,24 @@ function AppContent() {
     
     const saveDateRange = async () => {
       try {
-        await LocalStorage.saveDateRange(dateRange);
+        await LocalStorage.saveDateRange(dateRange, isTestMode);
       } catch (error) {
         console.error('Error saving date range:', error);
       }
     };
     
     saveDateRange();
-  }, [dateRange, isInitialLoadComplete]);
+  }, [dateRange, isInitialLoadComplete, isTestMode]);
 
   // Load expenses, date range, and categories on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
         const [loadedExpenses, loadedSources, loadedDateRange, loadedCategories] = await Promise.all([
-          LocalStorage.loadExpenses(),
-          LocalStorage.loadSources(),
-          LocalStorage.loadDateRange(),
-          LocalStorage.loadCategories()
+          LocalStorage.loadExpenses(isTestMode),
+          LocalStorage.loadSources(isTestMode),
+          LocalStorage.loadDateRange(isTestMode),
+          LocalStorage.loadCategories(isTestMode)
         ]);
         setExpenses(loadedExpenses);
         setSources(loadedSources);
@@ -79,7 +81,7 @@ function AppContent() {
     };
     
     loadData();
-  }, []);
+  }, [isTestMode]); // Reload when test mode changes
 
   const handleAddExpense = async (formData: TransactionFormData) => {
     const newExpense: Expense = {
@@ -97,7 +99,7 @@ function AppContent() {
     };
 
     try {
-      const updatedExpenses = await LocalStorage.addExpense(newExpense);
+      const updatedExpenses = await LocalStorage.addExpense(newExpense, isTestMode);
       setExpenses(updatedExpenses);
       setIsFormOpen(false);
     } catch (error) {
@@ -124,7 +126,7 @@ function AppContent() {
     };
 
     try {
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
       setEditingExpense(null);
       setIsFormOpen(false);
@@ -135,7 +137,7 @@ function AppContent() {
 
   const handleDeleteExpense = async (id: string) => {
     try {
-      const updatedExpenses = await LocalStorage.deleteExpense(id);
+      const updatedExpenses = await LocalStorage.deleteExpense(id, isTestMode);
       setExpenses(updatedExpenses);
     } catch (error) {
       console.error('Error deleting expense:', error);
@@ -152,7 +154,7 @@ function AppContent() {
         category: newCategory,
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
     } catch (error) {
       console.error('Error updating category:', error);
@@ -173,7 +175,7 @@ function AppContent() {
         labels: [...currentLabels, label],
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
     } catch (error) {
       console.error('Error adding label:', error);
@@ -193,7 +195,7 @@ function AppContent() {
         labels: updatedLabels,
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
     } catch (error) {
       console.error('Error removing label:', error);
@@ -202,7 +204,7 @@ function AppContent() {
 
   const handleAddCategory = async (category: string) => {
     try {
-      const updatedCategories = await LocalStorage.addCategory(category);
+      const updatedCategories = await LocalStorage.addCategory(category, isTestMode);
       setCategories(updatedCategories);
     } catch (error) {
       console.error('Error adding category:', error);
@@ -212,8 +214,8 @@ function AppContent() {
   const handleDeleteCategory = async (category: string) => {
     try {
       const [updatedCategories, updatedExpenses] = await Promise.all([
-        LocalStorage.deleteCategory(category),
-        LocalStorage.loadExpenses()
+        LocalStorage.deleteCategory(category, isTestMode),
+        LocalStorage.loadExpenses(isTestMode)
       ]);
       setCategories(updatedCategories);
       setExpenses(updatedExpenses);
@@ -225,8 +227,8 @@ function AppContent() {
   const handleUpdateCategoryName = async (oldCategory: string, newCategory: string) => {
     try {
       const [updatedCategories, updatedExpenses] = await Promise.all([
-        LocalStorage.updateCategory(oldCategory, newCategory),
-        LocalStorage.loadExpenses()
+        LocalStorage.updateCategory(oldCategory, newCategory, isTestMode),
+        LocalStorage.loadExpenses(isTestMode)
       ]);
       setCategories(updatedCategories);
       setExpenses(updatedExpenses);
@@ -255,14 +257,14 @@ function AppContent() {
 
   const handleSaveSource = async (source: Source) => {
     try {
-      await LocalStorage.saveSource(source);
+      await LocalStorage.saveSource(source, isTestMode);
       setSources(prev => [...prev, source]);
       if (csvPreview) {
         const csvText = await getCSVTextFromFile();
         const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
-        const existingExpenses = await LocalStorage.loadExpenses();
+        const existingExpenses = await LocalStorage.loadExpenses(isTestMode);
         const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
-        await LocalStorage.saveExpenses(mergedExpenses);
+        await LocalStorage.saveExpenses(mergedExpenses, isTestMode);
         setExpenses(mergedExpenses);
       }
       setIsSourceModalOpen(false);
@@ -284,7 +286,8 @@ function AppContent() {
         },
         body: JSON.stringify({
           csvText,
-          mapping: source
+          mapping: source,
+          isTestMode
         }),
       });
 
@@ -295,7 +298,7 @@ function AppContent() {
       await response.json();
       
       // Reload expenses from backend
-      const updatedExpenses = await LocalStorage.loadExpenses();
+      const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
       setExpenses(updatedExpenses);
       setIsSourceModalOpen(false);
       setCsvPreview(null);
@@ -319,7 +322,7 @@ function AppContent() {
 
   const handleExportCSV = async () => {
     try {
-      const csvContent = await LocalStorage.exportData();
+      const csvContent = await LocalStorage.exportData(isTestMode);
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -419,11 +422,21 @@ function AppContent() {
       />
 
       {/* Header */}
-      <header className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-10">
+      <header className={`backdrop-blur-md shadow-lg border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-10 ${
+        isTestMode 
+          ? 'bg-gradient-to-r from-orange-400/90 to-red-500/90 dark:from-orange-600/90 dark:to-red-600/90' 
+          : 'bg-white/90 dark:bg-slate-800/90'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Expense Tracker</h1>
+              <h1 className={`text-3xl font-bold bg-clip-text text-transparent ${
+                isTestMode 
+                  ? 'bg-gradient-to-r from-white to-yellow-200' 
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600'
+              }`}>
+                {isTestMode ? 'Expense Tracker (Test Mode)' : 'Expense Tracker'}
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
               {activeTab === 'dashboard' && (
@@ -557,9 +570,9 @@ function AppContent() {
         sources={sources}
         onRefreshData={async () => {
           const [loadedExpenses, loadedSources, loadedCategories] = await Promise.all([
-            LocalStorage.loadExpenses(),
-            LocalStorage.loadSources(),
-            LocalStorage.loadCategories()
+            LocalStorage.loadExpenses(isTestMode),
+            LocalStorage.loadSources(isTestMode),
+            LocalStorage.loadCategories(isTestMode)
           ]);
           setExpenses(loadedExpenses);
           setSources(loadedSources);
@@ -584,7 +597,9 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <TestModeProvider>
+        <AppContent />
+      </TestModeProvider>
     </ThemeProvider>
   );
 }
