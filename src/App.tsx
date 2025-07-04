@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Download, Filter, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { Expense, ExpenseFormData, DateRange, ColumnMapping, CSVPreview } from './types';
-import { ExpenseForm } from './components/ExpenseForm';
+import { Expense, TransactionFormData, DateRange, ColumnMapping, CSVPreview } from './types';
+import { TransactionForm } from './components/TransactionForm';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -79,7 +79,7 @@ function AppContent() {
     loadData();
   }, []);
 
-  const handleAddExpense = async (formData: ExpenseFormData) => {
+  const handleAddExpense = async (formData: TransactionFormData) => {
     const newExpense: Expense = {
       id: generateId(),
       date: formData.date,
@@ -104,7 +104,7 @@ function AppContent() {
     setIsFormOpen(true);
   };
 
-  const handleUpdateExpense = async (formData: ExpenseFormData) => {
+  const handleUpdateExpense = async (formData: TransactionFormData) => {
     if (!editingExpense) return;
 
     const updatedExpense: Expense = {
@@ -507,7 +507,7 @@ function AppContent() {
       </main>
 
       {/* Form Modal */}
-      <ExpenseForm
+      <TransactionForm
         isOpen={isFormOpen}
         onSubmit={editingExpense ? handleUpdateExpense : handleAddExpense}
         onCancel={() => {

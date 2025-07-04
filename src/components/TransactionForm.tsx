@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
-import { ExpenseFormData, Expense } from '../types';
+import { TransactionFormData, Expense } from '../types';
 
-interface ExpenseFormProps {
-  onSubmit: (data: ExpenseFormData) => void;
+interface TransactionFormProps {
+  onSubmit: (data: TransactionFormData) => void;
   onCancel: () => void;
   isOpen: boolean;
   editingExpense?: Expense | null;
   categories: string[];
 }
 
-export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, isOpen, editingExpense, categories }) => {
-  const [formData, setFormData] = useState<ExpenseFormData>({
+export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCancel, isOpen, editingExpense, categories }) => {
+  const [formData, setFormData] = useState<TransactionFormData>({
     date: new Date().toISOString().split('T')[0],
     description: '',
     category: 'Uncategorized',

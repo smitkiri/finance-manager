@@ -140,8 +140,8 @@ npm run build
 expense_tracker/
 ├── src/
 │   ├── components/          # React components
-│   │   ├── ExpenseForm.tsx  # Transaction form modal
-│   │   ├── ExpenseList.tsx  # Transaction list with pagination
+│   │   ├── TransactionForm.tsx  # Transaction form modal
+│   │   ├── TransactionList.tsx  # Transaction list with pagination
 │   │   ├── StatsCard.tsx    # Statistics cards
 │   │   ├── Chart.tsx        # Chart components
 │   │   ├── DateRangePicker.tsx # Date range filtering

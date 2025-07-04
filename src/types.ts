@@ -15,7 +15,7 @@ export interface Category {
   icon: string;
 }
 
-export interface ExpenseFormData {
+export interface TransactionFormData {
   date: string;
   description: string;
   category: string;

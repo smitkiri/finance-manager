@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from '../utils';
 import { LabelSelector } from './LabelSelector';
 import { LabelBadge } from './LabelBadge';
 
-interface ExpenseListProps {
+interface TransactionListProps {
   expenses: Expense[];
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
@@ -15,7 +15,7 @@ interface ExpenseListProps {
   categories: string[];
 }
 
-export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, categories }) => {
+export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, categories }) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [labelSelectorState, setLabelSelectorState] = useState<{

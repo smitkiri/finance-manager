@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExpenseList } from './ExpenseList';
+import { TransactionList } from './TransactionList';
 import { Expense } from '../types';
 
 interface TransactionsProps {
@@ -34,7 +34,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
       </div>
 
       {/* Transaction List */}
-      <ExpenseList
+      <TransactionList
         expenses={expenses}
         onDelete={onDelete}
         onEdit={onEdit}
