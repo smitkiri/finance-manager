@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, Trash2, Edit, Check, X as XIcon } from 'lucide-react';
-import { CSVPreview, ColumnMapping, StandardizedColumn } from '../types';
+import { CSVPreview, ColumnMapping, StandardizedColumn } from '../../types';
 
 interface CSVPreviewEditorProps {
   isOpen: boolean;

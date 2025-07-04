@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Plus } from 'lucide-react';
-import { StandardizedColumn, ColumnMapping, CSVPreview } from '../types';
+import { StandardizedColumn, ColumnMapping, CSVPreview } from '../../types';
 
 interface CSVMappingModalProps {
   isOpen: boolean;

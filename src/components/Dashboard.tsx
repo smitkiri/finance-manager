@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StatsCard } from './StatsCard';
-import { Chart } from './Chart';
+import { StatsCard } from './ui/StatsCard';
+import { Chart } from './charts/Chart';
 import { Expense } from '../types';
 import { calculateStats } from '../utils';
 import { Check } from 'lucide-react';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
-import { TransactionFormData, Expense } from '../types';
+import { TransactionFormData, Expense } from '../../types';
 
 interface TransactionFormProps {
   onSubmit: (data: TransactionFormData) => void;

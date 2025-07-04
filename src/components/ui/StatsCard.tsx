@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
-import { formatCurrency } from '../utils';
+import { formatCurrency } from '../../utils';
 
 interface StatsCardProps {
   title: string;

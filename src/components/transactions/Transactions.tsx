@@ -1,6 +1,6 @@
 import React from 'react';
 import { TransactionList } from './TransactionList';
-import { Expense } from '../types';
+import { Expense } from '../../types';
 
 interface TransactionsProps {
   expenses: Expense[];

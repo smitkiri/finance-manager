@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Download, Filter, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Expense, TransactionFormData, DateRange, ColumnMapping, CSVPreview } from './types';
-import { TransactionForm } from './components/TransactionForm';
+import { TransactionForm } from './components/transactions/TransactionForm';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
-import { Transactions } from './components/Transactions';
+import { Transactions } from './components/transactions/Transactions';
 import { generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
-import { CSVMappingModal } from './components/CSVMappingModal';
-import { Settings } from './components/Settings';
+import { CSVMappingModal } from './components/modals/CSVMappingModal';
+import { Settings } from './components/modals/Settings';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Edit, ChevronDown, Plus } from 'lucide-react';
-import { Expense } from '../types';
-import { formatCurrency, formatDate } from '../utils';
-import { LabelSelector } from './LabelSelector';
-import { LabelBadge } from './LabelBadge';
+import { Expense } from '../../types';
+import { formatCurrency, formatDate } from '../../utils';
+import { LabelSelector } from '../ui/LabelSelector';
+import { LabelBadge } from '../ui/LabelBadge';
 
 interface TransactionListProps {
   expenses: Expense[];
