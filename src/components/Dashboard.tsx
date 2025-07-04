@@ -53,33 +53,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
 
   // Function to prepare category line chart data
   function prepareCategoryLineData(expenses: Expense[], categoriesToShow: string[]) {
-    const monthlyData: { [key: string]: { [key: string]: number } } = {};
+    const monthlyMap = new Map<string, { month: string; displayMonth: string; [key: string]: any }>();
     
     // Initialize all months with 0 values for all categories
     expenses.forEach(expense => {
       if (expense.type === 'expense') {
-        const month = new Date(expense.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-        if (!monthlyData[month]) {
-          monthlyData[month] = {};
+        const date = new Date(expense.date);
+        const isoMonth = date.toISOString().slice(0, 7); // YYYY-MM
+        const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+        if (!monthlyMap.has(isoMonth)) {
+          const entry: { month: string; displayMonth: string; [key: string]: any } = {
+            month: isoMonth,
+            displayMonth,
+          };
           categoriesToShow.forEach(cat => {
-            monthlyData[month][cat] = 0;
+            entry[cat] = 0;
           });
+          monthlyMap.set(isoMonth, entry);
         }
-        
+        const entry = monthlyMap.get(isoMonth)!;
         const category = expense.category || 'Uncategorized';
         if (categoriesToShow.includes(category)) {
-          monthlyData[month][category] += expense.amount;
+          entry[category] += expense.amount;
         }
       }
     });
 
-    // Convert to array format for chart
-    return Object.keys(monthlyData)
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-      .map(month => ({
-        month,
-        ...monthlyData[month]
-      }));
+    // Convert to array format for chart, sorted oldest to newest
+    return Array.from(monthlyMap.values())
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map(entry => {
+        const { displayMonth, ...rest } = entry;
+        // Remove the ISO 'month' key, only use displayMonth as 'month' for the chart
+        const { month, ...categoryData } = rest;
+        return { month: displayMonth, ...categoryData };
+      });
   }
 
   const handleCategoryToggle = (category: string) => {

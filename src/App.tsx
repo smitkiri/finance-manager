@@ -417,6 +417,16 @@ function AppContent() {
     return true;
   });
 
+  // Dashboard filtering - only apply global date range, not transaction page filters
+  const dashboardExpenses = expenses.filter(exp => {
+    // Only apply global date range filter for dashboard
+    const expenseDate = new Date(exp.date);
+    if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
+      return false;
+    }
+    return true;
+  });
+
   const handleDeleteSource = async (id: string) => {
     try {
       await fetch(`http://localhost:3001/api/sources/${id}`, { method: 'DELETE' });
@@ -532,7 +542,7 @@ function AppContent() {
       <main className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12`}>
         {activeTab === 'dashboard' ? (
           <Dashboard
-            expenses={filteredExpenses}
+            expenses={dashboardExpenses}
             categories={categories}
           />
         ) : activeTab === 'reports' ? (

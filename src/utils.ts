@@ -42,33 +42,37 @@ export const calculateStats = (expenses: Expense[]): ExpenseStats => {
       categoryBreakdown[category] = (categoryBreakdown[category] || 0) + Math.abs(exp.amount);
     });
     
-  const monthlyData = filteredExpenses.reduce((acc, exp) => {
-    const month = new Date(exp.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-    const existing = acc.find(item => item.month === month);
-    
-    if (existing) {
-      if (exp.type === 'expense') {
-        existing.expenses += Math.abs(exp.amount);
-      } else {
-        existing.income += exp.amount;
-      }
-    } else {
-      acc.push({
-        month,
-        expenses: exp.type === 'expense' ? Math.abs(exp.amount) : 0,
-        income: exp.type === 'income' ? exp.amount : 0,
+  // Use ISO string for sorting, displayMonth for chart
+  const monthlyMap = new Map<string, { month: string; displayMonth: string; expenses: number; income: number }>();
+  filteredExpenses.forEach(exp => {
+    const date = new Date(exp.date);
+    const isoMonth = date.toISOString().slice(0, 7); // YYYY-MM
+    const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    if (!monthlyMap.has(isoMonth)) {
+      monthlyMap.set(isoMonth, {
+        month: isoMonth,
+        displayMonth,
+        expenses: 0,
+        income: 0,
       });
     }
-    
-    return acc;
-  }, [] as { month: string; expenses: number; income: number }[]);
+    const entry = monthlyMap.get(isoMonth)!;
+    if (exp.type === 'expense') {
+      entry.expenses += Math.abs(exp.amount);
+    } else {
+      entry.income += exp.amount;
+    }
+  });
+  const monthlyData = Array.from(monthlyMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+  // For backward compatibility, also provide month as displayMonth
+  const chartMonthlyData = monthlyData.map(({ displayMonth, expenses, income }) => ({ month: displayMonth, expenses, income }));
   
   return {
     totalExpenses,
     totalIncome,
     netAmount,
     categoryBreakdown,
-    monthlyData: monthlyData.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime()),
+    monthlyData: chartMonthlyData,
   };
 };
 

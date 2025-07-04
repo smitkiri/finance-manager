@@ -100,7 +100,7 @@ export const generateReportData = (
     totalExpenses,
     totalIncome,
     netAmount: totalIncome - totalExpenses,
-    monthlyData: monthlyData.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
+    monthlyData: monthlyData.sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime())
   };
 };
 
