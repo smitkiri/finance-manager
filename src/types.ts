@@ -12,6 +12,12 @@ export interface Expense {
     sourceName?: string;
     importedAt: string;
   };
+  transferInfo?: {
+    isTransfer: boolean;
+    transferId?: string;
+    excludedFromCalculations: boolean;
+    userOverride?: boolean;
+  };
 }
 
 export interface Category {

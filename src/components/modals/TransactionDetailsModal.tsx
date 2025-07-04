@@ -1,23 +1,37 @@
 import React from 'react';
-import { X, Calendar, Tag, DollarSign, FileText, Clock, Database } from 'lucide-react';
+import { X, Calendar, Tag, DollarSign, FileText, Clock, Database, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
+import { getTransferPair } from '../../utils/transferDetection';
 
 interface TransactionDetailsModalProps {
   transaction: Expense | null;
   isOpen: boolean;
   onClose: () => void;
+  onTransferOverride?: (transactionId: string, includeInCalculations: boolean) => void;
+  allTransactions?: Expense[];
 }
 
 export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   transaction,
   isOpen,
-  onClose
+  onClose,
+  onTransferOverride,
+  allTransactions = []
 }) => {
   if (!isOpen || !transaction) return null;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const transferPair = transaction.transferInfo?.isTransfer ? getTransferPair(transaction, allTransactions) : null;
+  const isExcludedFromCalculations = transaction.transferInfo?.excludedFromCalculations ?? false;
+
+  const handleTransferOverride = (includeInCalculations: boolean) => {
+    if (onTransferOverride) {
+      onTransferOverride(transaction.id, includeInCalculations);
+    }
   };
 
   return (
@@ -59,6 +73,85 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="space-y-6">
+            {/* Transfer Alert */}
+            {transaction.transferInfo?.isTransfer && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <ArrowRightLeft size={20} className="text-orange-600 dark:text-orange-400 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">
+                      Internal Transfer Detected
+                    </h3>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                      This transaction appears to be part of an internal transfer between different sources. 
+                      Transfer transactions are excluded from calculations by default to avoid double-counting.
+                    </p>
+                    
+                    {transferPair && (
+                      <div className="bg-white dark:bg-slate-700 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Transfer Pair:</p>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {transferPair.debit.description} ({transferPair.debit.metadata?.sourceName || 'Manual'})
+                            </span>
+                            <span className="text-red-600 dark:text-red-400 font-medium">
+                              -{formatCurrency(transferPair.debit.amount)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {transferPair.credit.description} ({transferPair.credit.metadata?.sourceName || 'Manual'})
+                            </span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              +{formatCurrency(transferPair.credit.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        isExcludedFromCalculations
+                          ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+                          : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700'
+                      }`}>
+                        {isExcludedFromCalculations ? 'Excluded from calculations' : 'Included in calculations'}
+                      </span>
+                    </div>
+                    
+                    {onTransferOverride && (
+                      <div className="mt-3 flex space-x-2">
+                        <button
+                          onClick={() => handleTransferOverride(true)}
+                          disabled={!isExcludedFromCalculations}
+                          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                            !isExcludedFromCalculations
+                              ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          Include in Calculations
+                        </button>
+                        <button
+                          onClick={() => handleTransferOverride(false)}
+                          disabled={isExcludedFromCalculations}
+                          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                            isExcludedFromCalculations
+                              ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 cursor-not-allowed'
+                              : 'bg-red-600 text-white hover:bg-red-700'
+                          }`}
+                        >
+                          Exclude from Calculations
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Amount */}
             <div className="text-center">
               <div className={`text-3xl font-bold ${

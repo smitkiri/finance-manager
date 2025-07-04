@@ -1,4 +1,5 @@
 import { Expense, ExpenseStats, DateRange } from './types';
+import { filterTransfersForCalculations } from './utils/transferDetection';
 
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -20,25 +21,28 @@ export const generateId = (): string => {
 };
 
 export const calculateStats = (expenses: Expense[]): ExpenseStats => {
-  const totalExpenses = expenses
+  // Filter out transfers that are excluded from calculations
+  const filteredExpenses = filterTransfersForCalculations(expenses);
+  
+  const totalExpenses = filteredExpenses
     .filter(exp => exp.type === 'expense')
     .reduce((sum, exp) => sum + Math.abs(exp.amount), 0);
     
-  const totalIncome = expenses
+  const totalIncome = filteredExpenses
     .filter(exp => exp.type === 'income')
     .reduce((sum, exp) => sum + exp.amount, 0);
     
   const netAmount = totalIncome - totalExpenses;
   
   const categoryBreakdown: { [key: string]: number } = {};
-  expenses
+  filteredExpenses
     .filter(exp => exp.type === 'expense')
     .forEach(exp => {
       const category = exp.category || 'Uncategorized';
       categoryBreakdown[category] = (categoryBreakdown[category] || 0) + Math.abs(exp.amount);
     });
     
-  const monthlyData = expenses.reduce((acc, exp) => {
+  const monthlyData = filteredExpenses.reduce((acc, exp) => {
     const month = new Date(exp.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
     const existing = acc.find(item => item.month === month);
     

@@ -121,16 +121,20 @@ app.post('/api/import-csv', (req, res) => {
     // Merge expenses
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
     
-    // Save merged data
+    // Detect transfers
+    const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
+    
+    // Save merged data with transfer info
     ensureArtifactsDir();
-    fs.writeFileSync(transactionsFile, JSON.stringify(mergedExpenses, null, 2));
+    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
     
     // Restore original test mode
     isTestMode = originalTestMode;
     res.json({ 
       success: true, 
       imported: expenses.length,
-      total: mergedExpenses.length 
+      total: updatedTransactions.length,
+      transfersDetected: transfers.length
     });
   } catch (error) {
     console.error('Error importing CSV:', error);
@@ -251,16 +255,20 @@ app.post('/api/import-with-mapping', (req, res) => {
     // Merge expenses
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
     
-    // Save merged data
+    // Detect transfers
+    const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
+    
+    // Save merged data with transfer info
     ensureArtifactsDir();
-    fs.writeFileSync(transactionsFile, JSON.stringify(mergedExpenses, null, 2));
+    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
     
     // Restore original test mode
     isTestMode = originalTestMode;
     res.json({ 
       success: true, 
       imported: expenses.length,
-      total: mergedExpenses.length 
+      total: updatedTransactions.length,
+      transfersDetected: transfers.length
     });
   } catch (error) {
     console.error('Error importing CSV with mapping:', error);
@@ -816,6 +824,262 @@ function parseCSVWithMapping(csvText, mapping) {
     })
     .filter(expense => expense.date && expense.description && expense.amount > 0);
 }
+
+// Transfer detection functions
+function detectTransfers(transactions) {
+  const transfers = [];
+  const updatedTransactions = [...transactions];
+  const processedIds = new Set();
+
+  // Group transactions by source
+  const transactionsBySource = new Map();
+  
+  transactions.forEach(transaction => {
+    const sourceId = transaction.metadata?.sourceId || 'manual';
+    if (!transactionsBySource.has(sourceId)) {
+      transactionsBySource.set(sourceId, []);
+    }
+    transactionsBySource.get(sourceId).push(transaction);
+  });
+
+  // Find potential transfer pairs
+  const sourceIds = Array.from(transactionsBySource.keys());
+  
+  for (let i = 0; i < sourceIds.length; i++) {
+    for (let j = i + 1; j < sourceIds.length; j++) {
+      const source1 = sourceIds[i];
+      const source2 = sourceIds[j];
+      
+      const source1Transactions = transactionsBySource.get(source1);
+      const source2Transactions = transactionsBySource.get(source2);
+      
+      // Look for matching credit/debit pairs
+      for (const t1 of source1Transactions) {
+        if (processedIds.has(t1.id)) continue;
+        
+        for (const t2 of source2Transactions) {
+          if (processedIds.has(t2.id)) continue;
+          
+          if (isTransferPair(t1, t2)) {
+            const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const confidence = calculateTransferConfidence(t1, t2);
+            
+            transfers.push({
+              credit: t1.type === 'income' ? t1 : t2,
+              debit: t1.type === 'expense' ? t1 : t2,
+              transferId,
+              confidence
+            });
+            
+            processedIds.add(t1.id);
+            processedIds.add(t2.id);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Update transactions with transfer info
+  transfers.forEach(transfer => {
+    const creditIndex = updatedTransactions.findIndex(t => t.id === transfer.credit.id);
+    const debitIndex = updatedTransactions.findIndex(t => t.id === transfer.debit.id);
+    
+    if (creditIndex !== -1) {
+      updatedTransactions[creditIndex] = {
+        ...updatedTransactions[creditIndex],
+        transferInfo: {
+          isTransfer: true,
+          transferId: transfer.transferId,
+          excludedFromCalculations: true,
+          userOverride: false
+        }
+      };
+    }
+    
+    if (debitIndex !== -1) {
+      updatedTransactions[debitIndex] = {
+        ...updatedTransactions[debitIndex],
+        transferInfo: {
+          isTransfer: true,
+          transferId: transfer.transferId,
+          excludedFromCalculations: true,
+          userOverride: false
+        }
+      };
+    }
+  });
+
+  return { transfers, updatedTransactions };
+}
+
+function isTransferPair(t1, t2) {
+  // Must be from different sources
+  const source1 = t1.metadata?.sourceId || 'manual';
+  const source2 = t2.metadata?.sourceId || 'manual';
+  if (source1 === source2) return false;
+  
+  // Must be opposite types (income vs expense)
+  if (t1.type === t2.type) return false;
+  
+  // Must have matching amounts (within small tolerance for fees)
+  const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
+  const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01; // 1% tolerance
+  if (amountDiff > tolerance) return false;
+  
+  // Must be within ±4 days
+  const date1 = new Date(t1.date);
+  const date2 = new Date(t2.date);
+  const daysDiff = Math.abs(date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysDiff > 4) return false;
+  
+  return true;
+}
+
+function calculateTransferConfidence(t1, t2) {
+  let confidence = 0.5; // Base confidence
+  
+  // Amount match (exact match = higher confidence)
+  const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
+  const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01;
+  if (amountDiff === 0) confidence += 0.3;
+  else if (amountDiff <= tolerance) confidence += 0.2;
+  
+  // Date proximity (closer = higher confidence)
+  const date1 = new Date(t1.date);
+  const date2 = new Date(t2.date);
+  const daysDiff = Math.abs(date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysDiff === 0) confidence += 0.2;
+  else if (daysDiff <= 1) confidence += 0.15;
+  else if (daysDiff <= 2) confidence += 0.1;
+  else if (daysDiff <= 3) confidence += 0.05;
+  
+  // Description similarity
+  const desc1 = t1.description.toLowerCase();
+  const desc2 = t2.description.toLowerCase();
+  if (desc1.includes('transfer') || desc2.includes('transfer')) confidence += 0.1;
+  if (desc1.includes('move') || desc2.includes('move')) confidence += 0.05;
+  
+  return Math.min(confidence, 1);
+}
+
+// Transfer management endpoint
+app.post('/api/transfer-override', (req, res) => {
+  try {
+    const { transactionId, includeInCalculations, isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const transactionsFile = getFilePath('transactions.json');
+    if (!fs.existsSync(transactionsFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(404).json({ error: 'No transactions found' });
+    }
+    
+    const data = fs.readFileSync(transactionsFile, 'utf8');
+    const transactions = JSON.parse(data);
+    
+    // Find and update the transaction
+    const transactionIndex = transactions.findIndex(t => t.id === transactionId);
+    if (transactionIndex === -1) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    const transaction = transactions[transactionIndex];
+    if (!transaction.transferInfo?.isTransfer) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(400).json({ error: 'Transaction is not a transfer' });
+    }
+    
+    // Update the transfer info
+    transactions[transactionIndex] = {
+      ...transaction,
+      transferInfo: {
+        ...transaction.transferInfo,
+        excludedFromCalculations: !includeInCalculations,
+        userOverride: true
+      }
+    };
+    
+    // If this is part of a transfer pair, update the other transaction too
+    if (transaction.transferInfo.transferId) {
+      const transferId = transaction.transferInfo.transferId;
+      const otherTransactionIndex = transactions.findIndex(t => 
+        t.id !== transactionId && 
+        t.transferInfo?.transferId === transferId
+      );
+      
+      if (otherTransactionIndex !== -1) {
+        transactions[otherTransactionIndex] = {
+          ...transactions[otherTransactionIndex],
+          transferInfo: {
+            ...transactions[otherTransactionIndex].transferInfo,
+            excludedFromCalculations: !includeInCalculations,
+            userOverride: true
+          }
+        };
+      }
+    }
+    
+    // Save updated transactions
+    fs.writeFileSync(transactionsFile, JSON.stringify(transactions, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating transfer override:', error);
+    res.status(500).json({ error: 'Failed to update transfer override' });
+  }
+});
+
+// Manual transfer detection endpoint
+app.post('/api/detect-transfers', (req, res) => {
+  try {
+    const { isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const transactionsFile = getFilePath('transactions.json');
+    if (!fs.existsSync(transactionsFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(404).json({ error: 'No transactions found' });
+    }
+    
+    const data = fs.readFileSync(transactionsFile, 'utf8');
+    const transactions = JSON.parse(data);
+    
+    // Detect transfers
+    const { transfers, updatedTransactions } = detectTransfers(transactions);
+    
+    // Save updated transactions with transfer info
+    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    res.json({ 
+      success: true, 
+      transfersDetected: transfers.length,
+      totalTransactions: updatedTransactions.length
+    });
+  } catch (error) {
+    console.error('Error detecting transfers:', error);
+    res.status(500).json({ error: 'Failed to detect transfers' });
+  }
+});
 
 // Test mode endpoint
 app.get('/api/test-mode', (req, res) => {

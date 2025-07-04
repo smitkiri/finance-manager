@@ -139,7 +139,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
       {visibleExpenses.map((expense) => (
         <div
           key={expense.id}
-          className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:shadow-sm transition-shadow duration-200 p-3 cursor-pointer"
+          className={`rounded-lg border transition-shadow duration-200 p-3 cursor-pointer ${
+            expense.transferInfo?.isTransfer && expense.transferInfo.excludedFromCalculations
+              ? 'bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-600 opacity-50'
+              : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:shadow-sm'
+          }`}
           onClick={() => onViewDetails(expense)}
         >
                       <div className="flex items-center justify-between">
@@ -152,6 +156,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                       <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-medium text-gray-600 dark:text-gray-300">
                         {expense.metadata?.sourceName || 'Manual Entry'}
                       </span>
+                      {expense.transferInfo?.isTransfer && (
+                        <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded text-xs font-medium text-orange-700 dark:text-orange-300">
+                          Transfer
+                        </span>
+                      )}
                       <div className="relative group" ref={editingCategoryId === expense.id ? dropdownRef : null}>
                         <button
                           onClick={(e) => {

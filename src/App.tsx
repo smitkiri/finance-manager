@@ -261,11 +261,29 @@ function AppContent() {
       setSources(prev => [...prev, source]);
       if (csvPreview) {
         const csvText = await getCSVTextFromFile();
-        const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
-        const existingExpenses = await LocalStorage.loadExpenses(isTestMode);
-        const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
-        await LocalStorage.saveExpenses(mergedExpenses, isTestMode);
-        setExpenses(mergedExpenses);
+        
+        // Call backend API to import with source (which adds metadata and detects transfers)
+        const response = await fetch('http://localhost:3001/api/import-with-mapping', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            csvText,
+            mapping: source,
+            isTestMode
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to import CSV with source');
+        }
+
+        await response.json();
+        
+        // Reload expenses from backend
+        const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+        setExpenses(updatedExpenses);
       }
       setIsSourceModalOpen(false);
       setCsvPreview(null);
@@ -394,6 +412,8 @@ function AppContent() {
       return false;
     }
 
+    // Do NOT filter out transfers here; always show them in the list
+
     return true;
   });
 
@@ -409,6 +429,32 @@ function AppContent() {
   const handleViewTransactionDetails = (transaction: Expense) => {
     setSelectedTransaction(transaction);
     setIsTransactionDetailsOpen(true);
+  };
+
+  const handleTransferOverride = async (transactionId: string, includeInCalculations: boolean) => {
+    try {
+      const response = await fetch('http://localhost:3001/api/transfer-override', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactionId,
+          includeInCalculations,
+          isTestMode
+        }),
+      });
+
+      if (response.ok) {
+        // Reload expenses to get updated transfer info
+        const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+        setExpenses(updatedExpenses);
+      } else {
+        console.error('Failed to update transfer override');
+      }
+    } catch (error) {
+      console.error('Error updating transfer override:', error);
+    }
   };
 
   return (
@@ -589,6 +635,8 @@ function AppContent() {
           setIsTransactionDetailsOpen(false);
           setSelectedTransaction(null);
         }}
+        onTransferOverride={handleTransferOverride}
+        allTransactions={expenses}
       />
     </div>
   );
