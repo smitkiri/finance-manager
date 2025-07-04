@@ -1,10 +1,8 @@
 import React from 'react';
-import { Calendar, Tag, Filter, DollarSign, X } from 'lucide-react';
-import { DateRange, Source } from '../../types';
-import { DateRangePicker } from '../DateRangePicker';
+import { Tag, Filter, DollarSign, X } from 'lucide-react';
+import { Source } from '../../types';
 
 export interface TransactionFilters {
-  dateRange?: DateRange;
   categories?: string[];
   labels?: string[];
   types?: ('expense' | 'income')[];
@@ -32,10 +30,6 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   isCompact = false,
   onClearFilters
 }) => {
-  const handleDateRangeChange = (dateRange: DateRange) => {
-    onFiltersChange({ ...filters, dateRange });
-  };
-
   const handleCategoryChange = (category: string, checked: boolean) => {
     const currentCategories = filters.categories || [];
     const newCategories = checked
@@ -75,7 +69,6 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
   const hasActiveFilters = () => {
     return !!(
-      filters.dateRange ||
       filters.categories?.length ||
       filters.labels?.length ||
       filters.types?.length ||
@@ -102,18 +95,6 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
         </div>
 
         <div className="space-y-4">
-          {/* Date Range */}
-          <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <Calendar size={16} className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Date Range</span>
-            </div>
-            <DateRangePicker
-              currentRange={filters.dateRange || { start: new Date(0), end: new Date() }}
-              onDateRangeChange={handleDateRangeChange}
-            />
-          </div>
-
           {/* Categories */}
           <div>
             <div className="flex items-center space-x-2 mb-2">
@@ -248,18 +229,6 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   // Full size version (for reports)
   return (
     <div className="space-y-6">
-      {/* Date Range Filter */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Calendar size={20} className="text-blue-600 dark:text-blue-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Date Range</h3>
-        </div>
-        <DateRangePicker
-          currentRange={filters.dateRange || { start: new Date(0), end: new Date() }}
-          onDateRangeChange={handleDateRangeChange}
-        />
-      </div>
-
       {/* Category Filter */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
         <div className="flex items-center space-x-2 mb-4">

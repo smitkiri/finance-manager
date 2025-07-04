@@ -360,18 +360,10 @@ function AppContent() {
 
   // Apply all filters using the new filter system
   const filteredExpenses = expenses.filter(exp => {
-    // Date range filter
-    if (transactionFilters.dateRange) {
-      const expenseDate = new Date(exp.date);
-      if (expenseDate < transactionFilters.dateRange.start || expenseDate > transactionFilters.dateRange.end) {
-        return false;
-      }
-    } else {
-      // Use global date range if no specific date range in filters
-      const expenseDate = new Date(exp.date);
-      if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
-        return false;
-      }
+    // Date range filter - always use global date range
+    const expenseDate = new Date(exp.date);
+    if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
+      return false;
     }
 
     // Category filter
@@ -514,12 +506,10 @@ function AppContent() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              {activeTab === 'dashboard' && (
-                <DateRangePicker
-                  currentRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                />
-              )}
+              <DateRangePicker
+                currentRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
               <button
                 onClick={toggleTheme}
                 className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"

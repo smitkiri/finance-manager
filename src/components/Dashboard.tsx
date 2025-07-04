@@ -20,13 +20,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
   // Calculate statistics using the utility function
   const stats = calculateStats(expenses);
 
-  // Calculate category breakdown using filtered expenses
-  const categoryBreakdown = categories.map(category => {
+  // Calculate category breakdown for expenses using filtered expenses
+  const expenseCategoryBreakdown = categories.map(category => {
     const categoryExpenses = filteredExpenses.filter(expense => 
       expense.type === 'expense' && expense.category === category
     );
     const total = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     const percentage = stats.totalExpenses > 0 ? (total / stats.totalExpenses) * 100 : 0;
+    
+    return {
+      category: category || 'Uncategorized',
+      amount: total,
+      percentage: Math.round(percentage * 100) / 100
+    };
+  }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
+
+  // Calculate category breakdown for income using filtered expenses
+  const incomeCategoryBreakdown = categories.map(category => {
+    const categoryIncome = filteredExpenses.filter(expense => 
+      expense.type === 'income' && expense.category === category
+    );
+    const total = categoryIncome.reduce((sum, expense) => sum + expense.amount, 0);
+    const percentage = stats.totalIncome > 0 ? (total / stats.totalIncome) * 100 : 0;
     
     return {
       category: category || 'Uncategorized',
@@ -150,7 +165,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Category Trends
+              Expense Category Trends
             </h3>
             <div className="flex items-center space-x-2">
               <button
@@ -209,46 +224,90 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
         />
       </div>
 
-      {/* Category Breakdown Table */}
-      {categoryBreakdown.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Category Breakdown
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-slate-700">
-                  <th className="text-left py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Category
-                  </th>
-                  <th className="text-right py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Amount
-                  </th>
-                  <th className="text-right py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Percentage
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {categoryBreakdown.map((item) => (
-                  <tr key={item.category} className="border-b border-gray-100 dark:border-slate-700">
-                    <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">
-                      {item.category}
-                    </td>
-                    <td className="py-2 px-4 text-sm text-right text-red-600 dark:text-red-400 font-medium">
-                      ${item.amount.toFixed(2)}
-                    </td>
-                    <td className="py-2 px-4 text-sm text-right text-gray-500 dark:text-gray-400">
-                      {item.percentage}%
-                    </td>
+      {/* Category Breakdown Tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Expense Category Breakdown */}
+        {expenseCategoryBreakdown.length > 0 && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Expense Breakdown
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-slate-700">
+                    <th className="text-left py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Category
+                    </th>
+                    <th className="text-right py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Amount
+                    </th>
+                    <th className="text-right py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Percentage
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {expenseCategoryBreakdown.map((item) => (
+                    <tr key={item.category} className="border-b border-gray-100 dark:border-slate-700">
+                      <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">
+                        {item.category}
+                      </td>
+                      <td className="py-2 px-4 text-sm text-right text-red-600 dark:text-red-400 font-medium">
+                        ${item.amount.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4 text-sm text-right text-gray-500 dark:text-gray-400">
+                        {item.percentage}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Income Category Breakdown */}
+        {incomeCategoryBreakdown.length > 0 && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Income Breakdown
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-slate-700">
+                    <th className="text-left py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Category
+                    </th>
+                    <th className="text-right py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Amount
+                    </th>
+                    <th className="text-right py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Percentage
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomeCategoryBreakdown.map((item) => (
+                    <tr key={item.category} className="border-b border-gray-100 dark:border-slate-700">
+                      <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">
+                        {item.category}
+                      </td>
+                      <td className="py-2 px-4 text-sm text-right text-green-600 dark:text-green-400 font-medium">
+                        ${item.amount.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-4 text-sm text-right text-gray-500 dark:text-gray-400">
+                        {item.percentage}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }; 
