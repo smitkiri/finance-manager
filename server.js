@@ -18,6 +18,7 @@ const MAPPINGS_FILE = path.join(ARTIFACTS_DIR, 'column-mappings.json');
 const DATE_RANGE_FILE = path.join(ARTIFACTS_DIR, 'date-range.json');
 const CATEGORIES_FILE = path.join(ARTIFACTS_DIR, 'categories.json');
 const REPORTS_DIR = path.join(ARTIFACTS_DIR, 'reports');
+const SOURCES_FILE = path.join(ARTIFACTS_DIR, 'source.json');
 
 if (!fs.existsSync(ARTIFACTS_DIR)) {
   fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
@@ -359,6 +360,62 @@ app.get('/api/reports/:reportId/data', (req, res) => {
   } catch (error) {
     console.error('Error reading report data:', error);
     res.status(500).json({ error: 'Failed to read report data' });
+  }
+});
+
+// Source Routes
+app.get('/api/sources', (req, res) => {
+  try {
+    if (!fs.existsSync(SOURCES_FILE)) {
+      return res.json([]);
+    }
+    const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+    const sources = JSON.parse(data);
+    res.json(sources);
+  } catch (error) {
+    console.error('Error reading sources:', error);
+    res.status(500).json({ error: 'Failed to read sources' });
+  }
+});
+
+app.post('/api/sources', (req, res) => {
+  try {
+    const { source } = req.body;
+    // Load existing sources
+    let sources = [];
+    if (fs.existsSync(SOURCES_FILE)) {
+      const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+      sources = JSON.parse(data);
+    }
+    // Add new source
+    sources.push(source);
+    // Save sources
+    fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+    res.json({ success: true, count: sources.length });
+  } catch (error) {
+    console.error('Error saving source:', error);
+    res.status(500).json({ error: 'Failed to save source' });
+  }
+});
+
+app.delete('/api/sources/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!fs.existsSync(SOURCES_FILE)) {
+      return res.status(404).json({ error: 'No sources found' });
+    }
+    const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+    let sources = JSON.parse(data);
+    const initialLength = sources.length;
+    sources = sources.filter(source => source.id !== id);
+    if (sources.length === initialLength) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+    fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+    res.json({ success: true, count: sources.length });
+  } catch (error) {
+    console.error('Error deleting source:', error);
+    res.status(500).json({ error: 'Failed to delete source' });
   }
 });
 

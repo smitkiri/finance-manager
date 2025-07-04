@@ -1,17 +1,17 @@
-import { ColumnMapping, CSVPreview } from '../types';
+import { Source, CSVPreview } from '../types';
 import { LocalStorage } from '../utils/storage';
 
 export const csvService = {
-  async importWithMapping(mapping: ColumnMapping): Promise<boolean> {
+  async importWithSource(source: Source): Promise<boolean> {
     try {
       const csvText = await this.getCSVTextFromFile();
-      const newExpenses = LocalStorage.parseCSVWithMapping(csvText, mapping);
+      const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
       const existingExpenses = await LocalStorage.loadExpenses();
       const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
       await LocalStorage.saveExpenses(mergedExpenses);
       return true;
     } catch (error) {
-      console.error('Error importing with mapping:', error);
+      console.error('Error importing with source:', error);
       return false;
     }
   },
@@ -44,12 +44,12 @@ export const csvService = {
     });
   },
 
-  async saveMapping(mapping: ColumnMapping): Promise<boolean> {
+  async saveSource(source: Source): Promise<boolean> {
     try {
-      await LocalStorage.saveColumnMapping(mapping);
+      await LocalStorage.saveSource(source);
       return true;
     } catch (error) {
-      console.error('Error saving mapping:', error);
+      console.error('Error saving source:', error);
       return false;
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Download, FileText, Calendar, DollarSign, Tag } from 'lucide-react';
 import { Report, Expense, ReportData } from '../../types';
 import { LocalStorage } from '../../utils/storage';
@@ -23,35 +23,34 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadReportData = useCallback(async () => {
-    try {
-      // Try to load cached report data first
-      let cachedData = await LocalStorage.loadReportData(report.id);
-      
-      if (!cachedData) {
-        // Generate fresh report data
-        const filteredExpenses = applyReportFilters(expenses, report.filters);
-        cachedData = generateReportData(report, filteredExpenses);
-        
-        // Cache the report data
-        await LocalStorage.saveReportData(cachedData);
-      }
-      
-      setReportData(cachedData);
-    } catch (error) {
-      console.error('Error loading report data:', error);
-      // Fallback: generate data without caching
-      const filteredExpenses = applyReportFilters(expenses, report.filters);
-      const data = generateReportData(report, filteredExpenses);
-      setReportData(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [report, expenses]);
-
   useEffect(() => {
+    const loadReportData = async () => {
+      try {
+        // Try to load cached report data first
+        let cachedData = await LocalStorage.loadReportData(report.id);
+        
+        if (!cachedData) {
+          // Generate fresh report data
+          const filteredExpenses = applyReportFilters(expenses, report.filters);
+          cachedData = generateReportData(report, filteredExpenses);
+          
+          // Cache the report data
+          await LocalStorage.saveReportData(cachedData);
+        }
+        
+        setReportData(cachedData);
+      } catch (error) {
+        console.error('Error loading report data:', error);
+        // Fallback: generate data without caching
+        const filteredExpenses = applyReportFilters(expenses, report.filters);
+        const data = generateReportData(report, filteredExpenses);
+        setReportData(data);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     loadReportData();
-  }, [loadReportData]);
+  }, [report, expenses]);
 
   const handleExportReport = () => {
     if (!reportData) return;

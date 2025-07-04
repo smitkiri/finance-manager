@@ -10,6 +10,8 @@ interface StorageMetadata {
   };
 }
 
+const SOURCES_STORAGE_KEY = 'sources';
+
 export class LocalStorage {
   private static API_BASE = 'http://localhost:3001/api';
 
@@ -218,60 +220,71 @@ export class LocalStorage {
     }
   }
 
-  // Column Mapping Methods
-  static async saveColumnMapping(mapping: ColumnMapping): Promise<void> {
+  // Source Methods
+  static async saveSource(source: import('../types').Source): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/column-mappings`, {
+      // If using a backend API, update endpoint to /sources
+      const response = await fetch(`${this.API_BASE}/sources`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ mapping }),
+        body: JSON.stringify({ source }),
       });
-
       if (!response.ok) {
-        throw new Error('Failed to save column mapping');
+        throw new Error('Failed to save source');
       }
-
-      console.log(`Saved column mapping: ${mapping.name}`);
+      console.log(`Saved source: ${source.name}`);
     } catch (error) {
-      console.error('Error saving column mapping:', error);
+      console.error('Error saving source:', error);
       // Fallback to localStorage
-      const existingMappings = this.getColumnMappingsFromStorage();
-      existingMappings.push(mapping);
-      localStorage.setItem('column_mappings', JSON.stringify(existingMappings));
+      const existingSources = this.getSourcesFromStorage();
+      existingSources.push(source);
+      localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(existingSources));
     }
   }
 
-  static async loadColumnMappings(): Promise<ColumnMapping[]> {
+  static async loadSources(): Promise<import('../types').Source[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/column-mappings`);
-      
+      // If using a backend API, update endpoint to /sources
+      const response = await fetch(`${this.API_BASE}/sources`);
       if (!response.ok) {
-        throw new Error('Failed to load column mappings');
+        throw new Error('Failed to load sources');
       }
-
-      const mappings = await response.json();
-      console.log(`Loaded ${mappings.length} column mappings from server`);
-      return mappings;
+      const sources = await response.json();
+      console.log(`Loaded ${sources.length} sources from server`);
+      return sources;
     } catch (error) {
-      console.error('Error loading column mappings from server:', error);
+      console.error('Error loading sources from server:', error);
       // Fallback to localStorage
-      return this.getColumnMappingsFromStorage();
+      return this.getSourcesFromStorage();
     }
   }
 
-  private static getColumnMappingsFromStorage(): ColumnMapping[] {
+  private static getSourcesFromStorage(): import('../types').Source[] {
     try {
-      const stored = localStorage.getItem('column_mappings');
+      const stored = localStorage.getItem(SOURCES_STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.error('Error loading column mappings from localStorage:', error);
+      console.error('Error loading sources from localStorage:', error);
       return [];
     }
   }
 
-  static parseCSVWithMapping(csvText: string, mapping: ColumnMapping): Expense[] {
+  // Column Mapping Methods
+  static async saveColumnMapping(mapping: import('../types').Source): Promise<void> {
+    return this.saveSource(mapping);
+  }
+
+  static async loadColumnMappings(): Promise<import('../types').Source[]> {
+    return this.loadSources();
+  }
+
+  private static getColumnMappingsFromStorage(): import('../types').Source[] {
+    return this.getSourcesFromStorage();
+  }
+
+  static parseCSVWithMapping(csvText: string, mapping: import('../types').Source): Expense[] {
     const lines = csvText.trim().split('\n');
     const headers = this.parseCSVLine(lines[0]);
     
@@ -679,5 +692,11 @@ export class LocalStorage {
       console.error('Error loading report data from localStorage:', error);
       return null;
     }
+  }
+
+  // Alias for Source terminology
+  static parseCSVWithSource(csvText: string, source: import('../types').Source): Expense[] {
+    // Reuse the mapping logic
+    return this.parseCSVWithMapping(csvText, source);
   }
 } 

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { X, Save, Trash2, Edit, Check, X as XIcon } from 'lucide-react';
-import { CSVPreview, ColumnMapping, StandardizedColumn } from '../../types';
+import { CSVPreview, Source, StandardizedColumn } from '../../types';
 
 interface CSVPreviewEditorProps {
   isOpen: boolean;
   onClose: () => void;
   csvPreview: CSVPreview;
-  mapping: ColumnMapping;
-  onImport: (editedData: string[][], mapping: ColumnMapping) => void;
+  source: Source;
+  onImport: (editedData: string[][], source: Source) => void;
 }
 
 // This component will need to receive categories as a prop, but for now we'll keep the default ones
@@ -36,7 +36,7 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   isOpen,
   onClose,
   csvPreview,
-  mapping,
+  source,
   onImport
 }) => {
   const [editedRows, setEditedRows] = useState<string[][]>(csvPreview.sampleRows);
@@ -48,7 +48,7 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   if (!isOpen) return null;
 
   const getColumnIndex = (standardColumn: StandardizedColumn): number => {
-    const mappingItem = mapping.mappings.find(m => m.standardColumn === standardColumn);
+    const mappingItem = source.mappings.find(m => m.standardColumn === standardColumn);
     if (!mappingItem) return -1;
     return csvPreview.headers.findIndex(h => h === mappingItem.csvColumn);
   };
@@ -121,7 +121,7 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
       ...rowsWithCategories.map(row => row.join(','))
     ].join('\n');
 
-    onImport(rowsWithCategories, mapping);
+    onImport(rowsWithCategories, source);
     onClose();
   };
 

@@ -23,6 +23,6 @@ export const CSV_FILE_TYPE = '.csv';
 export const STORAGE_KEYS = {
   EXPENSES: 'expenses',
   CATEGORIES: 'categories',
-  COLUMN_MAPPINGS: 'column-mappings',
+  SOURCES: 'sources',
   DATE_RANGE: 'date-range'
 } as const; 

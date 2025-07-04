@@ -54,10 +54,10 @@ export interface CategoryStats {
   count: number;
 }
 
-// CSV Mapping Types
+// CSV Source Types
 export type StandardizedColumn = 'Transaction Date' | 'Description' | 'Category' | 'Amount';
 
-export interface ColumnMapping {
+export interface Source {
   id: string;
   name: string;
   mappings: {
@@ -67,6 +67,8 @@ export interface ColumnMapping {
   createdAt: string;
   lastUsed: string;
 }
+
+export type ColumnMapping = Source; // For backward compatibility
 
 export interface CSVPreview {
   headers: string[];

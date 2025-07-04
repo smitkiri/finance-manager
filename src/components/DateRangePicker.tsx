@@ -21,7 +21,6 @@ const quickRanges = [
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeChange, currentRange }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [tempStartDate, setTempStartDate] = useState(currentRange.start);
   const [tempEndDate, setTempEndDate] = useState(currentRange.end);
 
@@ -65,7 +64,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
       start: startOfDay(tempStartDate),
       end: endOfDay(tempEndDate)
     });
-    setIsCalendarOpen(false);
     setIsOpen(false);
   };
 

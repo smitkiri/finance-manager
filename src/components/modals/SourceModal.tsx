@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Plus } from 'lucide-react';
-import { StandardizedColumn, ColumnMapping, CSVPreview } from '../../types';
+import { X, Save, Plus, Trash2 } from 'lucide-react';
+import { StandardizedColumn, CSVPreview, Source } from '../../types';
 
-interface CSVMappingModalProps {
+interface SourceModalProps {
   isOpen: boolean;
   onClose: () => void;
   csvPreview: CSVPreview;
-  existingMappings: ColumnMapping[];
-  onSaveMapping: (mapping: ColumnMapping) => void;
-  onImportWithMapping: (mapping: ColumnMapping) => void;
+  existingSources: Source[];
+  onSaveSource: (source: Source) => void;
+  onImportWithSource: (source: Source) => void;
+  onDeleteSource: (id: string) => void;
 }
 
 const STANDARDIZED_COLUMNS: StandardizedColumn[] = [
@@ -18,19 +19,21 @@ const STANDARDIZED_COLUMNS: StandardizedColumn[] = [
   'Amount'
 ];
 
-export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
+export const SourceModal: React.FC<SourceModalProps> = ({
   isOpen,
   onClose,
   csvPreview,
-  existingMappings,
-  onSaveMapping,
-  onImportWithMapping
+  existingSources,
+  onSaveSource,
+  onImportWithSource,
+  onDeleteSource
 }) => {
-  const [mappingName, setMappingName] = useState('');
-  const [selectedMappingId, setSelectedMappingId] = useState<string>('');
+  const [sourceName, setSourceName] = useState('');
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [columnMappings, setColumnMappings] = useState<{ csvColumn: string; standardColumn: StandardizedColumn | 'Ignore' }[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && csvPreview.headers.length > 0) {
@@ -44,7 +47,7 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
     }
   }, [isOpen, csvPreview.headers]);
 
-  const handleMappingChange = (csvColumn: string, standardColumn: StandardizedColumn | 'Ignore') => {
+  const handleSourceChange = (csvColumn: string, standardColumn: StandardizedColumn | 'Ignore') => {
     setColumnMappings(prev => 
       prev.map(mapping => 
         mapping.csvColumn === csvColumn 
@@ -54,7 +57,7 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
     );
   };
 
-  const validateMappings = (): string[] => {
+  const validateSource = (): string[] => {
     const newErrors: string[] = [];
     
     // Check if all required standardized columns are mapped (Category is optional)
@@ -86,43 +89,45 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
     return newErrors;
   };
 
-  const handleSaveMapping = () => {
-    const validationErrors = validateMappings();
+  const handleSaveSource = () => {
+    const validationErrors = validateSource();
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
     }
-    
-    if (!mappingName.trim()) {
-      setErrors(['Please enter a mapping name']);
+    if (!sourceName.trim()) {
+      setErrors(['Please enter a source name']);
       return;
     }
-    
-    const newMapping: ColumnMapping = {
+    // Check for duplicate name (case-insensitive)
+    if (existingSources.some(s => s.name.trim().toLowerCase() === sourceName.trim().toLowerCase())) {
+      setErrors(['A source with this name already exists. Please choose a different name.']);
+      return;
+    }
+    const newSource: Source = {
       id: Date.now().toString(),
-      name: mappingName.trim(),
+      name: sourceName.trim(),
       mappings: columnMappings,
       createdAt: new Date().toISOString(),
       lastUsed: new Date().toISOString()
     };
-    
-    onSaveMapping(newMapping);
-    setMappingName('');
+    onSaveSource(newSource);
+    setSourceName('');
     setIsCreatingNew(false);
     setErrors([]);
   };
 
-  const handleUseExistingMapping = () => {
-    const selectedMapping = existingMappings.find(m => m.id === selectedMappingId);
-    if (selectedMapping) {
-      onImportWithMapping(selectedMapping);
+  const handleUseExistingSource = () => {
+    const selectedSource = existingSources.find(s => s.id === selectedSourceId);
+    if (selectedSource) {
+      onImportWithSource(selectedSource);
     }
   };
 
-  const handleCreateNewMapping = () => {
+  const handleCreateNewSource = () => {
     setIsCreatingNew(true);
-    setSelectedMappingId('');
-    setMappingName('');
+    setSelectedSourceId('');
+    setSourceName('');
     setErrors([]);
   };
 
@@ -142,7 +147,7 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            CSV Column Mapping
+            Add New Source
           </h2>
           <button
             onClick={onClose}
@@ -184,42 +189,54 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
             </div>
           </div>
 
-          {/* Existing Mappings */}
-          {existingMappings.length > 0 && !isCreatingNew && (
+          {/* Existing Sources */}
+          {existingSources.length > 0 && !isCreatingNew && (
             <div className="mb-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
-                Use Existing Mapping
+                Use Existing Source
               </h3>
               <div className="space-y-3">
-                {existingMappings.map(mapping => (
+                {existingSources.map(source => (
                   <div
-                    key={mapping.id}
+                    key={source.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedMappingId === mapping.id
+                      selectedSourceId === source.id
                         ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                         : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
-                    onClick={() => setSelectedMappingId(mapping.id)}
+                    onClick={() => setSelectedSourceId(source.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white">{mapping.name}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white">{source.name}</h4>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Created: {new Date(mapping.createdAt).toLocaleDateString()}
+                          Created: {new Date(source.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {mapping.mappings.filter(m => m.standardColumn !== 'Ignore').length} columns mapped
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {source.mappings.filter((m: { standardColumn: StandardizedColumn | 'Ignore' }) => m.standardColumn !== 'Ignore').length} columns mapped
+                        </span>
+                        <button
+                          className="ml-2 p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          title="Delete source"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setConfirmDeleteId(source.id);
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))}
                 <button
-                  onClick={handleUseExistingMapping}
-                  disabled={!selectedMappingId}
+                  onClick={handleUseExistingSource}
+                  disabled={!selectedSourceId}
                   className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors"
                 >
-                  Use Selected Mapping
+                  Use Selected Source
                 </button>
               </div>
               
@@ -234,29 +251,29 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
             </div>
           )}
 
-          {/* Create New Mapping */}
-          {(!isCreatingNew && existingMappings.length > 0) && (
+          {/* Create New Source */}
+          {(!isCreatingNew && existingSources.length > 0) && (
             <button
-              onClick={handleCreateNewMapping}
+              onClick={handleCreateNewSource}
               className="w-full py-3 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             >
               <Plus size={20} className="mx-auto mb-2" />
-              Create New Mapping
+              Add New Source
             </button>
           )}
 
-          {/* New Mapping Form */}
+          {/* New Source Form */}
           {isCreatingNew && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Mapping Name
+                  Source Name
                 </label>
                 <input
                   type="text"
-                  value={mappingName}
-                  onChange={(e) => setMappingName(e.target.value)}
-                  placeholder="Enter a name for this mapping..."
+                  value={sourceName}
+                  onChange={(e) => setSourceName(e.target.value)}
+                  placeholder="Enter a name for this source..."
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -277,7 +294,7 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
                         <span className="text-gray-500 dark:text-gray-400">→</span>
                         <select
                           value={mapping.standardColumn}
-                          onChange={(e) => handleMappingChange(mapping.csvColumn, e.target.value as StandardizedColumn | 'Ignore')}
+                          onChange={(e) => handleSourceChange(mapping.csvColumn, e.target.value as StandardizedColumn | 'Ignore')}
                           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                           <option value="Ignore">Ignore</option>
@@ -309,11 +326,11 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
               {/* Action Buttons */}
               <div className="flex space-x-3">
                 <button
-                  onClick={handleSaveMapping}
+                  onClick={handleSaveSource}
                   className="flex-1 py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Save size={16} />
-                  <span>Save Mapping & Import</span>
+                  <span>Save Source & Import</span>
                 </button>
                 <button
                   onClick={() => {
@@ -328,18 +345,18 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
             </div>
           )}
 
-          {/* No existing mappings - show form directly */}
-          {existingMappings.length === 0 && !isCreatingNew && (
+          {/* No existing sources - show form directly */}
+          {existingSources.length === 0 && !isCreatingNew && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Mapping Name
+                  Source Name
                 </label>
                 <input
                   type="text"
-                  value={mappingName}
-                  onChange={(e) => setMappingName(e.target.value)}
-                  placeholder="Enter a name for this mapping..."
+                  value={sourceName}
+                  onChange={(e) => setSourceName(e.target.value)}
+                  placeholder="Enter a name for this source..."
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -360,7 +377,7 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
                         <span className="text-gray-500 dark:text-gray-400">→</span>
                         <select
                           value={mapping.standardColumn}
-                          onChange={(e) => handleMappingChange(mapping.csvColumn, e.target.value as StandardizedColumn | 'Ignore')}
+                          onChange={(e) => handleSourceChange(mapping.csvColumn, e.target.value as StandardizedColumn | 'Ignore')}
                           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                           <option value="Ignore">Ignore</option>
@@ -392,11 +409,11 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
               {/* Action Buttons */}
               <div className="flex space-x-3">
                 <button
-                  onClick={handleSaveMapping}
+                  onClick={handleSaveSource}
                   className="flex-1 py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Save size={16} />
-                  <span>Save Mapping & Import</span>
+                  <span>Save Source & Import</span>
                 </button>
                 <button
                   onClick={onClose}
@@ -409,6 +426,33 @@ export const CSVMappingModal: React.FC<CSVMappingModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Delete Source?</h3>
+            <p className="mb-6 text-gray-700 dark:text-gray-300">Are you sure you want to delete this source? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                onClick={() => {
+                  onDeleteSource(confirmDeleteId);
+                  setConfirmDeleteId(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }; 

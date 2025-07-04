@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Download, Filter, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { Expense, TransactionFormData, DateRange, ColumnMapping, CSVPreview } from './types';
+import { Expense, TransactionFormData, DateRange, CSVPreview, Source } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar } from './components/Sidebar';
@@ -10,7 +10,7 @@ import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
 import { generateId, filterExpensesByDateRange } from './utils';
 import { LocalStorage } from './utils/storage';
-import { CSVMappingModal } from './components/modals/CSVMappingModal';
+import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 
 function AppContent() {
@@ -24,16 +24,14 @@ function AppContent() {
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Start of current month
     end: new Date() // Today
   });
-  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<CSVPreview | null>(null);
-  const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-
-
+  const [sources, setSources] = useState<Source[]>([]);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -50,18 +48,18 @@ function AppContent() {
     saveDateRange();
   }, [dateRange, isInitialLoadComplete]);
 
-  // Load expenses, column mappings, date range, and categories on component mount
+  // Load expenses, date range, and categories on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedExpenses, loadedMappings, loadedDateRange, loadedCategories] = await Promise.all([
+        const [loadedExpenses, loadedSources, loadedDateRange, loadedCategories] = await Promise.all([
           LocalStorage.loadExpenses(),
-          LocalStorage.loadColumnMappings(),
+          LocalStorage.loadSources(),
           LocalStorage.loadDateRange(),
           LocalStorage.loadCategories()
         ]);
         setExpenses(loadedExpenses);
-        setColumnMappings(loadedMappings);
+        setSources(loadedSources);
         setCategories(loadedCategories);
         
         // Set date range if loaded, otherwise use default
@@ -240,7 +238,7 @@ function AppContent() {
         const text = e.target?.result as string;
         const preview = LocalStorage.parseCSVPreview(text);
         setCsvPreview(preview);
-        setIsMappingModalOpen(true);
+        setIsSourceModalOpen(true);
       } catch (error) {
         console.error('Error parsing CSV:', error);
       }
@@ -248,41 +246,37 @@ function AppContent() {
     reader.readAsText(file);
   };
 
-  const handleSaveMapping = async (mapping: ColumnMapping) => {
+  const handleSaveSource = async (source: Source) => {
     try {
-      await LocalStorage.saveColumnMapping(mapping);
-      setColumnMappings(prev => [...prev, mapping]);
-      
-      // Import the CSV with the new mapping
+      await LocalStorage.saveSource(source);
+      setSources(prev => [...prev, source]);
       if (csvPreview) {
         const csvText = await getCSVTextFromFile();
-        const newExpenses = LocalStorage.parseCSVWithMapping(csvText, mapping);
+        const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
         const existingExpenses = await LocalStorage.loadExpenses();
         const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
         await LocalStorage.saveExpenses(mergedExpenses);
         setExpenses(mergedExpenses);
       }
-      
-      setIsMappingModalOpen(false);
+      setIsSourceModalOpen(false);
       setCsvPreview(null);
     } catch (error) {
-      console.error('Error saving mapping:', error);
+      console.error('Error saving source:', error);
     }
   };
 
-  const handleImportWithMapping = async (mapping: ColumnMapping) => {
+  const handleImportWithSource = async (source: Source) => {
     try {
       const csvText = await getCSVTextFromFile();
-      const newExpenses = LocalStorage.parseCSVWithMapping(csvText, mapping);
+      const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
       const existingExpenses = await LocalStorage.loadExpenses();
       const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
       await LocalStorage.saveExpenses(mergedExpenses);
       setExpenses(mergedExpenses);
-      
-      setIsMappingModalOpen(false);
+      setIsSourceModalOpen(false);
       setCsvPreview(null);
     } catch (error) {
-      console.error('Error importing with mapping:', error);
+      console.error('Error importing with source:', error);
     }
   };
 
@@ -342,7 +336,14 @@ function AppContent() {
     return true;
   });
 
-
+  const handleDeleteSource = async (id: string) => {
+    try {
+      await fetch(`http://localhost:3001/api/sources/${id}`, { method: 'DELETE' });
+      setSources(prev => prev.filter(source => source.id !== id));
+    } catch (error) {
+      console.error('Error deleting source:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
@@ -525,18 +526,19 @@ function AppContent() {
         categories={categories}
       />
 
-      {/* CSV Mapping Modal */}
+      {/* Source Modal */}
       {csvPreview && (
-        <CSVMappingModal
-          isOpen={isMappingModalOpen}
+        <SourceModal
+          isOpen={isSourceModalOpen}
           onClose={() => {
-            setIsMappingModalOpen(false);
+            setIsSourceModalOpen(false);
             setCsvPreview(null);
           }}
           csvPreview={csvPreview}
-          existingMappings={columnMappings}
-          onSaveMapping={handleSaveMapping}
-          onImportWithMapping={handleImportWithMapping}
+          existingSources={sources}
+          onSaveSource={handleSaveSource}
+          onImportWithSource={handleImportWithSource}
+          onDeleteSource={handleDeleteSource}
         />
       )}
 

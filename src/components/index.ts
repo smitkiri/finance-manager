@@ -14,7 +14,7 @@ export { LabelSelector } from './ui/LabelSelector';
 export { StatsCard } from './ui/StatsCard';
 
 // Modal components
-export { CSVMappingModal } from './modals/CSVMappingModal';
+export { SourceModal } from './modals/SourceModal';
 export { CSVPreviewEditor } from './modals/CSVPreviewEditor';
 export { Settings } from './modals/Settings';
 
