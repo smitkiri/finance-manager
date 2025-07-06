@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Trash2, Edit, ChevronDown, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Edit, ChevronDown, Plus, ChevronUp } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency } from '../../utils';
 import { LabelSelector } from '../ui/LabelSelector';
@@ -26,11 +26,61 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
     expenseId: null,
     position: { x: 0, y: 0 }
   });
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const [categoryUsage, setCategoryUsage] = useState<Map<string, number>>(new Map());
+  
   const ITEMS_PER_PAGE = 30;
   
   const visibleExpenses = expenses.slice(0, visibleCount);
   const hasMore = visibleCount < expenses.length;
-  
+
+  // Track category usage from expenses
+  useEffect(() => {
+    const usage = new Map<string, number>();
+    expenses.forEach(expense => {
+      const category = expense.category || 'Uncategorized';
+      usage.set(category, (usage.get(category) || 0) + 1);
+    });
+    setCategoryUsage(usage);
+  }, [expenses]);
+
+  // Sort categories by usage (most used first)
+  const sortedCategories = [...categories].sort((a, b) => {
+    const aUsage = categoryUsage.get(a) || 0;
+    const bUsage = categoryUsage.get(b) || 0;
+    return bUsage - aUsage;
+  });
+
+  const toggleDropdown = (expenseId: string) => {
+    setOpenDropdowns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(expenseId)) {
+        newSet.delete(expenseId);
+      } else {
+        newSet.add(expenseId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCategorySelect = (expenseId: string, category: string) => {
+    onUpdateCategory(expenseId, category);
+    toggleDropdown(expenseId);
+  };
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.category-dropdown')) {
+        setOpenDropdowns(new Set());
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (expenses.length === 0) {
     return (
       <div className="text-center py-12">
@@ -122,22 +172,42 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(expense.date).toLocaleDateString()}
                     </span>
-                    <div className="relative">
-                      <select
-                        value={expense.category || 'Uncategorized'}
-                        onChange={(e) => {
+                    <div className="relative category-dropdown">
+                      <button
+                        onClick={(e) => {
                           e.stopPropagation();
-                          onUpdateCategory(expense.id, e.target.value);
+                          toggleDropdown(expense.id);
                         }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-transparent cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors"
+                        className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 rounded px-2 py-1 hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors flex items-center space-x-1"
                       >
-                        {categories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
+                        <span>{expense.category || 'Uncategorized'}</span>
+                        {openDropdowns.has(expense.id) ? (
+                          <ChevronUp size={12} />
+                        ) : (
+                          <ChevronDown size={12} />
+                        )}
+                      </button>
+                      
+                      {openDropdowns.has(expense.id) && (
+                        <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-10 min-w-32 max-h-48 overflow-y-auto">
+                          {sortedCategories.map((category) => (
+                            <button
+                              key={category}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCategorySelect(expense.id, category);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
+                                expense.category === category 
+                                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              {category}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {expense.transferInfo?.isTransfer && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
