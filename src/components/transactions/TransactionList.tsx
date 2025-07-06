@@ -100,33 +100,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
           }`}
           onClick={() => onViewDetails(expense)}
         >
-                      <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {expense.description}
                     </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {expense.category}
-                      </span>
-                      {expense.labels && expense.labels.length > 0 && (
-                        <div className="flex space-x-1">
-                          {expense.labels.map((label, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="text-right flex-shrink-0">
                     <div
                       className={`font-semibold text-sm ${
                         expense.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
@@ -135,24 +116,62 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
                       {expense.type === 'expense' ? '-' : '+'}
                       {formatCurrency(expense.amount)}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                      {expense.type}
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(expense.date).toLocaleDateString()}
+                    </span>
+                    <div className="relative">
+                      <select
+                        value={expense.category || 'Uncategorized'}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onUpdateCategory(expense.id, e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-transparent cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors"
+                      >
+                        {categories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+                    {expense.transferInfo?.isTransfer && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        Transfer
+                      </span>
+                    )}
+                    {expense.labels && expense.labels.length > 0 && (
+                      <div className="flex space-x-1">
+                        {expense.labels.map((label, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
             
             <div className="flex items-center space-x-1 ml-2">
               {/* Add Label Button */}
               {(expense.labels?.length || 0) < 3 && (
-                              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddLabelClick(expense.id, e);
-                }}
-                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
-                title="Add label"
-              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddLabelClick(expense.id, e);
+                  }}
+                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
+                  title="Add label"
+                >
                   <div className="relative">
                     <Plus size={14} />
                     <div className="absolute inset-0 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
