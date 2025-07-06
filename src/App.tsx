@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, Sun, Moon, Settings as SettingsIcon, Search } from 'lucide-react';
+import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { TestModeProvider, useTestMode } from './contexts/TestModeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User } from './types';
@@ -285,7 +287,24 @@ function AppContent() {
           throw new Error('Failed to import CSV with source');
         }
 
-        await response.json();
+        const result = await response.json();
+        
+        // Show toast notification for auto-filled categories
+        if (result.autoFilledCategories && result.autoFilledCategories.length > 0) {
+          const count = result.autoFilledCategories.length;
+          const message = count === 1 
+            ? `1 category was auto-filled: ${result.autoFilledCategories[0].suggestedCategory}`
+            : `${count} categories were auto-filled based on similar transactions`;
+          
+          toast.success(message, {
+            position: "bottom-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        }
         
         // Reload expenses from backend
         const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
@@ -295,6 +314,14 @@ function AppContent() {
       setCsvPreview(null);
     } catch (error) {
       console.error('Error saving source:', error);
+      toast.error('Failed to import CSV', {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
@@ -317,7 +344,26 @@ function AppContent() {
       if (!response.ok) {
         throw new Error('Failed to import CSV with source');
       }
-      await response.json();
+      
+      const result = await response.json();
+      
+      // Show toast notification for auto-filled categories
+      if (result.autoFilledCategories && result.autoFilledCategories.length > 0) {
+        const count = result.autoFilledCategories.length;
+        const message = count === 1 
+          ? `1 category was auto-filled: ${result.autoFilledCategories[0].suggestedCategory}`
+          : `${count} categories were auto-filled based on similar transactions`;
+        
+        toast.success(message, {
+          position: "bottom-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
+      
       // Reload expenses from backend
       const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
       setExpenses(updatedExpenses);
@@ -325,6 +371,14 @@ function AppContent() {
       setCsvPreview(null);
     } catch (error) {
       console.error('Error importing with source:', error);
+      toast.error('Failed to import CSV', {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
@@ -744,7 +798,10 @@ function App() {
   return (
     <ThemeProvider>
       <TestModeProvider>
-        <AppContent />
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <AppContent />
+          <ToastContainer />
+        </div>
       </TestModeProvider>
     </ThemeProvider>
   );

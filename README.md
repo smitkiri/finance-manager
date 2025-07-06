@@ -5,19 +5,21 @@ A modern, beautiful web application for tracking personal expenses and income. B
 ## Features
 
 - 💰 **Track Expenses & Income**: Add, edit, and delete transactions
+- 👥 **Multi-User Support**: Manage multiple users with individual transaction tracking
+- 🤖 **Intelligent Category Matching**: Auto-suggest categories based on similar transaction descriptions
 - 📊 **Visual Analytics**: Interactive charts showing spending patterns and trends
 - 📈 **Real-time Statistics**: Live updates of totals and net amounts
 - 🏷️ **Category Management**: Organize transactions by categories with dedicated settings
 - 🏷️ **Label System**: Add up to 3 custom labels to transactions for better organization
 - 📁 **Advanced CSV Import/Export**: Import any CSV structure with column mapping and preview editing
-- 🔍 **Smart Filtering**: Filter by transaction type, category, labels, sources, and date range
+- 🔍 **Advanced Filtering & Search**: Full-text search, date presets, amount ranges, and save/load filter configurations
 - 📅 **Global Date Range Picker**: Synchronized date filtering across dashboard and transactions
 - 📱 **Responsive Design**: Works perfectly on desktop and mobile
 - 🎨 **Dark Mode**: Beautiful dark theme with automatic system preference detection
 - 💾 **Local Data Persistence**: Data saved locally with backend API and localStorage fallback
 - 📄 **Pagination**: Load transactions in batches with "Show More" functionality
 - ⚡ **Quick Category Editing**: Click category badges to change categories inline
-- 🔧 **Settings Management**: Comprehensive settings modal with categories, sources, and data management
+- 🔧 **Settings Management**: Comprehensive settings modal with categories, sources, users, and data management
 - 📊 **Report Builder**: Create custom reports with advanced filtering and data analysis
 - 🔄 **Smart Transfer Detection**: Automatically detect and handle internal transfers between accounts
 - 🧪 **Test Mode**: Safe testing environment with separate data storage
@@ -25,6 +27,7 @@ A modern, beautiful web application for tracking personal expenses and income. B
 - 🗂️ **Source Management**: Organize and edit CSV import sources
 - 📊 **Separate Income/Expense Breakdowns**: View income and expense categories separately
 - 🎯 **Transaction Exclusion**: Exclude specific transactions from calculations
+- 🔔 **Toast Notifications**: User-friendly notifications for auto-filled categories and import status
 
 ## Screenshots
 
@@ -34,10 +37,12 @@ The application features a clean, modern interface with:
 - Separate income and expense category breakdowns
 - Transaction list with pagination, labels, and quick editing
 - Modal forms for adding/editing transactions
-- Comprehensive settings page for categories, sources, and data management
+- Comprehensive settings page for categories, sources, users, and data management
 - Report builder with advanced filtering options
 - Dark mode support throughout the interface
 - Test mode indicators for safe development
+- User filter dropdown in the header
+- Advanced search and filtering sidebar
 
 ## Getting Started
 
@@ -79,11 +84,26 @@ npm run build
 
 ## Usage
 
+### Multi-User Support
+1. **User Management**: Go to Settings → Users tab to add, edit, or delete users
+2. **User Filter**: Use the user dropdown in the header to filter transactions by user
+3. **Transaction Association**: All new transactions are associated with the selected user
+4. **CSV Import**: Select a user when importing CSV files to associate transactions
+5. **Default User**: New transactions default to "Default" user if no user is selected
+
 ### Adding Transactions
 1. Click the "Add Transaction" button
 2. Fill in the transaction details (date, description, category, amount, type)
-3. Add an optional memo and up to 3 labels
-4. Click "Add Transaction" to save
+3. Select a user from the dropdown
+4. Add an optional memo and up to 3 labels
+5. Click "Add Transaction" to save
+
+### Intelligent Category Matching
+- **Automatic Suggestions**: When importing CSV files with missing categories, the system automatically suggests categories based on similar transaction descriptions
+- **Smart Algorithm**: Uses multiple matching methods including word similarity, substring matching, and merchant name detection
+- **Recent Transactions**: Analyzes the most recent 100 transactions for category suggestions
+- **Toast Notifications**: Receive notifications showing how many categories were auto-filled
+- **Manual Override**: You can still manually edit categories after auto-suggestion
 
 ### Date Range Filtering
 1. Use the global date range picker in the header (synchronized across all pages)
@@ -91,6 +111,14 @@ npm run build
 3. Select a specific month from the month picker
 4. Set a custom date range with start and end dates
 5. Your selection is automatically saved and restored on app restart
+
+### Advanced Filtering & Search
+1. **Full-Text Search**: Search transaction descriptions, categories, and labels
+2. **Date Presets**: Quick filters for "This Month", "Last Month", "This Year", etc.
+3. **Amount Range**: Filter by minimum and maximum amounts
+4. **Save/Load Filters**: Save frequently used filter combinations and load them later
+5. **Combined Filters**: All filters work together for precise data views
+6. **Search Bar**: Located below the transactions heading for easy access
 
 ### Category Management
 1. Click the settings icon (gear) in the header
@@ -100,6 +128,15 @@ npm run build
 5. Edit existing categories by clicking the edit icon
 6. Delete categories (with confirmation for categories that have transactions)
 7. Categories are automatically synced across the app
+
+### User Management
+1. Click the settings icon (gear) in the header
+2. Navigate to the "Users" tab
+3. View all users with creation dates
+4. Add new users with the "Add User" button
+5. Edit user names by clicking the edit icon
+6. Delete users (with confirmation for users that have transactions)
+7. Users are automatically synced across the app
 
 ### Source Management
 1. Click the settings icon (gear) in the header
@@ -116,24 +153,26 @@ npm run build
 
 ### Quick Category Editing
 1. Click on any category badge in the transaction list
-2. Select a new category from the dropdown
+2. Select a new category from the dropdown (sorted by most recently used)
 3. Changes are saved immediately
 4. Use Escape key or click outside to cancel
 
 ### Importing Data
 1. Click "Import CSV" in the header
 2. Select any CSV file with your transaction data
-3. Map your CSV columns to the required fields:
+3. Choose a user to associate with the imported transactions
+4. Map your CSV columns to the required fields:
    - Date (required)
    - Description (required)
    - Amount (required)
-   - Category (optional)
+   - Category (optional - will be auto-suggested if missing)
    - Type (optional)
    - Memo (optional)
-4. Preview and edit the data before import
-5. Delete unwanted rows or override categories
-6. Save the mapping as a source for future imports
-7. Click "Import" to add the transactions
+5. Preview and edit the data before import
+6. Delete unwanted rows or override categories
+7. Save the mapping as a source for future imports
+8. Click "Import" to add the transactions
+9. Receive toast notifications for auto-filled categories
 
 ### Exporting Data
 1. Go to Settings → General tab
@@ -144,15 +183,17 @@ npm run build
 - **Category Filter**: Filter by specific categories
 - **Label Filter**: Filter by custom labels
 - **Source Filter**: Filter by CSV import sources
+- **User Filter**: Filter by specific users
 - **Amount Range**: Filter by minimum and maximum amounts
 - **Date Range**: Use the global date range picker
+- **Full-Text Search**: Search across descriptions, categories, and labels
 - **Combined Filters**: All filters work together for precise data views
 
 ### Report Builder
 1. Navigate to the "Reports" tab
 2. Click "Create New Report"
 3. Set a name and description
-4. Configure filters (date range, categories, labels, sources, etc.)
+4. Configure filters (date range, categories, labels, sources, users, etc.)
 5. Preview the filtered data
 6. Save the report for future use
 7. View saved reports and their results
@@ -188,6 +229,13 @@ npm run build
 4. **Selective Deletion**: Choose specific data to delete
 5. **Test Mode**: Safe testing environment with separate storage
 
+### Toast Notifications
+- **Auto-Filled Categories**: Receive notifications when categories are automatically suggested during CSV import
+- **Import Status**: Get feedback on successful imports and any errors
+- **User-Friendly**: Non-intrusive notifications that appear in the bottom-right corner
+- **Auto-Dismiss**: Notifications automatically disappear after 5 seconds
+- **Manual Dismiss**: Click to dismiss notifications early
+
 ## Technology Stack
 
 - **Frontend**: React 18 with TypeScript
@@ -198,6 +246,48 @@ npm run build
 - **Build Tool**: Create React App
 - **Data Persistence**: Local file system with JSON storage
 - **State Management**: React Context for theme and test mode
+- **Notifications**: React Toastify for toast notifications
+- **Date Handling**: date-fns for date manipulation
+- **Utilities**: clsx and tailwind-merge for conditional styling
+
+## Recent Updates
+
+### Multi-User Support
+- Added user management system with add, edit, and delete functionality
+- User filter dropdown in the header to filter transactions by user
+- All transactions now associated with specific users
+- CSV import requires user selection
+- Default user handling for backward compatibility
+
+### Intelligent Category Matching
+- Automatic category suggestions based on similar transaction descriptions
+- Multi-method similarity algorithm (word matching, substring matching, merchant detection)
+- Analyzes recent 100 transactions for suggestions
+- Toast notifications for auto-filled categories
+- Fallback to "Uncategorized" if no good match found
+
+### Advanced Filtering & Search
+- Full-text search across transaction descriptions, categories, and labels
+- Advanced date presets (This Month, Last Month, This Year, etc.)
+- Amount range filtering with min/max values
+- Save and load filter configurations with localStorage persistence
+- Search bar moved to transactions page for better accessibility
+- Removed redundant date range filter from sidebar
+
+### UI/UX Improvements
+- Custom dropdown components with smooth animations
+- Category dropdown sorted by most recently used
+- User dropdown with custom styling matching the app design
+- Toast notification system for user feedback
+- Improved transaction list layout with better information display
+- Enhanced search and filtering interface
+
+### Backend Enhancements
+- Intelligent category matching algorithm
+- Multi-user support in all API endpoints
+- Enhanced CSV import with user association
+- Auto-filled category tracking and reporting
+- Improved error handling and validation
 
 ## Project Structure
 

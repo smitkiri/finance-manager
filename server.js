@@ -240,9 +240,6 @@ app.post('/api/import-with-mapping', (req, res) => {
       isTestMode = requestTestMode;
     }
     
-    // Parse CSV with mapping and userId
-    const expenses = parseCSVWithMapping(csvText, mapping, userId);
-    
     // Load existing expenses
     let existingExpenses = [];
     const transactionsFile = getFilePath('transactions.json');
@@ -250,6 +247,8 @@ app.post('/api/import-with-mapping', (req, res) => {
       const data = fs.readFileSync(transactionsFile, 'utf8');
       existingExpenses = JSON.parse(data);
     }
+    // Parse CSV with mapping and userId, pass existing expenses for category suggestion
+    const { expenses, autoFilledCategories } = parseCSVWithMapping(csvText, mapping, userId, existingExpenses);
     
     // Merge expenses
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
@@ -267,7 +266,8 @@ app.post('/api/import-with-mapping', (req, res) => {
       success: true, 
       imported: expenses.length,
       total: updatedTransactions.length,
-      transfersDetected: transfers.length
+      transfersDetected: transfers.length,
+      autoFilledCategories
     });
   } catch (error) {
     console.error('Error importing CSV with mapping:', error);
@@ -863,7 +863,123 @@ function mergeExpenses(existing, newExpenses) {
   return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-function parseCSVWithMapping(csvText, mapping, userId) {
+// Intelligent category matching function
+function findSimilarTransactionCategory(description, existingTransactions, maxResults = 100) {
+  if (!description || !existingTransactions || existingTransactions.length === 0) {
+    return null;
+  }
+
+  const descLower = description.toLowerCase().trim();
+  
+  // Get the most recent transactions (up to maxResults)
+  const recentTransactions = existingTransactions
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, maxResults)
+    .filter(t => t.category && t.category !== 'Uncategorized');
+
+  if (recentTransactions.length === 0) {
+    return null;
+  }
+
+  // Calculate similarity scores for each transaction
+  const similarities = recentTransactions.map(transaction => {
+    const transactionDesc = transaction.description.toLowerCase().trim();
+    const similarity = calculateDescriptionSimilarity(descLower, transactionDesc);
+    return {
+      transaction,
+      similarity,
+      category: transaction.category
+    };
+  });
+
+  // Filter out very low similarity matches and sort by similarity
+  const goodMatches = similarities
+    .filter(match => match.similarity > 0.3) // Minimum 30% similarity
+    .sort((a, b) => b.similarity - a.similarity);
+
+  if (goodMatches.length === 0) {
+    return null;
+  }
+
+  // Group by category and calculate average similarity
+  const categoryScores = new Map();
+  goodMatches.forEach(match => {
+    const category = match.category;
+    if (!categoryScores.has(category)) {
+      categoryScores.set(category, { total: 0, count: 0, maxSimilarity: 0 });
+    }
+    const score = categoryScores.get(category);
+    score.total += match.similarity;
+    score.count += 1;
+    score.maxSimilarity = Math.max(score.maxSimilarity, match.similarity);
+  });
+
+  // Find the category with the highest average similarity
+  let bestCategory = null;
+  let bestScore = 0;
+
+  categoryScores.forEach((score, category) => {
+    const avgSimilarity = score.total / score.count;
+    // Weight by both average similarity and max similarity
+    const weightedScore = (avgSimilarity * 0.7) + (score.maxSimilarity * 0.3);
+    
+    if (weightedScore > bestScore) {
+      bestScore = weightedScore;
+      bestCategory = category;
+    }
+  });
+
+  // Only return if we have a reasonably good match
+  return bestScore > 0.4 ? bestCategory : null;
+}
+
+// Calculate similarity between two descriptions using multiple methods
+function calculateDescriptionSimilarity(desc1, desc2) {
+  if (desc1 === desc2) return 1.0;
+  
+  // Method 1: Exact word matching
+  const words1 = new Set(desc1.split(/\s+/).filter(w => w.length > 2));
+  const words2 = new Set(desc2.split(/\s+/).filter(w => w.length > 2));
+  
+  if (words1.size === 0 || words2.size === 0) return 0;
+  
+  const intersection = new Set([...words1].filter(x => words2.has(x)));
+  const union = new Set([...words1, ...words2]);
+  const jaccardSimilarity = intersection.size / union.size;
+  
+  // Method 2: Substring matching
+  let substringScore = 0;
+  const words1Array = Array.from(words1);
+  const words2Array = Array.from(words2);
+  
+  for (const word1 of words1Array) {
+    for (const word2 of words2Array) {
+      if (word1.includes(word2) || word2.includes(word1)) {
+        substringScore += 0.5;
+      }
+    }
+  }
+  const normalizedSubstringScore = Math.min(substringScore / Math.max(words1.size, words2.size), 1);
+  
+  // Method 3: Common merchant/company name detection
+  let merchantScore = 0;
+  const commonMerchants = ['amazon', 'walmart', 'target', 'starbucks', 'mcdonalds', 'uber', 'lyft', 'netflix', 'spotify'];
+  const desc1Lower = desc1.toLowerCase();
+  const desc2Lower = desc2.toLowerCase();
+  
+  for (const merchant of commonMerchants) {
+    if (desc1Lower.includes(merchant) && desc2Lower.includes(merchant)) {
+      merchantScore += 0.3;
+    }
+  }
+  
+  // Combine all methods with weights
+  const finalScore = (jaccardSimilarity * 0.5) + (normalizedSubstringScore * 0.3) + (merchantScore * 0.2);
+  
+  return Math.min(finalScore, 1.0);
+}
+
+function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []) {
   const lines = csvText.trim().split('\n');
   const headers = parseCSVLine(lines[0]);
   
@@ -878,7 +994,10 @@ function parseCSVWithMapping(csvText, mapping, userId) {
     }
   });
 
-  return lines.slice(1)
+  // Track auto-filled categories
+  const autoFilledCategories = [];
+
+  const expenses = lines.slice(1)
     .map((line, index) => {
       const values = parseCSVLine(line);
       
@@ -901,10 +1020,23 @@ function parseCSVWithMapping(csvText, mapping, userId) {
             category = value || 'Uncategorized';
             break;
           case 'Amount':
-            amount = parseFloat(value.replace(/[,$"]/g, '')) || 0;
+            amount = parseFloat(value.replace(/[,$\"]/g, '')) || 0;
             break;
         }
       });
+
+      // Intelligent category suggestion if missing or Uncategorized
+      if ((!category || category === 'Uncategorized') && description && existingTransactions.length > 0) {
+        const suggested = findSimilarTransactionCategory(description, existingTransactions, 100);
+        if (suggested) {
+          autoFilledCategories.push({
+            row: index + 1, // +1 to match CSV line (excluding header)
+            description,
+            suggestedCategory: suggested
+          });
+          category = suggested;
+        }
+      }
 
       return {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2),
@@ -922,6 +1054,8 @@ function parseCSVWithMapping(csvText, mapping, userId) {
       };
     })
     .filter(expense => expense.date && expense.description && expense.amount > 0);
+
+  return { expenses, autoFilledCategories };
 }
 
 // Transfer detection functions
