@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download } from 'lucide-react';
 import { useTestMode } from '../../contexts/TestModeContext';
+import { User } from '../../types';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -11,6 +12,10 @@ interface SettingsProps {
   onUpdateCategory: (oldCategory: string, newCategory: string) => void;
   expenses: any[];
   sources: any[];
+  users: User[];
+  onAddUser: (user: User) => void;
+  onDeleteUser: (userId: string) => void;
+  onUpdateUser: (user: User) => void;
   onRefreshData: () => void;
   onExportCSV: () => void;
   onUpdateSource: (source: any) => void;
@@ -25,6 +30,10 @@ export const Settings: React.FC<SettingsProps> = ({
   onUpdateCategory,
   expenses,
   sources,
+  users,
+  onAddUser,
+  onDeleteUser,
+  onUpdateUser,
   onRefreshData,
   onExportCSV,
   onUpdateSource
@@ -33,7 +42,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources'>('general');
+  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources' | 'users'>('general');
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [showSelectDelete, setShowSelectDelete] = useState(false);
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
@@ -45,11 +54,26 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingSource, setEditingSource] = useState<string | null>(null);
   const [editSourceName, setEditSourceName] = useState('');
+  const [newUser, setNewUser] = useState('');
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editUserName, setEditUserName] = useState('');
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
       onAddCategory(newCategory.trim());
       setNewCategory('');
+    }
+  };
+
+  const handleAddUser = () => {
+    if (newUser.trim() && !users.some(u => u.name === newUser.trim())) {
+      const newUserObj: User = {
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+        name: newUser.trim(),
+        createdAt: new Date().toISOString()
+      };
+      onAddUser(newUserObj);
+      setNewUser('');
     }
   };
 
@@ -91,6 +115,28 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleCancelEditSource = () => {
     setEditingSource(null);
     setEditSourceName('');
+  };
+
+  const handleStartEditUser = (user: User) => {
+    setEditingUser(user.id);
+    setEditUserName(user.name);
+  };
+
+  const handleSaveEditUser = () => {
+    if (editingUser && editUserName.trim() && editUserName.trim() !== users.find(u => u.id === editingUser)?.name) {
+      const userToUpdate = users.find(u => u.id === editingUser);
+      if (userToUpdate) {
+        const updatedUser = { ...userToUpdate, name: editUserName.trim() };
+        onUpdateUser(updatedUser);
+      }
+    }
+    setEditingUser(null);
+    setEditUserName('');
+  };
+
+  const handleCancelEditUser = () => {
+    setEditingUser(null);
+    setEditUserName('');
   };
 
   const handleDeleteCategory = (category: string) => {
@@ -143,6 +189,12 @@ export const Settings: React.FC<SettingsProps> = ({
     setShowDeleteSuccess(true);
   };
 
+  const handleDeleteUser = (user: User) => {
+    if (window.confirm(`Are you sure you want to delete the user "${user.name}"? This action cannot be undone.`)) {
+      onDeleteUser(user.id);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -167,6 +219,12 @@ export const Settings: React.FC<SettingsProps> = ({
             onClick={() => setActiveSection('sources')}
           >
             Sources
+          </button>
+          <button
+            className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            onClick={() => setActiveSection('users')}
+          >
+            Users
           </button>
         </div>
         {/* Main Content */}
@@ -362,6 +420,122 @@ export const Settings: React.FC<SettingsProps> = ({
                   {sources.length === 0 && (
                     <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                       <p className="text-sm">No sources yet. Sources are created when you import CSV files.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            {activeSection === 'users' && (
+              <>
+                {/* Users Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Users</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Manage your users. You can add, edit, and delete users.
+                  </p>
+                  {/* Add New User */}
+                  <div className="mb-4">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={newUser}
+                        onChange={(e) => setNewUser(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddUser();
+                          }
+                        }}
+                        placeholder="Enter new user name"
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                      <button
+                        onClick={handleAddUser}
+                        disabled={!newUser.trim() || users.some(u => u.name === newUser.trim())}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 text-sm"
+                      >
+                        <Plus size={14} />
+                        <span>Add</span>
+                      </button>
+                    </div>
+                    {newUser.trim() && users.some(u => u.name === newUser.trim()) && (
+                      <p className="text-red-500 text-xs mt-1">User already exists</p>
+                    )}
+                  </div>
+                  {/* Users List */}
+                  <div className="space-y-1">
+                    {users.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
+                        {editingUser === user.id ? (
+                          <div className="flex items-center space-x-1 flex-1">
+                            <input
+                              type="text"
+                              value={editUserName}
+                              onChange={(e) => setEditUserName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveEditUser();
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEditUser();
+                                }
+                              }}
+                              onBlur={handleSaveEditUser}
+                              autoFocus
+                              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                            <button
+                              onClick={handleSaveEditUser}
+                              className="p-1 text-green-600 hover:text-green-700 transition-colors"
+                              title="Save"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={handleCancelEditUser}
+                              className="p-1 text-gray-600 hover:text-gray-700 transition-colors"
+                              title="Cancel"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-900 dark:text-white text-sm">{user.name}</span>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Created: {new Date(user.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => handleStartEditUser(user)}
+                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                title="Edit user name"
+                              >
+                                <Edit size={12} />
+                              </button>
+                              {user.name !== 'Default' && (
+                                <button
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                  title="Delete user"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {users.length === 0 && (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      <p className="text-sm">No users yet. Add your first user above.</p>
                     </div>
                   )}
                 </div>

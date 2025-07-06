@@ -5,6 +5,7 @@ export interface Expense {
   category: string;
   amount: number;
   type: 'expense' | 'income';
+  user: string;
   labels?: string[];
   metadata?: {
     sourceId?: string;
@@ -20,6 +21,12 @@ export interface Expense {
   excludedFromCalculations?: boolean;
 }
 
+export interface User {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Category {
   name: string;
   color: string;
@@ -32,6 +39,7 @@ export interface TransactionFormData {
   category: string;
   amount: string;
   type: 'expense' | 'income';
+  user: string;
 }
 
 export interface DateRange {

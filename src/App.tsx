@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { TestModeProvider, useTestMode } from './contexts/TestModeContext';
-import { Expense, TransactionFormData, DateRange, CSVPreview, Source } from './types';
+import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
@@ -15,6 +15,7 @@ import { LocalStorage } from './utils/storage';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
+import { UserFilter } from './components/UserFilter';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -37,6 +38,8 @@ function AppContent() {
   const [sources, setSources] = useState<Source[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<Expense | null>(null);
   const [isTransactionDetailsOpen, setIsTransactionDetailsOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -57,15 +60,17 @@ function AppContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedExpenses, loadedSources, loadedDateRange, loadedCategories] = await Promise.all([
+        const [loadedExpenses, loadedSources, loadedDateRange, loadedCategories, loadedUsers] = await Promise.all([
           LocalStorage.loadExpenses(isTestMode),
           LocalStorage.loadSources(isTestMode),
           LocalStorage.loadDateRange(isTestMode),
-          LocalStorage.loadCategories(isTestMode)
+          LocalStorage.loadCategories(isTestMode),
+          LocalStorage.loadUsers(isTestMode)
         ]);
         setExpenses(loadedExpenses);
         setSources(loadedSources);
         setCategories(loadedCategories);
+        setUsers(loadedUsers);
         
         // Set date range if loaded, otherwise use default
         if (loadedDateRange) {
@@ -91,6 +96,7 @@ function AppContent() {
       category: formData.category,
       amount: parseFloat(formData.amount),
       type: formData.type,
+      user: formData.user,
       metadata: {
         sourceName: 'Manual Entry',
         importedAt: new Date().toISOString()
@@ -121,6 +127,7 @@ function AppContent() {
       category: formData.category,
       amount: parseFloat(formData.amount),
       type: formData.type,
+      user: formData.user
     };
 
     try {
@@ -253,7 +260,7 @@ function AppContent() {
     reader.readAsText(file);
   };
 
-  const handleSaveSource = async (source: Source) => {
+  const handleSaveSource = async (source: Source, userId: string) => {
     try {
       await LocalStorage.saveSource(source, isTestMode);
       setSources(prev => [...prev, source]);
@@ -269,6 +276,7 @@ function AppContent() {
           body: JSON.stringify({
             csvText,
             mapping: source,
+            userId,
             isTestMode
           }),
         });
@@ -290,10 +298,9 @@ function AppContent() {
     }
   };
 
-  const handleImportWithSource = async (source: Source) => {
+  const handleImportWithSource = async (source: Source, userId: string) => {
     try {
       const csvText = await getCSVTextFromFile();
-      
       // Call backend API to import with source (which adds metadata)
       const response = await fetch('http://localhost:3001/api/import-with-mapping', {
         method: 'POST',
@@ -303,16 +310,14 @@ function AppContent() {
         body: JSON.stringify({
           csvText,
           mapping: source,
+          userId,
           isTestMode
         }),
       });
-
       if (!response.ok) {
         throw new Error('Failed to import CSV with source');
       }
-
       await response.json();
-      
       // Reload expenses from backend
       const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
       setExpenses(updatedExpenses);
@@ -403,6 +408,11 @@ function AppContent() {
       return false;
     }
 
+    // User filter
+    if (selectedUserId !== null && exp.user !== selectedUserId) {
+      return false;
+    }
+
     // Do NOT filter out transfers here; always show them in the list
 
     return true;
@@ -415,6 +425,12 @@ function AppContent() {
     if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
       return false;
     }
+    
+    // User filter for dashboard
+    if (selectedUserId !== null && exp.user !== selectedUserId) {
+      return false;
+    }
+    
     return true;
   });
 
@@ -486,6 +502,33 @@ function AppContent() {
     }
   };
 
+  const handleAddUser = async (user: User) => {
+    try {
+      const updatedUsers = await LocalStorage.addUser(user, isTestMode);
+      setUsers(updatedUsers);
+    } catch (error) {
+      console.error('Error adding user:', error);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const updatedUsers = await LocalStorage.deleteUser(userId, isTestMode);
+      setUsers(updatedUsers);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
+  };
+
+  const handleUpdateUser = async (updatedUser: User) => {
+    try {
+      const updatedUsers = await LocalStorage.updateUser(updatedUser, isTestMode);
+      setUsers(updatedUsers);
+    } catch (error) {
+      console.error('Error updating user:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       {/* Sidebar */}
@@ -514,6 +557,11 @@ function AppContent() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
+              <UserFilter
+                users={users}
+                selectedUserId={selectedUserId}
+                onUserChange={setSelectedUserId}
+              />
               <DateRangePicker
                 currentRange={dateRange}
                 onDateRangeChange={setDateRange}
@@ -561,10 +609,12 @@ function AppContent() {
           <Dashboard
             expenses={dashboardExpenses}
             categories={categories}
+            selectedUserId={selectedUserId}
+            users={users}
           />
         ) : activeTab === 'reports' ? (
           <Reports
-            expenses={expenses}
+            expenses={filteredExpenses}
             categories={categories}
             sources={sources}
             globalDateRange={dateRange}
@@ -613,6 +663,7 @@ function AppContent() {
         }}
         editingExpense={editingExpense}
         categories={categories}
+        users={users}
       />
 
       {/* Source Modal */}
@@ -628,6 +679,7 @@ function AppContent() {
           onSaveSource={handleSaveSource}
           onImportWithSource={handleImportWithSource}
           onDeleteSource={handleDeleteSource}
+          users={users}
         />
       )}
 
@@ -641,15 +693,21 @@ function AppContent() {
         onUpdateCategory={handleUpdateCategoryName}
         expenses={expenses}
         sources={sources}
+        users={users}
+        onAddUser={handleAddUser}
+        onDeleteUser={handleDeleteUser}
+        onUpdateUser={handleUpdateUser}
         onRefreshData={async () => {
-          const [loadedExpenses, loadedSources, loadedCategories] = await Promise.all([
+          const [loadedExpenses, loadedSources, loadedCategories, loadedUsers] = await Promise.all([
             LocalStorage.loadExpenses(isTestMode),
             LocalStorage.loadSources(isTestMode),
-            LocalStorage.loadCategories(isTestMode)
+            LocalStorage.loadCategories(isTestMode),
+            LocalStorage.loadUsers(isTestMode)
           ]);
           setExpenses(loadedExpenses);
           setSources(loadedSources);
           setCategories(loadedCategories);
+          setUsers(loadedUsers);
         }}
         onExportCSV={handleExportCSV}
         onUpdateSource={handleUpdateSource}

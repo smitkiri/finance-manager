@@ -232,7 +232,7 @@ app.post('/api/column-mappings', (req, res) => {
 
 app.post('/api/import-with-mapping', (req, res) => {
   try {
-    const { csvText, mapping, isTestMode: requestTestMode } = req.body;
+    const { csvText, mapping, userId, isTestMode: requestTestMode } = req.body;
     
     // Temporarily set test mode for this request
     const originalTestMode = isTestMode;
@@ -240,8 +240,8 @@ app.post('/api/import-with-mapping', (req, res) => {
       isTestMode = requestTestMode;
     }
     
-    // Parse CSV with mapping
-    const expenses = parseCSVWithMapping(csvText, mapping);
+    // Parse CSV with mapping and userId
+    const expenses = parseCSVWithMapping(csvText, mapping, userId);
     
     // Load existing expenses
     let existingExpenses = [];
@@ -394,6 +394,68 @@ app.post('/api/categories', (req, res) => {
   } catch (error) {
     console.error('Error saving categories:', error);
     res.status(500).json({ error: 'Failed to save categories' });
+  }
+});
+
+// User Routes
+app.get('/api/users', (req, res) => {
+  try {
+    // Check if test mode is requested via query parameter
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    
+    // Temporarily set test mode for this request
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const usersFile = getFilePath('users.json');
+    if (!fs.existsSync(usersFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      // Return default user for backwards compatibility
+      const defaultUsers = [
+        {
+          id: 'default-user',
+          name: 'Default',
+          createdAt: new Date().toISOString()
+        }
+      ];
+      return res.json({ users: defaultUsers });
+    }
+    
+    const data = fs.readFileSync(usersFile, 'utf8');
+    const users = JSON.parse(data);
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    res.json({ users });
+  } catch (error) {
+    console.error('Error reading users:', error);
+    res.status(500).json({ error: 'Failed to read users' });
+  }
+});
+
+app.post('/api/users', (req, res) => {
+  try {
+    const { users, isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    ensureArtifactsDir();
+    const usersFile = getFilePath('users.json');
+    fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    res.json({ success: true, count: users.length });
+  } catch (error) {
+    console.error('Error saving users:', error);
+    res.status(500).json({ error: 'Failed to save users' });
   }
 });
 
@@ -801,7 +863,7 @@ function mergeExpenses(existing, newExpenses) {
   return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-function parseCSVWithMapping(csvText, mapping) {
+function parseCSVWithMapping(csvText, mapping, userId) {
   const lines = csvText.trim().split('\n');
   const headers = parseCSVLine(lines[0]);
   
@@ -855,7 +917,8 @@ function parseCSVWithMapping(csvText, mapping) {
           sourceId: mapping.id,
           sourceName: mapping.name,
           importedAt: new Date().toISOString()
-        }
+        },
+        user: userId || 'Default'
       };
     })
     .filter(expense => expense.date && expense.description && expense.amount > 0);

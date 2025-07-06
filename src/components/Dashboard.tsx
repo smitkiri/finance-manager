@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
-import { Expense } from '../types';
+import { Expense, User } from '../types';
 import { calculateStats } from '../utils';
 import { filterTransfersForCalculations } from '../utils/transferDetection';
 import { Check } from 'lucide-react';
@@ -9,9 +9,11 @@ import { Check } from 'lucide-react';
 interface DashboardProps {
   expenses: Expense[];
   categories: string[];
+  selectedUserId: string | null;
+  users: User[];
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories, selectedUserId, users }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
 
   // Filter out excluded transactions for all calculations
@@ -127,8 +129,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories }) =>
     setSelectedCategories([]);
   };
 
+  // User indicator
+  let userLabel = 'All Users';
+  if (selectedUserId) {
+    const user = users.find(u => u.id === selectedUserId);
+    userLabel = user ? user.name : 'Unknown User';
+  }
+
   return (
     <div className="space-y-6">
+      {/* User Filter Indicator */}
+      <div className="flex items-center mb-2">
+        <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+          Stats for: <span className="font-semibold text-gray-700 dark:text-white">{userLabel}</span>
+        </span>
+      </div>
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatsCard

@@ -8,15 +8,17 @@ interface TransactionFormProps {
   isOpen: boolean;
   editingExpense?: Expense | null;
   categories: string[];
+  users: { id: string; name: string }[];
 }
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCancel, isOpen, editingExpense, categories }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCancel, isOpen, editingExpense, categories, users }) => {
   const [formData, setFormData] = useState<TransactionFormData>({
     date: new Date().toISOString().split('T')[0],
     description: '',
     category: '',
     amount: '',
-    type: 'expense'
+    type: 'expense',
+    user: users.length > 0 ? users[0].id : ''
   });
 
   // Update form data when editingExpense changes
@@ -27,7 +29,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         description: editingExpense.description,
         category: editingExpense.category,
         amount: editingExpense.amount.toString(),
-        type: editingExpense.type
+        type: editingExpense.type,
+        user: editingExpense.user || (users.length > 0 ? users[0].id : '')
       });
     } else {
       setFormData({
@@ -35,25 +38,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         description: '',
         category: '',
         amount: '',
-        type: 'expense'
+        type: 'expense',
+        user: users.length > 0 ? users[0].id : ''
       });
     }
-  }, [editingExpense, isOpen]);
+  }, [editingExpense, isOpen, users]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.description.trim() || !formData.amount.trim() || !formData.category.trim()) {
+    if (!formData.description.trim() || !formData.amount.trim() || !formData.category.trim() || !formData.user) {
       return;
     }
-
     onSubmit(formData);
     setFormData({
       date: new Date().toISOString().split('T')[0],
       description: '',
       category: '',
       amount: '',
-      type: 'expense'
+      type: 'expense',
+      user: users.length > 0 ? users[0].id : ''
     });
   };
 
@@ -163,6 +166,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
               min="0"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              User
+            </label>
+            <select
+              value={formData.user}
+              onChange={(e) => setFormData({ ...formData, user: e.target.value })}
+              className="input"
+              required
+            >
+              <option value="" disabled>Select user</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex space-x-4 pt-4 flex-shrink-0">

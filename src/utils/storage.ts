@@ -1,4 +1,4 @@
-import { Expense, CSVPreview, StandardizedColumn, Report, ReportData } from '../types';
+import { Expense, CSVPreview, Report, ReportData } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -282,31 +282,23 @@ export class LocalStorage {
     return stored ? JSON.parse(stored) : [];
   }
 
-  static parseCSVWithMapping(csvText: string, mapping: import('../types').Source): Expense[] {
-    const lines = csvText.trim().split('\n');
-    const headers = this.parseCSVLine(lines[0]);
-    
-    // Create a mapping from CSV column index to standardized column
-    const columnIndexMap = new Map<number, StandardizedColumn>();
-    mapping.mappings.forEach(m => {
-      if (m.standardColumn !== 'Ignore') {
-        const csvIndex = headers.findIndex(h => h === m.csvColumn);
-        if (csvIndex !== -1) {
-          columnIndexMap.set(csvIndex, m.standardColumn);
-        }
+  static parseCSVWithMapping(csvText: string, mapping: any, user: string): Expense[] {
+    const lines = csvText.split('\n').filter(Boolean);
+    const headers = lines[0].split(',');
+    const columnIndexMap = new Map<number, string>();
+    mapping.mappings.forEach((m: any) => {
+      const csvIndex = headers.indexOf(m.csvColumn);
+      if (csvIndex !== -1) {
+        columnIndexMap.set(csvIndex, m.standardColumn);
       }
     });
-
     return lines.slice(1)
       .map((line, index) => {
         const values = this.parseCSVLine(line);
-        
-        // Extract values based on mapping
         let date = '';
         let description = '';
         let category = '';
         let amount = 0;
-
         columnIndexMap.forEach((standardCol, csvIndex) => {
           const value = values[csvIndex] || '';
           switch (standardCol) {
@@ -324,7 +316,6 @@ export class LocalStorage {
               break;
           }
         });
-
         return {
           id: Date.now().toString(36) + Math.random().toString(36).substr(2),
           date,
@@ -332,6 +323,7 @@ export class LocalStorage {
           category,
           amount: Math.abs(amount),
           type: (amount < 0 ? 'expense' : 'income') as 'expense' | 'income',
+          user: user || 'Default',
           metadata: {
             sourceId: mapping.id,
             sourceName: mapping.name,
@@ -678,8 +670,120 @@ export class LocalStorage {
   }
 
   // Alias for Source terminology
-  static parseCSVWithSource(csvText: string, source: import('../types').Source): Expense[] {
+  static parseCSVWithSource(csvText: string, source: import('../types').Source, user: string): Expense[] {
     // Reuse the mapping logic
-    return this.parseCSVWithMapping(csvText, source);
+    return this.parseCSVWithMapping(csvText, source, user);
+  }
+
+  // User Management Methods
+  static async saveUsers(users: import('../types').User[], isTestMode: boolean = false): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_BASE}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ users, isTestMode }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save users');
+      }
+
+      console.log(`Saved ${users.length} users (test mode: ${isTestMode})`);
+    } catch (error) {
+      console.error('Error saving users:', error);
+      // Fallback to localStorage
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+  }
+
+  static async loadUsers(isTestMode: boolean = false): Promise<import('../types').User[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/users?testMode=${isTestMode}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load users from server');
+      }
+
+      const result = await response.json();
+      console.log(`Loaded ${result.users.length} users from server (test mode: ${isTestMode})`);
+      return result.users;
+    } catch (error) {
+      console.error('Error loading users from server:', error);
+      // Fallback to localStorage
+      return this.getUsersFromStorage();
+    }
+  }
+
+  static async addUser(user: import('../types').User, isTestMode: boolean = false): Promise<import('../types').User[]> {
+    try {
+      const existingUsers = await this.loadUsers(isTestMode);
+      
+      if (!existingUsers.some(u => u.name === user.name)) {
+        const updatedUsers = [...existingUsers, user];
+        await this.saveUsers(updatedUsers, isTestMode);
+        return updatedUsers;
+      }
+      
+      return existingUsers;
+    } catch (error) {
+      console.error('Error adding user:', error);
+      throw error;
+    }
+  }
+
+  static async deleteUser(userId: string, isTestMode: boolean = false): Promise<import('../types').User[]> {
+    try {
+      const existingUsers = await this.loadUsers(isTestMode);
+      const updatedUsers = existingUsers.filter(user => user.id !== userId);
+      
+      await this.saveUsers(updatedUsers, isTestMode);
+      return updatedUsers;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
+  }
+
+  static async updateUser(updatedUser: import('../types').User, isTestMode: boolean = false): Promise<import('../types').User[]> {
+    try {
+      const existingUsers = await this.loadUsers(isTestMode);
+      const updatedUsers = existingUsers.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      );
+      
+      await this.saveUsers(updatedUsers, isTestMode);
+      return updatedUsers;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  }
+
+  private static getUsersFromStorage(): import('../types').User[] {
+    try {
+      const stored = localStorage.getItem('users');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      // Return default user for backwards compatibility
+      return [
+        {
+          id: 'default-user',
+          name: 'Default',
+          createdAt: new Date().toISOString()
+        }
+      ];
+    } catch (error) {
+      console.error('Error loading users from localStorage:', error);
+      return [
+        {
+          id: 'default-user',
+          name: 'Default',
+          createdAt: new Date().toISOString()
+        }
+      ];
+    }
   }
 } 

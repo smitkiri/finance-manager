@@ -2,10 +2,10 @@ import { Source, CSVPreview } from '../types';
 import { LocalStorage } from '../utils/storage';
 
 export const csvService = {
-  async importWithSource(source: Source): Promise<boolean> {
+  async importWithSource(source: Source, user: string): Promise<boolean> {
     try {
       const csvText = await this.getCSVTextFromFile();
-      const newExpenses = LocalStorage.parseCSVWithSource(csvText, source);
+      const newExpenses = LocalStorage.parseCSVWithSource(csvText, source, user);
       const existingExpenses = await LocalStorage.loadExpenses();
       const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
       await LocalStorage.saveExpenses(mergedExpenses);
