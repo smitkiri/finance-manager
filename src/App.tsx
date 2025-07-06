@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Upload, Sun, Moon, Settings as SettingsIcon, Search } from 'lucide-react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { TestModeProvider, useTestMode } from './contexts/TestModeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User } from './types';
@@ -369,6 +369,15 @@ function AppContent() {
       return false;
     }
 
+    // Search text filter
+    if (transactionFilters.searchText) {
+      const searchLower = transactionFilters.searchText.toLowerCase();
+      const descriptionLower = exp.description.toLowerCase();
+      if (!descriptionLower.includes(searchLower)) {
+        return false;
+      }
+    }
+
     // Category filter
     if (transactionFilters.categories && transactionFilters.categories.length > 0) {
       const expenseCategory = exp.category || 'Uncategorized';
@@ -632,6 +641,8 @@ function AppContent() {
                 onRemoveLabel={handleRemoveLabel}
                 onViewDetails={handleViewTransactionDetails}
                 categories={categories}
+                searchText={transactionFilters.searchText || ''}
+                onSearchChange={(searchText) => setTransactionFilters(prev => ({ ...prev, searchText: searchText || undefined }))}
               />
             </div>
 

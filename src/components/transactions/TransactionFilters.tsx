@@ -9,6 +9,7 @@ export interface TransactionFilters {
   sources?: string[];
   minAmount?: number;
   maxAmount?: number;
+  searchText?: string;
 }
 
 interface TransactionFiltersProps {
