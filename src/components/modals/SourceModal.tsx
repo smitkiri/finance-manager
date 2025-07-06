@@ -36,8 +36,9 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   const [columnMappings, setColumnMappings] = useState<{ csvColumn: string; standardColumn: StandardizedColumn | 'Ignore' }[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState(users.length > 0 ? users[0].id : '');
+  const [selectedUser, setSelectedUser] = useState('');
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [flipIncomeExpense, setFlipIncomeExpense] = useState(false);
 
   useEffect(() => {
     if (isOpen && csvPreview.headers.length > 0) {
@@ -48,7 +49,8 @@ export const SourceModal: React.FC<SourceModalProps> = ({
           standardColumn: 'Ignore' as const
         }))
       );
-      setSelectedUser(users.length > 0 ? users[0].id : '');
+      setSelectedUser(''); // Don't select any user by default
+      setFlipIncomeExpense(false);
     }
   }, [isOpen, csvPreview.headers, users]);
 
@@ -135,6 +137,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
       id: Date.now().toString(),
       name: sourceName.trim(),
       mappings: columnMappings,
+      flipIncomeExpense,
       createdAt: new Date().toISOString(),
       lastUsed: new Date().toISOString()
     };
@@ -145,6 +148,10 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   };
 
   const handleUseExistingSource = () => {
+    if (!selectedUser) {
+      setErrors(['Please select a user']);
+      return;
+    }
     const selectedSource = existingSources.find(s => s.id === selectedSourceId);
     if (selectedSource) {
       onImportWithSource(selectedSource, selectedUser);
@@ -155,6 +162,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
     setIsCreatingNew(true);
     setSelectedSourceId('');
     setSourceName('');
+    setFlipIncomeExpense(false);
     setErrors([]);
   };
 
@@ -302,7 +310,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                 ))}
                 <button
                   onClick={handleUseExistingSource}
-                  disabled={!selectedSourceId}
+                  disabled={!selectedSourceId || !selectedUser}
                   className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors"
                 >
                   Use Selected Source
@@ -377,6 +385,30 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Import Options */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                  Import Options
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="flipIncomeExpense"
+                      checked={flipIncomeExpense}
+                      onChange={(e) => setFlipIncomeExpense(e.target.checked)}
+                      className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <label htmlFor="flipIncomeExpense" className="text-sm font-medium text-gray-900 dark:text-white">
+                      Flip Income/Expense Signs
+                    </label>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      If checked, positive values will be treated as expenses and negative values as income
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -460,6 +492,30 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Import Options */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                  Import Options
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="flipIncomeExpense"
+                      checked={flipIncomeExpense}
+                      onChange={(e) => setFlipIncomeExpense(e.target.checked)}
+                      className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <label htmlFor="flipIncomeExpense" className="text-sm font-medium text-gray-900 dark:text-white">
+                      Flip Income/Expense Signs
+                    </label>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      If checked, positive values will be treated as expenses and negative values as income
+                    </div>
+                  </div>
                 </div>
               </div>
 

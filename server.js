@@ -234,6 +234,11 @@ app.post('/api/import-with-mapping', (req, res) => {
   try {
     const { csvText, mapping, userId, isTestMode: requestTestMode } = req.body;
     
+    // Validate required fields
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
     // Temporarily set test mode for this request
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
@@ -782,6 +787,69 @@ app.post('/api/delete-selected', (req, res) => {
   }
 });
 
+// Undo Import Routes
+app.post('/api/undo-import', (req, res) => {
+  try {
+    const { importSessionId, importedAt, sourceName, isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    // Load existing expenses
+    let existingExpenses = [];
+    const transactionsFile = getFilePath('transactions.json');
+    if (fs.existsSync(transactionsFile)) {
+      const data = fs.readFileSync(transactionsFile, 'utf8');
+      existingExpenses = JSON.parse(data);
+    }
+    
+    // Find transactions to remove
+    const transactionsToRemove = existingExpenses.filter(transaction => {
+      const metadata = transaction.metadata;
+      return metadata && 
+             metadata.sourceName === sourceName && 
+             metadata.importedAt === importedAt;
+    });
+    
+    const transactionsToKeep = existingExpenses.filter(transaction => {
+      const metadata = transaction.metadata;
+      return !metadata || 
+             metadata.sourceName !== sourceName || 
+             metadata.importedAt !== importedAt;
+    });
+    
+    if (transactionsToRemove.length === 0) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(404).json({ error: 'No transactions found to undo' });
+    }
+    
+    // Create backup
+    const backupFile = path.join(getArtifactsDir(), `transactions_backup_${Date.now()}.json`);
+    fs.writeFileSync(backupFile, JSON.stringify(existingExpenses, null, 2));
+    
+    // Save the filtered transactions
+    ensureArtifactsDir();
+    fs.writeFileSync(transactionsFile, JSON.stringify(transactionsToKeep, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    
+    res.json({ 
+      success: true, 
+      removed: transactionsToRemove.length,
+      total: transactionsToKeep.length,
+      backupFile: path.basename(backupFile)
+    });
+  } catch (error) {
+    console.error('Error undoing import:', error);
+    res.status(500).json({ error: 'Failed to undo import' });
+  }
+});
+
 // Helper functions
 function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
@@ -1038,19 +1106,25 @@ function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []
         }
       }
 
+      // Handle flipIncomeExpense option
+      let transactionType = amount < 0 ? 'expense' : 'income';
+      if (mapping.flipIncomeExpense) {
+        transactionType = amount > 0 ? 'expense' : 'income';
+      }
+
       return {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2),
         date,
         description,
         category,
         amount: Math.abs(amount),
-        type: amount < 0 ? 'expense' : 'income',
+        type: transactionType,
         metadata: {
           sourceId: mapping.id,
           sourceName: mapping.name,
           importedAt: new Date().toISOString()
         },
-        user: userId || 'Default'
+        user: userId
       };
     })
     .filter(expense => expense.date && expense.description && expense.amount > 0);
@@ -1078,6 +1152,7 @@ function detectTransfers(transactions) {
   // Find potential transfer pairs
   const sourceIds = Array.from(transactionsBySource.keys());
   
+  // Look for transfers between different sources
   for (let i = 0; i < sourceIds.length; i++) {
     for (let j = i + 1; j < sourceIds.length; j++) {
       const source1 = sourceIds[i];
@@ -1107,6 +1182,59 @@ function detectTransfers(transactions) {
             processedIds.add(t1.id);
             processedIds.add(t2.id);
             break;
+          }
+        }
+      }
+    }
+  }
+
+  // Look for transfers within the same source but between different users
+  for (const sourceId of sourceIds) {
+    const sourceTransactions = transactionsBySource.get(sourceId);
+    
+    // Group by user within this source
+    const transactionsByUser = new Map();
+    sourceTransactions.forEach(transaction => {
+      const userId = transaction.user;
+      if (!transactionsByUser.has(userId)) {
+        transactionsByUser.set(userId, []);
+      }
+      transactionsByUser.get(userId).push(transaction);
+    });
+    
+    const userIds = Array.from(transactionsByUser.keys());
+    
+    // Look for transfers between different users within the same source
+    for (let i = 0; i < userIds.length; i++) {
+      for (let j = i + 1; j < userIds.length; j++) {
+        const user1 = userIds[i];
+        const user2 = userIds[j];
+        
+        const user1Transactions = transactionsByUser.get(user1);
+        const user2Transactions = transactionsByUser.get(user2);
+        
+        // Look for matching credit/debit pairs
+        for (const t1 of user1Transactions) {
+          if (processedIds.has(t1.id)) continue;
+          
+          for (const t2 of user2Transactions) {
+            if (processedIds.has(t2.id)) continue;
+            
+            if (isTransferPair(t1, t2)) {
+              const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const confidence = calculateTransferConfidence(t1, t2);
+              
+              transfers.push({
+                credit: t1.type === 'income' ? t1 : t2,
+                debit: t1.type === 'expense' ? t1 : t2,
+                transferId,
+                confidence
+              });
+              
+              processedIds.add(t1.id);
+              processedIds.add(t2.id);
+              break;
+            }
           }
         }
       }
@@ -1147,18 +1275,20 @@ function detectTransfers(transactions) {
 }
 
 function isTransferPair(t1, t2) {
-  // Must be from different sources
+  // Must be from different sources OR same source but different users
   const source1 = t1.metadata?.sourceId || 'manual';
   const source2 = t2.metadata?.sourceId || 'manual';
-  if (source1 === source2) return false;
+  const user1 = t1.user;
+  const user2 = t2.user;
+  
+  // If same source, must be different users
+  if (source1 === source2 && user1 === user2) return false;
   
   // Must be opposite types (income vs expense)
   if (t1.type === t2.type) return false;
   
-  // Must have matching amounts (within small tolerance for fees)
-  const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
-  const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01; // 1% tolerance
-  if (amountDiff > tolerance) return false;
+  // Must have EXACT matching amounts (no tolerance)
+  if (Math.abs(t1.amount) !== Math.abs(t2.amount)) return false;
   
   // Must be within ±4 days
   const date1 = new Date(t1.date);
@@ -1173,10 +1303,11 @@ function calculateTransferConfidence(t1, t2) {
   let confidence = 0.5; // Base confidence
   
   // Amount match (exact match = higher confidence)
-  const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
-  const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01;
-  if (amountDiff === 0) confidence += 0.3;
-  else if (amountDiff <= tolerance) confidence += 0.2;
+  if (Math.abs(t1.amount) === Math.abs(t2.amount)) {
+    confidence += 0.4; // Exact amount match gets high confidence
+  } else {
+    return 0; // No confidence if amounts don't match exactly
+  }
   
   // Date proximity (closer = higher confidence)
   const date1 = new Date(t1.date);
@@ -1331,6 +1462,55 @@ app.post('/api/test-mode', (req, res) => {
   } catch (error) {
     console.error('Error setting test mode:', error);
     res.status(500).json({ error: 'Failed to set test mode' });
+  }
+});
+
+// Re-run transfer detection endpoint for backwards compatibility
+app.post('/api/rerun-transfer-detection', (req, res) => {
+  try {
+    const { isTestMode: requestTestMode } = req.body;
+    
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+    }
+    
+    const transactionsFile = getFilePath('transactions.json');
+    if (!fs.existsSync(transactionsFile)) {
+      // Restore original test mode
+      isTestMode = originalTestMode;
+      return res.status(404).json({ error: 'No transactions found' });
+    }
+    
+    const data = fs.readFileSync(transactionsFile, 'utf8');
+    const transactions = JSON.parse(data);
+    
+    // Remove existing transfer info from all transactions
+    const cleanedTransactions = transactions.map(transaction => {
+      const { transferInfo, ...rest } = transaction;
+      return rest;
+    });
+    
+    // Re-run transfer detection
+    const { transfers, updatedTransactions } = detectTransfers(cleanedTransactions);
+    
+    // Save updated transactions
+    ensureArtifactsDir();
+    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
+    
+    // Restore original test mode
+    isTestMode = originalTestMode;
+    
+    res.json({ 
+      success: true, 
+      totalTransactions: updatedTransactions.length,
+      transfersDetected: transfers.length,
+      message: 'Transfer detection completed successfully'
+    });
+  } catch (error) {
+    console.error('Error re-running transfer detection:', error);
+    res.status(500).json({ error: 'Failed to re-run transfer detection' });
   }
 });
 

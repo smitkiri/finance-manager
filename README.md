@@ -88,8 +88,8 @@ npm run build
 1. **User Management**: Go to Settings → Users tab to add, edit, or delete users
 2. **User Filter**: Use the user dropdown in the header to filter transactions by user
 3. **Transaction Association**: All new transactions are associated with the selected user
-4. **CSV Import**: Select a user when importing CSV files to associate transactions
-5. **Default User**: New transactions default to "Default" user if no user is selected
+4. **CSV Import**: User selection is required when importing CSV files to associate transactions
+5. **Required User Selection**: Users must explicitly select a user for all transactions and imports
 
 ### Adding Transactions
 1. Click the "Add Transaction" button

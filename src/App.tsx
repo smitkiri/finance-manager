@@ -306,6 +306,28 @@ function AppContent() {
           });
         }
         
+        // Show import success toast with undo button
+        const importTime = new Date().toISOString();
+        toast.success(
+          <div>
+            <div>Successfully imported {result.imported} transactions</div>
+            <button 
+              onClick={() => handleUndoImport(source.name, importTime)}
+              className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
+            >
+              Undo Import
+            </button>
+          </div>,
+          {
+            position: "bottom-right",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+          }
+        );
+        
         // Reload expenses from backend
         const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
         setExpenses(updatedExpenses);
@@ -364,6 +386,28 @@ function AppContent() {
         });
       }
       
+      // Show import success toast with undo button
+      const importTime = new Date().toISOString();
+      toast.success(
+        <div>
+          <div>Successfully imported {result.imported} transactions</div>
+          <button 
+            onClick={() => handleUndoImport(source.name, importTime)}
+            className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
+          >
+            Undo Import
+          </button>
+        </div>,
+        {
+          position: "bottom-right",
+          autoClose: 10000,
+          hideProgressBar: false,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+        }
+      );
+      
       // Reload expenses from backend
       const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
       setExpenses(updatedExpenses);
@@ -372,6 +416,52 @@ function AppContent() {
     } catch (error) {
       console.error('Error importing with source:', error);
       toast.error('Failed to import CSV', {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
+  };
+
+  const handleUndoImport = async (sourceName: string, importedAt: string) => {
+    try {
+      const response = await fetch('http://localhost:3001/api/undo-import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sourceName,
+          importedAt,
+          isTestMode
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to undo import');
+      }
+
+      const result = await response.json();
+      
+      // Show success message
+      toast.success(`Undid import: ${result.removed} transactions removed`, {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      
+      // Reload expenses from backend
+      const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+      setExpenses(updatedExpenses);
+    } catch (error) {
+      console.error('Error undoing import:', error);
+      toast.error('Failed to undo import', {
         position: "bottom-right",
         autoClose: 5000,
         hideProgressBar: false,

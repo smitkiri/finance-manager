@@ -82,6 +82,7 @@ export interface Source {
     csvColumn: string;
     standardColumn: StandardizedColumn | 'Ignore';
   }[];
+  flipIncomeExpense?: boolean;
   createdAt: string;
   lastUsed: string;
 }

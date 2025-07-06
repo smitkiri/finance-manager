@@ -18,7 +18,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     category: '',
     amount: '',
     type: 'expense',
-    user: users.length > 0 ? users[0].id : ''
+    user: ''
   });
 
   // Update form data when editingExpense changes
@@ -30,7 +30,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         category: editingExpense.category,
         amount: editingExpense.amount.toString(),
         type: editingExpense.type,
-        user: editingExpense.user || (users.length > 0 ? users[0].id : '')
+        user: editingExpense.user || ''
       });
     } else {
       setFormData({
@@ -39,7 +39,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         category: '',
         amount: '',
         type: 'expense',
-        user: users.length > 0 ? users[0].id : ''
+        user: ''
       });
     }
   }, [editingExpense, isOpen, users]);
@@ -56,7 +56,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
       category: '',
       amount: '',
       type: 'expense',
-      user: users.length > 0 ? users[0].id : ''
+      user: ''
     });
   };
 

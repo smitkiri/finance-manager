@@ -13,8 +13,8 @@ export interface TransferDetectionResult {
 }
 
 /**
- * Detects internal transfers between different sources
- * Matches credit/debit transactions from different sources within ±2 days
+ * Detects internal transfers between different sources or users
+ * Matches credit/debit transactions from different sources or same source but different users within ±4 days
  */
 export function detectTransfers(transactions: Expense[]): TransferDetectionResult {
   const transfers: TransferPair[] = [];
@@ -35,6 +35,7 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
   // Find potential transfer pairs
   const sourceIds = Array.from(transactionsBySource.keys());
   
+  // Look for transfers between different sources
   for (let i = 0; i < sourceIds.length; i++) {
     for (let j = i + 1; j < sourceIds.length; j++) {
       const source1 = sourceIds[i];
@@ -64,6 +65,59 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
             processedIds.add(t1.id);
             processedIds.add(t2.id);
             break;
+          }
+        }
+      }
+    }
+  }
+
+  // Look for transfers within the same source but between different users
+  for (const sourceId of sourceIds) {
+    const sourceTransactions = transactionsBySource.get(sourceId)!;
+    
+    // Group by user within this source
+    const transactionsByUser = new Map<string, Expense[]>();
+    sourceTransactions.forEach(transaction => {
+      const userId = transaction.user;
+      if (!transactionsByUser.has(userId)) {
+        transactionsByUser.set(userId, []);
+      }
+      transactionsByUser.get(userId)!.push(transaction);
+    });
+    
+    const userIds = Array.from(transactionsByUser.keys());
+    
+    // Look for transfers between different users within the same source
+    for (let i = 0; i < userIds.length; i++) {
+      for (let j = i + 1; j < userIds.length; j++) {
+        const user1 = userIds[i];
+        const user2 = userIds[j];
+        
+        const user1Transactions = transactionsByUser.get(user1)!;
+        const user2Transactions = transactionsByUser.get(user2)!;
+        
+        // Look for matching credit/debit pairs
+        for (const t1 of user1Transactions) {
+          if (processedIds.has(t1.id)) continue;
+          
+          for (const t2 of user2Transactions) {
+            if (processedIds.has(t2.id)) continue;
+            
+            if (isTransferPair(t1, t2)) {
+              const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const confidence = calculateTransferConfidence(t1, t2);
+              
+              transfers.push({
+                credit: t1.type === 'income' ? t1 : t2,
+                debit: t1.type === 'expense' ? t1 : t2,
+                transferId,
+                confidence
+              });
+              
+              processedIds.add(t1.id);
+              processedIds.add(t2.id);
+              break;
+            }
           }
         }
       }
@@ -107,10 +161,14 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
  * Checks if two transactions form a transfer pair
  */
 function isTransferPair(t1: Expense, t2: Expense): boolean {
-  // Must be from different sources
+  // Must be from different sources OR same source but different users
   const source1 = t1.metadata?.sourceId || 'manual';
   const source2 = t2.metadata?.sourceId || 'manual';
-  if (source1 === source2) return false;
+  const user1 = t1.user;
+  const user2 = t2.user;
+  
+  // If same source, must be different users
+  if (source1 === source2 && user1 === user2) return false;
   
   // Must be opposite types (income vs expense)
   if (t1.type === t2.type) return false;

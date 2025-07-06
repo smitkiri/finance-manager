@@ -316,14 +316,21 @@ export class LocalStorage {
               break;
           }
         });
+
+        // Handle flipIncomeExpense option
+        let transactionType: 'expense' | 'income' = amount < 0 ? 'expense' : 'income';
+        if (mapping.flipIncomeExpense) {
+          transactionType = amount > 0 ? 'expense' : 'income';
+        }
+
         return {
           id: Date.now().toString(36) + Math.random().toString(36).substr(2),
           date,
           description,
           category,
           amount: Math.abs(amount),
-          type: (amount < 0 ? 'expense' : 'income') as 'expense' | 'income',
-          user: user || 'Default',
+          type: transactionType,
+          user: user,
           metadata: {
             sourceId: mapping.id,
             sourceName: mapping.name,

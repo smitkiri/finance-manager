@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download } from 'lucide-react';
+import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight } from 'lucide-react';
 import { useTestMode } from '../../contexts/TestModeContext';
-import { User } from '../../types';
+import { User, Source, StandardizedColumn } from '../../types';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -11,15 +11,22 @@ interface SettingsProps {
   onDeleteCategory: (category: string) => void;
   onUpdateCategory: (oldCategory: string, newCategory: string) => void;
   expenses: any[];
-  sources: any[];
+  sources: Source[];
   users: User[];
   onAddUser: (user: User) => void;
   onDeleteUser: (userId: string) => void;
   onUpdateUser: (user: User) => void;
   onRefreshData: () => void;
   onExportCSV: () => void;
-  onUpdateSource: (source: any) => void;
+  onUpdateSource: (source: Source) => void;
 }
+
+const STANDARDIZED_COLUMNS: StandardizedColumn[] = [
+  'Transaction Date',
+  'Description', 
+  'Category',
+  'Amount'
+];
 
 export const Settings: React.FC<SettingsProps> = ({
   isOpen,
@@ -54,6 +61,8 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingSource, setEditingSource] = useState<string | null>(null);
   const [editSourceName, setEditSourceName] = useState('');
+  const [editSourceMappings, setEditSourceMappings] = useState<{ csvColumn: string; standardColumn: StandardizedColumn | 'Ignore' }[]>([]);
+  const [editSourceFlipIncomeExpense, setEditSourceFlipIncomeExpense] = useState(false);
   const [newUser, setNewUser] = useState('');
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editUserName, setEditUserName] = useState('');
@@ -95,26 +104,55 @@ export const Settings: React.FC<SettingsProps> = ({
     setEditValue('');
   };
 
-  const handleStartEditSource = (source: any) => {
+  const handleStartEditSource = (source: Source) => {
     setEditingSource(source.id);
     setEditSourceName(source.name);
+    setEditSourceMappings([...source.mappings]);
+    setEditSourceFlipIncomeExpense(source.flipIncomeExpense || false);
   };
 
   const handleSaveEditSource = () => {
-    if (editingSource && editSourceName.trim() && editSourceName.trim() !== sources.find(s => s.id === editingSource)?.name) {
+    if (editingSource && editSourceName.trim()) {
       const sourceToUpdate = sources.find(s => s.id === editingSource);
       if (sourceToUpdate) {
-        const updatedSource = { ...sourceToUpdate, name: editSourceName.trim() };
+        const updatedSource: Source = {
+          ...sourceToUpdate,
+          name: editSourceName.trim(),
+          mappings: editSourceMappings,
+          flipIncomeExpense: editSourceFlipIncomeExpense
+        };
         onUpdateSource(updatedSource);
       }
     }
     setEditingSource(null);
     setEditSourceName('');
+    setEditSourceMappings([]);
+    setEditSourceFlipIncomeExpense(false);
   };
 
   const handleCancelEditSource = () => {
     setEditingSource(null);
     setEditSourceName('');
+    setEditSourceMappings([]);
+    setEditSourceFlipIncomeExpense(false);
+  };
+
+  const handleSourceMappingChange = (csvColumn: string, standardColumn: StandardizedColumn | 'Ignore') => {
+    setEditSourceMappings(prev => 
+      prev.map(mapping => 
+        mapping.csvColumn === csvColumn 
+          ? { ...mapping, standardColumn }
+          : mapping
+      )
+    );
+  };
+
+  const getAvailableStandardColumns = (currentMapping: { csvColumn: string; standardColumn: StandardizedColumn | 'Ignore' }) => {
+    const usedColumns = editSourceMappings
+      .filter(m => m.csvColumn !== currentMapping.csvColumn && m.standardColumn !== 'Ignore')
+      .map(m => m.standardColumn);
+    
+    return STANDARDIZED_COLUMNS.filter(col => !usedColumns.includes(col));
   };
 
   const handleStartEditUser = (user: User) => {
@@ -347,72 +385,136 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Sources</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Manage your CSV import sources. You can edit the name of each source.
+                    Manage your CSV import sources. You can edit the name, column mappings, and import options for each source.
                   </p>
                   {/* Sources List */}
-                  <div className="space-y-1">
+                  <div className="space-y-3">
                     {sources.map((source) => (
                       <div
                         key={source.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                        className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                       >
                         {editingSource === source.id ? (
-                          <div className="flex items-center space-x-1 flex-1">
-                            <input
-                              type="text"
-                              value={editSourceName}
-                              onChange={(e) => setEditSourceName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleSaveEditSource();
-                                } else if (e.key === 'Escape') {
-                                  handleCancelEditSource();
-                                }
-                              }}
-                              onBlur={handleSaveEditSource}
-                              autoFocus
-                              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            />
-                            <button
-                              onClick={handleSaveEditSource}
-                              className="p-1 text-green-600 hover:text-green-700 transition-colors"
-                              title="Save"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={handleCancelEditSource}
-                              className="p-1 text-gray-600 hover:text-gray-700 transition-colors"
-                              title="Cancel"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex-1">
-                              <span className="font-medium text-gray-900 dark:text-white text-sm">{source.name}</span>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Created: {new Date(source.createdAt).toLocaleDateString()}
-                                {source.lastUsed && (
-                                  <span className="ml-2">
-                                    • Last used: {new Date(source.lastUsed).toLocaleDateString()}
-                                  </span>
-                                )}
+                          <div className="p-4 bg-white dark:bg-gray-800">
+                            {/* Source Name */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Source Name
+                              </label>
+                              <input
+                                type="text"
+                                value={editSourceName}
+                                onChange={(e) => setEditSourceName(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                placeholder="Enter source name"
+                              />
+                            </div>
+
+                            {/* Column Mappings */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Column Mappings
+                              </label>
+                              <div className="space-y-2">
+                                {editSourceMappings.map((mapping, index) => (
+                                  <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                    <div className="flex-1">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {mapping.csvColumn}
+                                      </span>
+                                    </div>
+                                    <ArrowRight size={16} className="text-gray-400" />
+                                    <select
+                                      value={mapping.standardColumn}
+                                      onChange={(e) => handleSourceMappingChange(mapping.csvColumn, e.target.value as StandardizedColumn | 'Ignore')}
+                                      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
+                                    >
+                                      <option value="Ignore">Ignore</option>
+                                      {getAvailableStandardColumns(mapping).map(col => (
+                                        <option key={col} value={col}>{col}</option>
+                                      ))}
+                                      {mapping.standardColumn !== 'Ignore' && !getAvailableStandardColumns(mapping).includes(mapping.standardColumn as StandardizedColumn) && (
+                                        <option value={mapping.standardColumn}>{mapping.standardColumn}</option>
+                                      )}
+                                    </select>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                            <div className="flex items-center space-x-1">
+
+                            {/* Import Options */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Import Options
+                              </label>
+                              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <input
+                                  type="checkbox"
+                                  id={`flipIncomeExpense-${source.id}`}
+                                  checked={editSourceFlipIncomeExpense}
+                                  onChange={(e) => setEditSourceFlipIncomeExpense(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor={`flipIncomeExpense-${source.id}`} className="text-sm font-medium text-gray-900 dark:text-white">
+                                  Flip Income/Expense Signs
+                                </label>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Positive values as expenses, negative as income
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex space-x-2">
                               <button
-                                onClick={() => handleStartEditSource(source)}
-                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                                title="Edit source name"
+                                onClick={handleSaveEditSource}
+                                disabled={!editSourceName.trim()}
+                                className="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                               >
-                                <Edit size={12} />
+                                <Save size={14} />
+                                <span>Save Changes</span>
+                              </button>
+                              <button
+                                onClick={handleCancelEditSource}
+                                className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                              >
+                                Cancel
                               </button>
                             </div>
-                          </>
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-gray-50 dark:bg-gray-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <span className="font-medium text-gray-900 dark:text-white text-sm">{source.name}</span>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Created: {new Date(source.createdAt).toLocaleDateString()}
+                                  {source.lastUsed && (
+                                    <span className="ml-2">
+                                      • Last used: {new Date(source.lastUsed).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Mappings: {source.mappings.filter((m: { standardColumn: string }) => m.standardColumn !== 'Ignore').length} columns
+                                  {source.flipIncomeExpense && (
+                                    <span className="ml-2 text-orange-600 dark:text-orange-400">
+                                      • Signs flipped
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <button
+                                  onClick={() => handleStartEditSource(source)}
+                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  title="Edit source"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     ))}
