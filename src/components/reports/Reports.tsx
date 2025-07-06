@@ -62,6 +62,11 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
     const filters = report.filters;
     const summary: string[] = [];
 
+    // Handle case where filters might be undefined
+    if (!filters) {
+      return 'No filters';
+    }
+
     if (filters.dateRange) {
       summary.push('Date range');
     }

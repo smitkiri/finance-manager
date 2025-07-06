@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -90,7 +90,7 @@ function AppContent() {
     loadData();
   }, [isTestMode]); // Reload when test mode changes
 
-  const handleAddExpense = async (formData: TransactionFormData) => {
+  const handleAddExpense = useCallback(async (formData: TransactionFormData) => {
     const newExpense: Expense = {
       id: generateId(),
       date: formData.date,
@@ -112,14 +112,14 @@ function AppContent() {
     } catch (error) {
       console.error('Error adding expense:', error);
     }
-  };
+  }, [isTestMode]);
 
-  const handleEditExpense = (expense: Expense) => {
+  const handleEditExpense = useCallback((expense: Expense) => {
     setEditingExpense(expense);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleUpdateExpense = async (formData: TransactionFormData) => {
+  const handleUpdateExpense = useCallback(async (formData: TransactionFormData) => {
     if (!editingExpense) return;
 
     const updatedExpense: Expense = {
@@ -140,18 +140,18 @@ function AppContent() {
     } catch (error) {
       console.error('Error updating expense:', error);
     }
-  };
+  }, [editingExpense, isTestMode]);
 
-  const handleDeleteExpense = async (id: string) => {
+  const handleDeleteExpense = useCallback(async (id: string) => {
     try {
       const updatedExpenses = await LocalStorage.deleteExpense(id, isTestMode);
       setExpenses(updatedExpenses);
     } catch (error) {
       console.error('Error deleting expense:', error);
     }
-  };
+  }, [isTestMode]);
 
-  const handleUpdateCategory = async (expenseId: string, newCategory: string) => {
+  const handleUpdateCategory = useCallback(async (expenseId: string, newCategory: string) => {
     try {
       const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
       if (!expenseToUpdate) return;
@@ -166,9 +166,9 @@ function AppContent() {
     } catch (error) {
       console.error('Error updating category:', error);
     }
-  };
+  }, [expenses, isTestMode]);
 
-  const handleAddLabel = async (expenseId: string, label: string) => {
+  const handleAddLabel = useCallback(async (expenseId: string, label: string) => {
     try {
       const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
       if (!expenseToUpdate) return;
@@ -187,9 +187,9 @@ function AppContent() {
     } catch (error) {
       console.error('Error adding label:', error);
     }
-  };
+  }, [expenses, isTestMode]);
 
-  const handleRemoveLabel = async (expenseId: string, label: string) => {
+  const handleRemoveLabel = useCallback(async (expenseId: string, label: string) => {
     try {
       const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
       if (!expenseToUpdate) return;
@@ -207,18 +207,18 @@ function AppContent() {
     } catch (error) {
       console.error('Error removing label:', error);
     }
-  };
+  }, [expenses, isTestMode]);
 
-  const handleAddCategory = async (category: string) => {
+  const handleAddCategory = useCallback(async (category: string) => {
     try {
       const updatedCategories = await LocalStorage.addCategory(category, isTestMode);
       setCategories(updatedCategories);
     } catch (error) {
       console.error('Error adding category:', error);
     }
-  };
+  }, [isTestMode]);
 
-  const handleDeleteCategory = async (category: string) => {
+  const handleDeleteCategory = useCallback(async (category: string) => {
     try {
       const [updatedCategories, updatedExpenses] = await Promise.all([
         LocalStorage.deleteCategory(category, isTestMode),
@@ -229,9 +229,9 @@ function AppContent() {
     } catch (error) {
       console.error('Error deleting category:', error);
     }
-  };
+  }, [isTestMode]);
 
-  const handleUpdateCategoryName = async (oldCategory: string, newCategory: string) => {
+  const handleUpdateCategoryName = useCallback(async (oldCategory: string, newCategory: string) => {
     try {
       const [updatedCategories, updatedExpenses] = await Promise.all([
         LocalStorage.updateCategory(oldCategory, newCategory, isTestMode),
@@ -242,9 +242,9 @@ function AppContent() {
     } catch (error) {
       console.error('Error updating category name:', error);
     }
-  };
+  }, [isTestMode]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -260,7 +260,7 @@ function AppContent() {
       }
     };
     reader.readAsText(file);
-  };
+  }, []);
 
   const handleSaveSource = async (source: Source, userId: string) => {
     try {
@@ -605,10 +605,10 @@ function AppContent() {
     }
   };
 
-  const handleViewTransactionDetails = (transaction: Expense) => {
+  const handleViewTransactionDetails = useCallback((transaction: Expense) => {
     setSelectedTransaction(transaction);
     setIsTransactionDetailsOpen(true);
-  };
+  }, []);
 
   const handleTransferOverride = async (transactionId: string, includeInCalculations: boolean) => {
     try {

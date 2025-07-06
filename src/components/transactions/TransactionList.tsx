@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trash2, Edit, ChevronDown, Plus, ChevronUp } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency } from '../../utils';
@@ -15,7 +15,7 @@ interface TransactionListProps {
   categories: string[];
 }
 
-export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories }) => {
+const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories }) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [labelSelectorState, setLabelSelectorState] = useState<{
     isOpen: boolean;
@@ -27,31 +27,39 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
     position: { x: 0, y: 0 }
   });
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
-  const [categoryUsage, setCategoryUsage] = useState<Map<string, number>>(new Map());
   
   const ITEMS_PER_PAGE = 30;
   
   const visibleExpenses = expenses.slice(0, visibleCount);
   const hasMore = visibleCount < expenses.length;
 
-  // Track category usage from expenses
-  useEffect(() => {
+  // Memoize category usage calculation
+  const categoryUsage = useMemo(() => {
     const usage = new Map<string, number>();
     expenses.forEach(expense => {
       const category = expense.category || 'Uncategorized';
       usage.set(category, (usage.get(category) || 0) + 1);
     });
-    setCategoryUsage(usage);
+    return usage;
   }, [expenses]);
 
-  // Sort categories by usage (most used first)
-  const sortedCategories = [...categories].sort((a, b) => {
-    const aUsage = categoryUsage.get(a) || 0;
-    const bUsage = categoryUsage.get(b) || 0;
-    return bUsage - aUsage;
-  });
+  // Memoize sorted categories
+  const sortedCategories = useMemo(() => 
+    [...categories].sort((a, b) => {
+      const aUsage = categoryUsage.get(a) || 0;
+      const bUsage = categoryUsage.get(b) || 0;
+      return bUsage - aUsage;
+    }), [categories, categoryUsage]
+  );
 
-  const toggleDropdown = (expenseId: string) => {
+  // Memoize all unique labels from all expenses
+  const allLabels = useMemo(() => 
+    Array.from(new Set(
+      expenses.flatMap(expense => expense.labels || [])
+    )), [expenses]
+  );
+
+  const toggleDropdown = useCallback((expenseId: string) => {
     setOpenDropdowns(prev => {
       const newSet = new Set(prev);
       if (newSet.has(expenseId)) {
@@ -61,12 +69,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
       }
       return newSet;
     });
-  };
+  }, []);
 
-  const handleCategorySelect = (expenseId: string, category: string) => {
+  const handleCategorySelect = useCallback((expenseId: string, category: string) => {
     onUpdateCategory(expenseId, category);
     toggleDropdown(expenseId);
-  };
+  }, [onUpdateCategory, toggleDropdown]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -79,6 +87,33 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleShowMore = useCallback(() => {
+    setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
+  }, [expenses.length]);
+
+  const handleAddLabelClick = useCallback((expenseId: string, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setLabelSelectorState({
+      isOpen: true,
+      expenseId,
+      position: { x: rect.left + rect.width / 2, y: rect.top }
+    });
+  }, []);
+
+  const handleAddLabel = useCallback((label: string) => {
+    if (labelSelectorState.expenseId) {
+      onAddLabel(labelSelectorState.expenseId, label);
+    }
+  }, [labelSelectorState.expenseId, onAddLabel]);
+
+  const handleCloseLabelSelector = useCallback(() => {
+    setLabelSelectorState({
+      isOpen: false,
+      expenseId: null,
+      position: { x: 0, y: 0 }
+    });
   }, []);
 
   if (expenses.length === 0) {
@@ -94,38 +129,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
       </div>
     );
   }
-
-  const handleShowMore = () => {
-    setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
-  };
-
-  const handleAddLabelClick = (expenseId: string, event: React.MouseEvent) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setLabelSelectorState({
-      isOpen: true,
-      expenseId,
-      position: { x: rect.left + rect.width / 2, y: rect.top }
-    });
-  };
-
-  const handleAddLabel = (label: string) => {
-    if (labelSelectorState.expenseId) {
-      onAddLabel(labelSelectorState.expenseId, label);
-    }
-  };
-
-  const handleCloseLabelSelector = () => {
-    setLabelSelectorState({
-      isOpen: false,
-      expenseId: null,
-      position: { x: 0, y: 0 }
-    });
-  };
-
-  // Get all unique labels from all expenses
-  const allLabels = Array.from(new Set(
-    expenses.flatMap(expense => expense.labels || [])
-  ));
 
   return (
     <div className="space-y-2">
@@ -305,4 +308,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({ expenses, onDe
       />
     </div>
   );
-}; 
+};
+
+export const TransactionList = React.memo(TransactionListComponent);

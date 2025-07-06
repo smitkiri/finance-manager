@@ -24,11 +24,6 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
   const [filteredLabels, setFilteredLabels] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get recently used labels (excluding already added ones)
-  const recentlyUsedLabels = allLabels
-    .filter(label => !existingLabels.includes(label))
-    .slice(0, 2);
-
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -36,6 +31,11 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
+    // Get recently used labels (excluding already added ones)
+    const recentlyUsedLabels = allLabels
+      .filter(label => !existingLabels.includes(label))
+      .slice(0, 2);
+
     if (searchTerm.trim() === '') {
       setFilteredLabels(recentlyUsedLabels);
     } else {
@@ -47,7 +47,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
         .slice(0, 5);
       setFilteredLabels(filtered);
     }
-  }, [searchTerm, allLabels, existingLabels, recentlyUsedLabels]);
+  }, [searchTerm, allLabels, existingLabels]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

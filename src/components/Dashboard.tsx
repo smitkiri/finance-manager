@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
 import { Expense, User } from '../types';
@@ -13,64 +13,87 @@ interface DashboardProps {
   users: User[];
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories, selectedUserId, users }) => {
+export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categories, selectedUserId, users }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
 
-  // Filter out excluded transactions for all calculations
-  const filteredExpenses = filterTransfersForCalculations(expenses);
+  // Memoize filtered expenses to prevent recalculation on every render
+  const filteredExpenses = useMemo(() => 
+    filterTransfersForCalculations(expenses), [expenses]
+  );
 
-  // Calculate statistics using the utility function
-  const stats = calculateStats(expenses);
+  // Memoize statistics calculation
+  const stats = useMemo(() => 
+    calculateStats(expenses), [expenses]
+  );
 
-  // Calculate category breakdown for expenses using filtered expenses
-  const expenseCategoryBreakdown = categories.map(category => {
-    const categoryExpenses = filteredExpenses.filter(expense => 
-      expense.type === 'expense' && expense.category === category
-    );
-    const total = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const percentage = stats.totalExpenses > 0 ? (total / stats.totalExpenses) * 100 : 0;
-    
-    return {
-      category: category || 'Uncategorized',
-      amount: total,
-      percentage: Math.round(percentage * 100) / 100
-    };
-  }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
+  // Memoize category breakdown for expenses
+  const expenseCategoryBreakdown = useMemo(() => 
+    categories.map(category => {
+      const categoryExpenses = filteredExpenses.filter(expense => 
+        expense.type === 'expense' && expense.category === category
+      );
+      const total = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const percentage = stats.totalExpenses > 0 ? (total / stats.totalExpenses) * 100 : 0;
+      
+      return {
+        category: category || 'Uncategorized',
+        amount: total,
+        percentage: Math.round(percentage * 100) / 100
+      };
+    }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount), 
+    [categories, filteredExpenses, stats.totalExpenses]
+  );
 
-  // Calculate category breakdown for income using filtered expenses
-  const incomeCategoryBreakdown = categories.map(category => {
-    const categoryIncome = filteredExpenses.filter(expense => 
-      expense.type === 'income' && expense.category === category
-    );
-    const total = categoryIncome.reduce((sum, expense) => sum + expense.amount, 0);
-    const percentage = stats.totalIncome > 0 ? (total / stats.totalIncome) * 100 : 0;
-    
-    return {
-      category: category || 'Uncategorized',
-      amount: total,
-      percentage: Math.round(percentage * 100) / 100
-    };
-  }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
+  // Memoize category breakdown for income
+  const incomeCategoryBreakdown = useMemo(() => 
+    categories.map(category => {
+      const categoryIncome = filteredExpenses.filter(expense => 
+        expense.type === 'income' && expense.category === category
+      );
+      const total = categoryIncome.reduce((sum, expense) => sum + expense.amount, 0);
+      const percentage = stats.totalIncome > 0 ? (total / stats.totalIncome) * 100 : 0;
+      
+      return {
+        category: category || 'Uncategorized',
+        amount: total,
+        percentage: Math.round(percentage * 100) / 100
+      };
+    }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount), 
+    [categories, filteredExpenses, stats.totalIncome]
+  );
 
-  // Prepare category line chart data using filtered expenses
-  const categoriesToShow = selectedCategories.length > 0 ? selectedCategories : categories;
-  const categoryLineData = prepareCategoryLineData(filteredExpenses, categoriesToShow);
+  // Memoize categories to show
+  const categoriesToShow = useMemo(() => 
+    selectedCategories.length > 0 ? selectedCategories : categories, 
+    [selectedCategories, categories]
+  );
 
-  // Prepare savings month-over-month data
-  const savingsMonthlyData = stats.monthlyData.map(month => ({
-    month: month.month,
-    savings: month.income - month.expenses
-  }));
+  // Memoize category line chart data
+  const categoryLineData = useMemo(() => 
+    prepareCategoryLineData(filteredExpenses, categoriesToShow), 
+    [filteredExpenses, categoriesToShow]
+  );
 
-  // Prepare donut chart data for savings vs expenses
-  const donutData = stats.netAmount >= 0 
-    ? [
-        { name: 'Savings', value: stats.netAmount },
-        { name: 'Expenses', value: stats.totalExpenses }
-      ]
-    : [
-        { name: 'Expenses', value: stats.totalExpenses }
-      ];
+  // Memoize savings monthly data
+  const savingsMonthlyData = useMemo(() => 
+    stats.monthlyData.map(month => ({
+      month: month.month,
+      savings: month.income - month.expenses
+    })), [stats.monthlyData]
+  );
+
+  // Memoize donut chart data
+  const donutData = useMemo(() => 
+    stats.netAmount >= 0 
+      ? [
+          { name: 'Savings', value: stats.netAmount },
+          { name: 'Expenses', value: stats.totalExpenses }
+        ]
+      : [
+          { name: 'Expenses', value: stats.totalExpenses }
+        ], 
+    [stats.netAmount, stats.totalExpenses]
+  );
 
   // Function to prepare category line chart data
   function prepareCategoryLineData(expenses: Expense[], categoriesToShow: string[]) {
@@ -111,7 +134,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories, sele
       });
   }
 
-  const handleCategoryToggle = (category: string) => {
+  const handleCategoryToggle = useCallback((category: string) => {
     setSelectedCategories(prev => {
       if (prev.includes(category)) {
         return prev.filter(cat => cat !== category);
@@ -119,22 +142,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories, sele
         return [...prev, category];
       }
     });
-  };
+  }, []);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     setSelectedCategories(categories);
-  };
+  }, [categories]);
 
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     setSelectedCategories([]);
-  };
+  }, []);
 
-  // User indicator
-  let userLabel = 'All Users';
-  if (selectedUserId) {
-    const user = users.find(u => u.id === selectedUserId);
-    userLabel = user ? user.name : 'Unknown User';
-  }
+  // Memoize user label
+  const userLabel = useMemo(() => {
+    if (selectedUserId) {
+      const user = users.find(u => u.id === selectedUserId);
+      return user ? user.name : 'Unknown User';
+    }
+    return 'All Users';
+  }, [selectedUserId, users]);
 
   return (
     <div className="space-y-6">
@@ -325,4 +350,4 @@ export const Dashboard: React.FC<DashboardProps> = ({ expenses, categories, sele
       </div>
     </div>
   );
-}; 
+}); 
