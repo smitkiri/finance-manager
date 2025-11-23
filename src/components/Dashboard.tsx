@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
 import { Expense, User } from '../types';
-import { calculateStats } from '../utils';
+import { calculateStats, parseDate } from '../utils';
 import { filterTransfersForCalculations } from '../utils/transferDetection';
 import { Check } from 'lucide-react';
 
@@ -102,8 +102,10 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
     // Initialize all months with 0 values for all categories
     expenses.forEach(expense => {
       if (expense.type === 'expense') {
-        const date = new Date(expense.date);
-        const isoMonth = date.toISOString().slice(0, 7); // YYYY-MM
+        const date = parseDate(expense.date);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const isoMonth = `${year}-${month}`; // YYYY-MM
         const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
         if (!monthlyMap.has(isoMonth)) {
           const entry: { month: string; displayMonth: string; [key: string]: any } = {

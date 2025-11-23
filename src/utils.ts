@@ -8,8 +8,16 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+// Parse a date string (YYYY-MM-DD) as a local date at midnight
+export const parseDate = (dateString: string): Date => {
+  // Append T00:00:00 to ensure local time parsing or use explicit construction
+  // Safest cross-browser way for YYYY-MM-DD to local midnight:
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return parseDate(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -45,8 +53,12 @@ export const calculateStats = (expenses: Expense[]): ExpenseStats => {
   // Use ISO string for sorting, displayMonth for chart
   const monthlyMap = new Map<string, { month: string; displayMonth: string; expenses: number; income: number }>();
   filteredExpenses.forEach(exp => {
-    const date = new Date(exp.date);
-    const isoMonth = date.toISOString().slice(0, 7); // YYYY-MM
+    const date = parseDate(exp.date);
+    // Construct ISO month manually from local components to ensure consistency
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const isoMonth = `${year}-${month}`; // YYYY-MM
+
     const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
     if (!monthlyMap.has(isoMonth)) {
       monthlyMap.set(isoMonth, {
@@ -78,7 +90,7 @@ export const calculateStats = (expenses: Expense[]): ExpenseStats => {
 
 export const filterExpensesByDateRange = (expenses: Expense[], dateRange: DateRange): Expense[] => {
   return expenses.filter(expense => {
-    const expenseDate = new Date(expense.date);
+    const expenseDate = parseDate(expense.date);
     return expenseDate >= dateRange.start && expenseDate <= dateRange.end;
   });
 }; 

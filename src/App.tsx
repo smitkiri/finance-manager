@@ -12,7 +12,7 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
-import { generateId } from './utils';
+import { generateId, parseDate } from './utils';
 import { LocalStorage } from './utils/storage';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
@@ -508,7 +508,7 @@ function AppContent() {
   // Apply all filters using the new filter system
   const filteredExpenses = expenses.filter(exp => {
     // Date range filter - always use global date range
-    const expenseDate = new Date(exp.date);
+    const expenseDate = parseDate(exp.date);
     if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
       return false;
     }
@@ -574,7 +574,7 @@ function AppContent() {
   // Dashboard filtering - only apply global date range, not transaction page filters
   const dashboardExpenses = expenses.filter(exp => {
     // Only apply global date range filter for dashboard
-    const expenseDate = new Date(exp.date);
+    const expenseDate = parseDate(exp.date);
     if (expenseDate < dateRange.start || expenseDate > dateRange.end) {
       return false;
     }

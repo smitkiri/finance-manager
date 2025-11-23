@@ -173,10 +173,8 @@ function isTransferPair(t1: Expense, t2: Expense): boolean {
   // Must be opposite types (income vs expense)
   if (t1.type === t2.type) return false;
   
-  // Must have matching amounts (within small tolerance for fees)
-  const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
-  const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01; // 1% tolerance
-  if (amountDiff > tolerance) return false;
+  // Must have matching amounts (exact match only)
+  if (Math.abs(t1.amount) !== Math.abs(t2.amount)) return false;
   
   // Must be within ±4 days
   const date1 = new Date(t1.date);
@@ -194,10 +192,11 @@ function calculateTransferConfidence(t1: Expense, t2: Expense): number {
   let confidence = 0.5; // Base confidence
   
   // Amount match (exact match = higher confidence)
-  const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
-  const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01;
-  if (amountDiff === 0) confidence += 0.3;
-  else if (amountDiff <= tolerance) confidence += 0.2;
+  if (Math.abs(t1.amount) === Math.abs(t2.amount)) {
+    confidence += 0.4;
+  } else {
+    return 0; // No confidence if amounts don't match exactly
+  }
   
   // Date proximity (closer = higher confidence)
   const date1 = new Date(t1.date);
