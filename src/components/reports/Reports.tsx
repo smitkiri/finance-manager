@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, FileText, Calendar, DollarSign, Tag, Filter } from 'lucide-react';
 import { Report, Expense, DateRange, Source } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { ReportCreator } from './ReportCreator';
 import { ReportViewer } from './ReportViewer';
 import { formatCurrency, formatDate } from '../../utils';
+import { applyReportFilters } from '../../utils/reportUtils';
 
 interface ReportsProps {
   expenses: Expense[];
@@ -57,6 +58,24 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
       }
     }
   };
+
+  // Compute report stats dynamically for each report
+  const reportStats = useMemo(() => {
+    const stats = new Map<string, { count: number; totalAmount: number }>();
+    
+    reports.forEach(report => {
+      // Handle cases where filters might be undefined (for backward compatibility)
+      const filters = report.filters || {};
+      const filteredExpenses = applyReportFilters(expenses, filters);
+      const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      stats.set(report.id, {
+        count: filteredExpenses.length,
+        totalAmount
+      });
+    });
+    
+    return stats;
+  }, [reports, expenses]);
 
   const getFilterSummary = (report: Report) => {
     const filters = report.filters;
@@ -188,11 +207,11 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
                     </div>
                     <div className="flex items-center space-x-1">
                       <DollarSign size={14} />
-                      <span>{formatCurrency(report.totalAmount)}</span>
+                      <span>{formatCurrency(reportStats.get(report.id)?.totalAmount || 0)}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Tag size={14} />
-                      <span>{report.transactionCount} transactions</span>
+                      <span>{reportStats.get(report.id)?.count || 0} transactions</span>
                     </div>
                   </div>
 

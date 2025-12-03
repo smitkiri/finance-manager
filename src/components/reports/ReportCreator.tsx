@@ -56,7 +56,7 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
       return;
     }
 
-    const report = createReport(name.trim(), description.trim(), filters, expenses);
+    const report = createReport(name.trim(), description.trim(), filters);
     onCreateReport(report);
   };
 

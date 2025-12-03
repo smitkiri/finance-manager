@@ -112,8 +112,9 @@ export interface Report {
   filters: ReportFilter;
   createdAt: string;
   lastModified: string;
-  transactionCount: number;
-  totalAmount: number;
+  // These fields are optional and computed dynamically at runtime
+  transactionCount?: number;
+  totalAmount?: number;
 }
 
 export interface ReportData {

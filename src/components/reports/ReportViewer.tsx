@@ -25,32 +25,22 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadReportData = async () => {
+    // Always generate report data dynamically from current expenses and filters
+    const generateData = () => {
       try {
-        // Try to load cached report data first
-        let cachedData = await LocalStorage.loadReportData(report.id);
-        
-        if (!cachedData) {
-          // Generate fresh report data
-          const filteredExpenses = applyReportFilters(expenses, report.filters);
-          cachedData = generateReportData(report, filteredExpenses);
-          
-          // Cache the report data
-          await LocalStorage.saveReportData(cachedData);
-        }
-        
-        setReportData(cachedData);
-      } catch (error) {
-        console.error('Error loading report data:', error);
-        // Fallback: generate data without caching
-        const filteredExpenses = applyReportFilters(expenses, report.filters);
+        // Handle cases where filters might be undefined (for backward compatibility)
+        const filters = report.filters || {};
+        const filteredExpenses = applyReportFilters(expenses, filters);
         const data = generateReportData(report, filteredExpenses);
         setReportData(data);
+      } catch (error) {
+        console.error('Error generating report data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    loadReportData();
+    
+    generateData();
   }, [report, expenses]);
 
   const handleExportReport = () => {

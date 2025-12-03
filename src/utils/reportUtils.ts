@@ -1,7 +1,12 @@
 import { Expense, ReportFilter, ReportData, Report } from '../types';
 import { generateId } from '../utils';
 
-export const applyReportFilters = (expenses: Expense[], filters: ReportFilter): Expense[] => {
+export const applyReportFilters = (expenses: Expense[], filters: ReportFilter | undefined): Expense[] => {
+  // If no filters provided, return all expenses
+  if (!filters) {
+    return expenses;
+  }
+
   return expenses.filter(expense => {
     // Date range filter
     if (filters.dateRange) {
@@ -107,20 +112,15 @@ export const generateReportData = (
 export const createReport = (
   name: string,
   description: string,
-  filters: ReportFilter,
-  expenses: Expense[]
+  filters: ReportFilter
 ): Report => {
-  const filteredExpenses = applyReportFilters(expenses, filters);
-  const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
   return {
     id: generateId(),
     name,
     description,
     filters,
     createdAt: new Date().toISOString(),
-    lastModified: new Date().toISOString(),
-    transactionCount: filteredExpenses.length,
-    totalAmount
+    lastModified: new Date().toISOString()
+    // transactionCount and totalAmount are computed dynamically at runtime
   };
 }; 
