@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
 import { Expense, User } from '../types';
-import { calculateStats } from '../utils';
+import { calculateStats, formatCurrency, formatDate } from '../utils';
 import { filterTransfersForCalculations } from '../utils/transferDetection';
 import { Check } from 'lucide-react';
 
@@ -11,10 +11,12 @@ interface DashboardProps {
   categories: string[];
   selectedUserId: string | null;
   users: User[];
+  onViewDetails?: (expense: Expense) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categories, selectedUserId, users }) => {
+export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categories, selectedUserId, users, onViewDetails }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
+  const [topTransactionCount, setTopTransactionCount] = useState<number>(10);
 
   // Memoize filtered expenses to prevent recalculation on every render
   const filteredExpenses = useMemo(() => 
@@ -93,6 +95,24 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
           { name: 'Expenses', value: stats.totalExpenses }
         ], 
     [stats.netAmount, stats.totalExpenses]
+  );
+
+  // Memoize top expenses by amount
+  const topExpenses = useMemo(() => 
+    filteredExpenses
+      .filter(exp => exp.type === 'expense')
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, topTransactionCount),
+    [filteredExpenses, topTransactionCount]
+  );
+
+  // Memoize top income by amount
+  const topIncome = useMemo(() => 
+    filteredExpenses
+      .filter(exp => exp.type === 'income')
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, topTransactionCount),
+    [filteredExpenses, topTransactionCount]
   );
 
   // Function to prepare category line chart data
@@ -347,6 +367,122 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
             </div>
           </div>
         )}
+      </div>
+
+      {/* Top Transactions by Amount */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Top Transactions by Amount
+          </h3>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Show:</span>
+            {[5, 10, 20].map((count) => (
+              <button
+                key={count}
+                onClick={() => setTopTransactionCount(count)}
+                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                  topTransactionCount === count
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Expenses */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Top Expenses
+            </h4>
+            {topExpenses.length > 0 ? (
+              <div className="space-y-2">
+                {topExpenses.map((expense, index) => (
+                  <button
+                    key={expense.id}
+                    onClick={() => onViewDetails?.(expense)}
+                    className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            #{index + 1}
+                          </span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {expense.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(expense.date)}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">•</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {expense.category}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-red-600 dark:text-red-400 ml-4">
+                        -{formatCurrency(expense.amount)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No expenses found</p>
+            )}
+          </div>
+
+          {/* Top Income */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Top Income
+            </h4>
+            {topIncome.length > 0 ? (
+              <div className="space-y-2">
+                {topIncome.map((expense, index) => (
+                  <button
+                    key={expense.id}
+                    onClick={() => onViewDetails?.(expense)}
+                    className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            #{index + 1}
+                          </span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {expense.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(expense.date)}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">•</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {expense.category}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-green-600 dark:text-green-400 ml-4">
+                        +{formatCurrency(expense.amount)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No income found</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -830,6 +830,7 @@ function AppContent() {
             categories={categories}
             selectedUserId={selectedUserId}
             users={users}
+            onViewDetails={handleViewTransactionDetails}
           />
         ) : activeTab === 'reports' ? (
           <Reports
