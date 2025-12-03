@@ -1,5 +1,5 @@
-import React from 'react';
-import { Tag, Filter, DollarSign, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Tag, Filter, DollarSign, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Source } from '../../types';
 
 export interface TransactionFilters {
@@ -68,6 +68,20 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
     onFiltersChange({ ...filters, [field]: numValue });
   };
 
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['types']));
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  };
+
   const hasActiveFilters = () => {
     return !!(
       filters.categories?.length ||
@@ -79,148 +93,275 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
     );
   };
 
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.categories?.length) count += filters.categories.length;
+    if (filters.labels?.length) count += filters.labels.length;
+    if (filters.types?.length) count += filters.types.length;
+    if (filters.sources?.length) count += filters.sources.length;
+    if (filters.minAmount !== undefined) count += 1;
+    if (filters.maxAmount !== undefined) count += 1;
+    return count;
+  };
+
   if (isCompact) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
-          {hasActiveFilters() && onClearFilters && (
-            <button
-              onClick={onClearFilters}
-              className="flex items-center space-x-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <X size={14} />
-              <span>Clear</span>
-            </button>
-          )}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Filter size={18} className="text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
+              {hasActiveFilters() && (
+                <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded-full">
+                  {getActiveFilterCount()}
+                </span>
+              )}
+            </div>
+            {hasActiveFilters() && onClearFilters && (
+              <button
+                onClick={onClearFilters}
+                className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-600 rounded-lg transition-colors"
+              >
+                <X size={14} />
+                <span>Clear</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="p-4 space-y-3">
+          {/* Transaction Type - Always visible */}
+          <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('types')}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                <Filter size={16} className="text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Transaction Type</span>
+                {filters.types?.length ? (
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                    {filters.types.length}
+                  </span>
+                ) : null}
+              </div>
+              {expandedSections.has('types') ? (
+                <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" />
+              ) : (
+                <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
+              )}
+            </button>
+            {expandedSections.has('types') && (
+              <div className="p-3 space-y-2 bg-white dark:bg-slate-800">
+                <button
+                  onClick={() => handleTypeChange('expense', !filters.types?.includes('expense'))}
+                  className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filters.types?.includes('expense')
+                      ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-2 border-red-300 dark:border-red-700'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  Expenses
+                </button>
+                <button
+                  onClick={() => handleTypeChange('income', !filters.types?.includes('income'))}
+                  className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filters.types?.includes('income')
+                      ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-2 border-green-300 dark:border-green-700'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  Income
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Categories */}
-          <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <Tag size={16} className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Categories</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {categories.map((category) => (
-                <label key={category} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.categories?.includes(category) || false}
-                    onChange={(e) => handleCategoryChange(category, e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-xs text-gray-700 dark:text-gray-300">{category}</span>
-                </label>
-              ))}
-            </div>
+          <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('categories')}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                <Tag size={16} className="text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Categories</span>
+                {filters.categories?.length ? (
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                    {filters.categories.length}
+                  </span>
+                ) : null}
+              </div>
+              {expandedSections.has('categories') ? (
+                <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" />
+              ) : (
+                <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
+              )}
+            </button>
+            {expandedSections.has('categories') && (
+              <div className="p-3 bg-white dark:bg-slate-800">
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => handleCategoryChange(category, !filters.categories?.includes(category))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        filters.categories?.includes(category)
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Labels */}
           {allLabels.length > 0 && (
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <Tag size={16} className="text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Labels</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {allLabels.map((label) => (
-                  <label key={label} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.labels?.includes(label) || false}
-                      onChange={(e) => handleLabelChange(label, e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">{label}</span>
-                  </label>
-                ))}
-              </div>
+            <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleSection('labels')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <Tag size={16} className="text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Labels</span>
+                  {filters.labels?.length ? (
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                      {filters.labels.length}
+                    </span>
+                  ) : null}
+                </div>
+                {expandedSections.has('labels') ? (
+                  <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
+                )}
+              </button>
+              {expandedSections.has('labels') && (
+                <div className="p-3 bg-white dark:bg-slate-800">
+                  <div className="flex flex-wrap gap-2">
+                    {allLabels.map((label) => (
+                      <button
+                        key={label}
+                        onClick={() => handleLabelChange(label, !filters.labels?.includes(label))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          filters.labels?.includes(label)
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Types */}
-          <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <Filter size={16} className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Type</span>
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.types?.includes('expense') || false}
-                  onChange={(e) => handleTypeChange('expense', e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-xs text-gray-700 dark:text-gray-300">Expenses</span>
-              </label>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.types?.includes('income') || false}
-                  onChange={(e) => handleTypeChange('income', e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-xs text-gray-700 dark:text-gray-300">Income</span>
-              </label>
-            </div>
-          </div>
-
           {/* Sources */}
           {sources.length > 0 && (
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <Filter size={16} className="text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sources</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {sources.map((source) => (
-                  <label key={source.id} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.sources?.includes(source.id) || false}
-                      onChange={(e) => handleSourceChange(source.id, e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">{source.name}</span>
-                  </label>
-                ))}
-              </div>
+            <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleSection('sources')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <Filter size={16} className="text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Sources</span>
+                  {filters.sources?.length ? (
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                      {filters.sources.length}
+                    </span>
+                  ) : null}
+                </div>
+                {expandedSections.has('sources') ? (
+                  <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
+                )}
+              </button>
+              {expandedSections.has('sources') && (
+                <div className="p-3 bg-white dark:bg-slate-800">
+                  <div className="flex flex-wrap gap-2">
+                    {sources.map((source) => (
+                      <button
+                        key={source.id}
+                        onClick={() => handleSourceChange(source.id, !filters.sources?.includes(source.id))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          filters.sources?.includes(source.id)
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        {source.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Amount Range */}
-          <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <DollarSign size={16} className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Amount Range</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <input
-                  type="number"
-                  value={filters.minAmount || ''}
-                  onChange={(e) => handleAmountRangeChange('minAmount', e.target.value)}
-                  placeholder="Min"
-                  step="0.01"
-                  min="0"
-                  className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+          <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('amount')}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                <DollarSign size={16} className="text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Amount Range</span>
+                {(filters.minAmount !== undefined || filters.maxAmount !== undefined) && (
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                    Set
+                  </span>
+                )}
               </div>
-              <div>
-                <input
-                  type="number"
-                  value={filters.maxAmount || ''}
-                  onChange={(e) => handleAmountRangeChange('maxAmount', e.target.value)}
-                  placeholder="Max"
-                  step="0.01"
-                  min="0"
-                  className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+              {expandedSections.has('amount') ? (
+                <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" />
+              ) : (
+                <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
+              )}
+            </button>
+            {expandedSections.has('amount') && (
+              <div className="p-3 bg-white dark:bg-slate-800 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Minimum
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.minAmount || ''}
+                    onChange={(e) => handleAmountRangeChange('minAmount', e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Maximum
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.maxAmount || ''}
+                    onChange={(e) => handleAmountRangeChange('maxAmount', e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
