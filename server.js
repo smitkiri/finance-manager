@@ -1246,12 +1246,16 @@ function detectTransfers(transactions) {
     const creditIndex = updatedTransactions.findIndex(t => t.id === transfer.credit.id);
     const debitIndex = updatedTransactions.findIndex(t => t.id === transfer.debit.id);
     
+    // Determine transfer type based on users
+    const transferType = transfer.credit.user === transfer.debit.user ? 'self' : 'user';
+    
     if (creditIndex !== -1) {
       updatedTransactions[creditIndex] = {
         ...updatedTransactions[creditIndex],
         transferInfo: {
           isTransfer: true,
           transferId: transfer.transferId,
+          transferType,
           excludedFromCalculations: true,
           userOverride: false
         }
@@ -1264,6 +1268,7 @@ function detectTransfers(transactions) {
         transferInfo: {
           isTransfer: true,
           transferId: transfer.transferId,
+          transferType,
           excludedFromCalculations: true,
           userOverride: false
         }

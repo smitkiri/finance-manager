@@ -55,9 +55,13 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
             const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             const confidence = calculateTransferConfidence(t1, t2);
             
+            // Ensure we preserve the correct user information for each transaction
+            const credit = t1.type === 'income' ? t1 : t2;
+            const debit = t1.type === 'expense' ? t1 : t2;
+            
             transfers.push({
-              credit: t1.type === 'income' ? t1 : t2,
-              debit: t1.type === 'expense' ? t1 : t2,
+              credit,
+              debit,
               transferId,
               confidence
             });
@@ -107,9 +111,13 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
               const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
               const confidence = calculateTransferConfidence(t1, t2);
               
+              // Ensure we preserve the correct user information for each transaction
+              const credit = t1.type === 'income' ? t1 : t2;
+              const debit = t1.type === 'expense' ? t1 : t2;
+              
               transfers.push({
-                credit: t1.type === 'income' ? t1 : t2,
-                debit: t1.type === 'expense' ? t1 : t2,
+                credit,
+                debit,
                 transferId,
                 confidence
               });
@@ -129,12 +137,18 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
     const creditIndex = updatedTransactions.findIndex(t => t.id === transfer.credit.id);
     const debitIndex = updatedTransactions.findIndex(t => t.id === transfer.debit.id);
     
+    // Determine transfer type based on users
+    const transferType = transfer.credit.user === transfer.debit.user ? 'self' : 'user';
+    
+
+    
     if (creditIndex !== -1) {
       updatedTransactions[creditIndex] = {
         ...updatedTransactions[creditIndex],
         transferInfo: {
           isTransfer: true,
           transferId: transfer.transferId,
+          transferType,
           excludedFromCalculations: true,
           userOverride: false
         }
@@ -147,6 +161,7 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
         transferInfo: {
           isTransfer: true,
           transferId: transfer.transferId,
+          transferType,
           excludedFromCalculations: true,
           userOverride: false
         }
@@ -166,6 +181,8 @@ function isTransferPair(t1: Expense, t2: Expense): boolean {
   const source2 = t2.metadata?.sourceId || 'manual';
   const user1 = t1.user;
   const user2 = t2.user;
+  
+
   
   // If same source, must be different users
   if (source1 === source2 && user1 === user2) return false;
@@ -218,9 +235,11 @@ function calculateTransferConfidence(t1: Expense, t2: Expense): number {
 }
 
 /**
- * Filters out transfer transactions from calculations based on user preferences
+ * Filters out transfer transactions from calculations based on user preferences and transfer type
+ * @param transactions - All transactions to filter
+ * @param selectedUserId - The currently selected user ID, or null for "All users"
  */
-export function filterTransfersForCalculations(transactions: Expense[]): Expense[] {
+export function filterTransfersForCalculations(transactions: Expense[], selectedUserId: string | null = null): Expense[] {
   return transactions.filter(transaction => {
     // Exclude if top-level excludedFromCalculations is true (manual exclusion)
     if (transaction.excludedFromCalculations === true) return false;
@@ -231,6 +250,16 @@ export function filterTransfersForCalculations(transactions: Expense[]): Expense
       if (transaction.transferInfo.userOverride !== undefined) {
         return !transaction.transferInfo.excludedFromCalculations;
       }
+      
+      // Handle different transfer types based on user selection
+      if (transaction.transferInfo.transferType === 'user') {
+        // User transfers: include when a specific user is selected, exclude when "All users" is selected
+        return selectedUserId !== null;
+      } else if (transaction.transferInfo.transferType === 'self') {
+        // Self transfers: always exclude from calculations (they cancel each other out)
+        return !transaction.transferInfo.excludedFromCalculations;
+      }
+      
       // Default behavior: exclude transfers from calculations
       return !transaction.transferInfo.excludedFromCalculations;
     }

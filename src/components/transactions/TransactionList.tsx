@@ -13,9 +13,10 @@ interface TransactionListProps {
   onRemoveLabel: (expenseId: string, label: string) => void;
   onViewDetails: (expense: Expense) => void;
   categories: string[];
+  selectedUserId?: string | null;
 }
 
-const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories }) => {
+const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories, selectedUserId }) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [labelSelectorState, setLabelSelectorState] = useState<{
     isOpen: boolean;
@@ -116,6 +117,35 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
     });
   }, []);
 
+  // Helper function to determine if a transaction should be visually excluded
+  const isTransactionExcluded = useCallback((expense: Expense) => {
+    // Exclude if top-level excludedFromCalculations is true (manual exclusion)
+    if (expense.excludedFromCalculations === true) return true;
+    
+    // For transfers, check transfer-specific exclusion logic
+    if (expense.transferInfo?.isTransfer) {
+      // Include if user has explicitly overridden the exclusion
+      if (expense.transferInfo.userOverride !== undefined) {
+        return expense.transferInfo.excludedFromCalculations;
+      }
+      
+      // Handle different transfer types based on user selection
+      if (expense.transferInfo.transferType === 'user') {
+        // User transfers: exclude when "All users" is selected, include when specific user is selected
+        return selectedUserId === null;
+      } else if (expense.transferInfo.transferType === 'self') {
+        // Self transfers: always exclude from calculations (they cancel each other out)
+        return expense.transferInfo.excludedFromCalculations;
+      }
+      
+      // Default behavior: exclude transfers from calculations
+      return expense.transferInfo.excludedFromCalculations;
+    }
+    
+    // Non-transfer transactions are included unless manually excluded
+    return false;
+  }, [selectedUserId]);
+
   if (expenses.length === 0) {
     return (
       <div className="text-center py-12">
@@ -147,7 +177,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
         <div
           key={expense.id}
           className={`rounded-lg border transition-shadow duration-200 p-3 cursor-pointer ${
-            (expense.excludedFromCalculations || (expense.transferInfo?.isTransfer && expense.transferInfo.excludedFromCalculations))
+            isTransactionExcluded(expense)
               ? 'bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-600 opacity-50'
               : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:shadow-sm'
           }`}
@@ -213,8 +243,12 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
                       )}
                     </div>
                     {expense.transferInfo?.isTransfer && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                        Transfer
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                        expense.transferInfo.transferType === 'user' 
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                          : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                      }`}>
+                        {expense.transferInfo.transferType === 'user' ? 'User Transfer' : 'Self Transfer'}
                       </span>
                     )}
                     {expense.labels && expense.labels.length > 0 && (

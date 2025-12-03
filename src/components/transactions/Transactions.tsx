@@ -14,6 +14,7 @@ interface TransactionsProps {
   categories: string[];
   searchText?: string;
   onSearchChange?: (searchText: string) => void;
+  selectedUserId?: string | null;
 }
 
 export const Transactions: React.FC<TransactionsProps> = ({
@@ -26,7 +27,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
   onViewDetails,
   categories,
   searchText = '',
-  onSearchChange
+  onSearchChange,
+  selectedUserId
 }) => {
   return (
     <div className="space-y-6">
@@ -68,6 +70,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         onRemoveLabel={onRemoveLabel}
         onViewDetails={onViewDetails}
         categories={categories}
+        selectedUserId={selectedUserId}
       />
     </div>
   );

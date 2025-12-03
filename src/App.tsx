@@ -655,6 +655,72 @@ function AppContent() {
     }
   };
 
+  const handleMarkAsSelfTransfer = async (transactionId: string, pairTransactionId: string) => {
+    try {
+      const transaction1 = expenses.find(exp => exp.id === transactionId);
+      const transaction2 = expenses.find(exp => exp.id === pairTransactionId);
+      
+      if (!transaction1 || !transaction2) {
+        console.error('One or both transactions not found');
+        return;
+      }
+
+      // Generate a unique transfer ID
+      const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Update both transactions with transfer info
+      const updatedTransaction1: Expense = {
+        ...transaction1,
+        transferInfo: {
+          isTransfer: true,
+          transferId,
+          transferType: 'self',
+          excludedFromCalculations: true,
+          userOverride: false
+        }
+      };
+
+      const updatedTransaction2: Expense = {
+        ...transaction2,
+        transferInfo: {
+          isTransfer: true,
+          transferId,
+          transferType: 'self',
+          excludedFromCalculations: true,
+          userOverride: false
+        }
+      };
+
+      // Update both transactions
+      let updatedExpenses = expenses.map(exp => {
+        if (exp.id === transactionId) return updatedTransaction1;
+        if (exp.id === pairTransactionId) return updatedTransaction2;
+        return exp;
+      });
+
+      // Save to storage
+      await LocalStorage.saveExpenses(updatedExpenses, isTestMode);
+      setExpenses(updatedExpenses);
+
+      // Update selected transaction if it's one of the updated ones
+      if (selectedTransaction && (selectedTransaction.id === transactionId || selectedTransaction.id === pairTransactionId)) {
+        const updatedSelected = selectedTransaction.id === transactionId ? updatedTransaction1 : updatedTransaction2;
+        setSelectedTransaction(updatedSelected);
+      }
+
+      toast.success('Transactions marked as self-transfer pair', {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error('Error marking as self-transfer:', error);
+      toast.error('Failed to mark transactions as self-transfer', {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
   const handleAddUser = async (user: User) => {
     try {
       const updatedUsers = await LocalStorage.addUser(user, isTestMode);
@@ -787,6 +853,7 @@ function AppContent() {
                 categories={categories}
                 searchText={transactionFilters.searchText || ''}
                 onSearchChange={(searchText) => setTransactionFilters(prev => ({ ...prev, searchText: searchText || undefined }))}
+                selectedUserId={selectedUserId}
               />
             </div>
 
@@ -878,7 +945,9 @@ function AppContent() {
         }}
         onTransferOverride={handleTransferOverride}
         onExcludeToggle={handleExcludeToggle}
+        onMarkAsSelfTransfer={handleMarkAsSelfTransfer}
         allTransactions={expenses}
+        selectedUserId={selectedUserId}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { Expense, ExpenseStats, DateRange } from './types';
-import { filterTransfersForCalculations } from './utils/transferDetection';
+// import { filterTransfersForCalculations } from './utils/transferDetection';
 
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -21,8 +21,9 @@ export const generateId = (): string => {
 };
 
 export const calculateStats = (expenses: Expense[]): ExpenseStats => {
-  // Filter out transfers that are excluded from calculations
-  const filteredExpenses = filterTransfersForCalculations(expenses);
+  // Expenses should already be filtered by transfer logic when passed from components
+  // No need to filter again here as it would lose the user context
+  const filteredExpenses = expenses;
   
   const totalExpenses = filteredExpenses
     .filter(exp => exp.type === 'expense')

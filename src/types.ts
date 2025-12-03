@@ -15,6 +15,7 @@ export interface Expense {
   transferInfo?: {
     isTransfer: boolean;
     transferId?: string;
+    transferType?: 'user' | 'self'; // 'user' = between different users, 'self' = within same user
     excludedFromCalculations: boolean;
     userOverride?: boolean;
   };

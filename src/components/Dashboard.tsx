@@ -18,12 +18,12 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
 
   // Memoize filtered expenses to prevent recalculation on every render
   const filteredExpenses = useMemo(() => 
-    filterTransfersForCalculations(expenses), [expenses]
+    filterTransfersForCalculations(expenses, selectedUserId), [expenses, selectedUserId]
   );
 
-  // Memoize statistics calculation
+  // Memoize statistics calculation using filtered expenses
   const stats = useMemo(() => 
-    calculateStats(expenses), [expenses]
+    calculateStats(filteredExpenses), [filteredExpenses]
   );
 
   // Memoize category breakdown for expenses
