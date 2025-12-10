@@ -2,9 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const db = require('./database');
+const { runMigration } = require('./migrate');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -12,6 +14,21 @@ app.use(express.json({ limit: '10mb' }));
 
 // Test mode state
 let isTestMode = false;
+
+// Initialize database and run migration on startup
+(async () => {
+  try {
+    await db.waitForDatabase();
+    // Migrate production database
+    await runMigration(false);
+    // Migrate test database
+    await runMigration(true);
+    console.log('Database initialized and migration completed');
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    process.exit(1);
+  }
+})();
 
 // Function to get the appropriate artifacts directory
 const getArtifactsDir = () => {
@@ -38,7 +55,7 @@ const ensureArtifactsDir = () => {
 };
 
 // Routes
-app.get('/api/expenses', (req, res) => {
+app.get('/api/expenses', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
@@ -47,20 +64,34 @@ app.get('/api/expenses', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const transactionsFile = getFilePath('transactions.json');
-    if (!fs.existsSync(transactionsFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
-      return res.json([]);
-    }
+    const result = await db.query(
+      'SELECT * FROM transactions ORDER BY date DESC'
+    );
     
-    const data = fs.readFileSync(transactionsFile, 'utf8');
-    const expenses = JSON.parse(data);
+    // Convert database rows to expense format
+    const expenses = result.rows.map(row => ({
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      category: row.category,
+      amount: parseFloat(row.amount),
+      type: row.type,
+      user: row.user_id,
+      labels: row.labels || [],
+      metadata: row.metadata || {},
+      transferInfo: row.transfer_info ? row.transfer_info : undefined,
+      excludedFromCalculations: row.excluded_from_calculations || false
+    }));
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json(expenses);
   } catch (error) {
     console.error('Error reading expenses:', error);
@@ -68,7 +99,7 @@ app.get('/api/expenses', (req, res) => {
   }
 });
 
-app.post('/api/expenses', (req, res) => {
+app.post('/api/expenses', async (req, res) => {
   try {
     const { expenses, metadata, isTestMode: requestTestMode } = req.body;
     
@@ -76,28 +107,77 @@ app.post('/api/expenses', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    ensureArtifactsDir();
-    const transactionsFile = getFilePath('transactions.json');
-    const metadataFile = getFilePath('metadata.json');
-    
-    fs.writeFileSync(transactionsFile, JSON.stringify(expenses, null, 2));
-    
-    if (metadata) {
-      fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
+    const client = await db.beginTransaction();
+    try {
+      // Delete all existing transactions
+      await client.query('DELETE FROM transactions');
+      
+      // Insert all expenses
+      for (const expense of expenses) {
+        await client.query(
+          `INSERT INTO transactions (
+            id, date, description, category, amount, type, user_id,
+            labels, metadata, transfer_info, excluded_from_calculations
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (id) DO UPDATE SET
+            date = EXCLUDED.date,
+            description = EXCLUDED.description,
+            category = EXCLUDED.category,
+            amount = EXCLUDED.amount,
+            type = EXCLUDED.type,
+            user_id = EXCLUDED.user_id,
+            labels = EXCLUDED.labels,
+            metadata = EXCLUDED.metadata,
+            transfer_info = EXCLUDED.transfer_info,
+            excluded_from_calculations = EXCLUDED.excluded_from_calculations,
+            updated_at = CURRENT_TIMESTAMP`,
+          [
+            expense.id,
+            expense.date,
+            expense.description,
+            expense.category || 'Uncategorized',
+            expense.amount,
+            expense.type,
+            expense.user,
+            JSON.stringify(expense.labels || []),
+            JSON.stringify(expense.metadata || {}),
+            expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
+            expense.excludedFromCalculations || false
+          ]
+        );
+      }
+      
+      // Save metadata if provided
+      if (metadata) {
+        await client.query(
+          'INSERT INTO metadata (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
+          ['storage_metadata', JSON.stringify(metadata)]
+        );
+      }
+      
+      await db.commitTransaction(client);
+      
+      // Restore original test mode
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
+      
+      res.json({ success: true, count: expenses.length });
+    } catch (error) {
+      await db.rollbackTransaction(client);
+      throw error;
     }
-    
-    // Restore original test mode
-    isTestMode = originalTestMode;
-    res.json({ success: true, count: expenses.length });
   } catch (error) {
     console.error('Error saving expenses:', error);
     res.status(500).json({ error: 'Failed to save expenses' });
   }
 });
 
-app.post('/api/import-csv', (req, res) => {
+app.post('/api/import-csv', async (req, res) => {
   try {
     const { csvText, isTestMode: requestTestMode } = req.body;
     
@@ -105,18 +185,27 @@ app.post('/api/import-csv', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    // Parse CSV and save
+    // Parse CSV
     const expenses = parseCSV(csvText);
     
-    // Load existing expenses
-    let existingExpenses = [];
-    const transactionsFile = getFilePath('transactions.json');
-    if (fs.existsSync(transactionsFile)) {
-      const data = fs.readFileSync(transactionsFile, 'utf8');
-      existingExpenses = JSON.parse(data);
-    }
+    // Load existing expenses from database
+    const existingResult = await db.query('SELECT * FROM transactions');
+    const existingExpenses = existingResult.rows.map(row => ({
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      category: row.category,
+      amount: parseFloat(row.amount),
+      type: row.type,
+      user: row.user_id,
+      labels: row.labels || [],
+      metadata: row.metadata || {},
+      transferInfo: row.transfer_info,
+      excludedFromCalculations: row.excluded_from_calculations
+    }));
     
     // Merge expenses
     const mergedExpenses = mergeExpenses(existingExpenses, expenses);
@@ -124,12 +213,47 @@ app.post('/api/import-csv', (req, res) => {
     // Detect transfers
     const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
     
-    // Save merged data with transfer info
-    ensureArtifactsDir();
-    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
+    // Save merged data with transfer info to database
+    const client = await db.beginTransaction();
+    try {
+      // Delete all existing transactions
+      await client.query('DELETE FROM transactions');
+      
+      // Insert updated transactions
+      for (const expense of updatedTransactions) {
+        await client.query(
+          `INSERT INTO transactions (
+            id, date, description, category, amount, type, user_id,
+            labels, metadata, transfer_info, excluded_from_calculations
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            expense.id,
+            expense.date,
+            expense.description,
+            expense.category || 'Uncategorized',
+            expense.amount,
+            expense.type,
+            expense.user,
+            JSON.stringify(expense.labels || []),
+            JSON.stringify(expense.metadata || {}),
+            expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
+            expense.excludedFromCalculations || false
+          ]
+        );
+      }
+      
+      await db.commitTransaction(client);
+    } catch (error) {
+      await db.rollbackTransaction(client);
+      throw error;
+    }
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ 
       success: true, 
       imported: expenses.length,
@@ -142,7 +266,7 @@ app.post('/api/import-csv', (req, res) => {
   }
 });
 
-app.get('/api/export-csv', (req, res) => {
+app.get('/api/export-csv', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
@@ -151,17 +275,28 @@ app.get('/api/export-csv', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const transactionsFile = getFilePath('transactions.json');
-    if (!fs.existsSync(transactionsFile)) {
+    const result = await db.query('SELECT * FROM transactions ORDER BY date DESC');
+    
+    if (result.rows.length === 0) {
       // Restore original test mode
-      isTestMode = originalTestMode;
+      if (requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(404).json({ error: 'No expenses found' });
     }
     
-    const data = fs.readFileSync(transactionsFile, 'utf8');
-    const expenses = JSON.parse(data);
+    // Convert database rows to expense format
+    const expenses = result.rows.map(row => ({
+      date: row.date,
+      description: row.description,
+      category: row.category,
+      amount: parseFloat(row.amount),
+      type: row.type
+    }));
     
     // Create CSV content
     const headers = ['Date', 'Description', 'Category', 'Amount', 'Type'];
@@ -177,7 +312,11 @@ app.get('/api/export-csv', (req, res) => {
     ].join('\n');
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=expenses.csv');
     res.send(csvContent);
@@ -230,7 +369,7 @@ app.post('/api/column-mappings', (req, res) => {
   }
 });
 
-app.post('/api/import-with-mapping', (req, res) => {
+app.post('/api/import-with-mapping', async (req, res) => {
   try {
     const { csvText, mapping, userId, isTestMode: requestTestMode } = req.body;
     
@@ -243,15 +382,25 @@ app.post('/api/import-with-mapping', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    // Load existing expenses
-    let existingExpenses = [];
-    const transactionsFile = getFilePath('transactions.json');
-    if (fs.existsSync(transactionsFile)) {
-      const data = fs.readFileSync(transactionsFile, 'utf8');
-      existingExpenses = JSON.parse(data);
-    }
+    // Load existing expenses from database
+    const existingResult = await db.query('SELECT * FROM transactions');
+    const existingExpenses = existingResult.rows.map(row => ({
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      category: row.category,
+      amount: parseFloat(row.amount),
+      type: row.type,
+      user: row.user_id,
+      labels: row.labels || [],
+      metadata: row.metadata || {},
+      transferInfo: row.transfer_info,
+      excludedFromCalculations: row.excluded_from_calculations
+    }));
+    
     // Parse CSV with mapping and userId, pass existing expenses for category suggestion
     const { expenses, autoFilledCategories } = parseCSVWithMapping(csvText, mapping, userId, existingExpenses);
     
@@ -261,12 +410,47 @@ app.post('/api/import-with-mapping', (req, res) => {
     // Detect transfers
     const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
     
-    // Save merged data with transfer info
-    ensureArtifactsDir();
-    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
+    // Save merged data with transfer info to database
+    const client = await db.beginTransaction();
+    try {
+      // Delete all existing transactions
+      await client.query('DELETE FROM transactions');
+      
+      // Insert updated transactions
+      for (const expense of updatedTransactions) {
+        await client.query(
+          `INSERT INTO transactions (
+            id, date, description, category, amount, type, user_id,
+            labels, metadata, transfer_info, excluded_from_calculations
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            expense.id,
+            expense.date,
+            expense.description,
+            expense.category || 'Uncategorized',
+            expense.amount,
+            expense.type,
+            expense.user,
+            JSON.stringify(expense.labels || []),
+            JSON.stringify(expense.metadata || {}),
+            expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
+            expense.excludedFromCalculations || false
+          ]
+        );
+      }
+      
+      await db.commitTransaction(client);
+    } catch (error) {
+      await db.rollbackTransaction(client);
+      throw error;
+    }
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ 
       success: true, 
       imported: expenses.length,
@@ -311,7 +495,7 @@ app.get('/api/date-range', (req, res) => {
   }
 });
 
-app.post('/api/date-range', (req, res) => {
+app.post('/api/date-range', async (req, res) => {
   try {
     const { start, end, isTestMode: requestTestMode } = req.body;
     
@@ -319,15 +503,20 @@ app.post('/api/date-range', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    ensureArtifactsDir();
-    const dateRangeFile = getFilePath('date-range.json');
-    const dateRange = { start, end };
-    fs.writeFileSync(dateRangeFile, JSON.stringify(dateRange, null, 2));
+    await db.query(
+      'INSERT INTO date_ranges (start_date, end_date) VALUES ($1, $2) ON CONFLICT (start_date, end_date) DO UPDATE SET created_at = CURRENT_TIMESTAMP',
+      [start, end]
+    );
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving date range:', error);
@@ -336,7 +525,7 @@ app.post('/api/date-range', (req, res) => {
 });
 
 // Category Routes
-app.get('/api/categories', (req, res) => {
+app.get('/api/categories', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
@@ -345,13 +534,15 @@ app.get('/api/categories', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const categoriesFile = getFilePath('categories.json');
-    if (!fs.existsSync(categoriesFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
-      // Return default categories if file doesn't exist
+    const result = await db.query('SELECT name FROM categories ORDER BY name');
+    
+    let categories = result.rows.map(row => row.name);
+    
+    // If no categories exist, return defaults
+    if (categories.length === 0) {
       const defaultCategories = [
         'Food & Drink',
         'Shopping',
@@ -364,14 +555,15 @@ app.get('/api/categories', (req, res) => {
         'Professional Services',
         'Uncategorized'
       ];
-      return res.json({ categories: defaultCategories });
+      categories = defaultCategories;
     }
     
-    const data = fs.readFileSync(categoriesFile, 'utf8');
-    const categories = JSON.parse(data);
-    
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ categories });
   } catch (error) {
     console.error('Error reading categories:', error);
@@ -379,7 +571,7 @@ app.get('/api/categories', (req, res) => {
   }
 });
 
-app.post('/api/categories', (req, res) => {
+app.post('/api/categories', async (req, res) => {
   try {
     const { categories, isTestMode: requestTestMode } = req.body;
     
@@ -387,14 +579,34 @@ app.post('/api/categories', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    ensureArtifactsDir();
-    const categoriesFile = getFilePath('categories.json');
-    fs.writeFileSync(categoriesFile, JSON.stringify(categories, null, 2));
+    const client = await db.beginTransaction();
+    try {
+      // Delete all existing categories
+      await client.query('DELETE FROM categories');
+      
+      // Insert all categories
+      for (const category of categories) {
+        await client.query(
+          'INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+          [category]
+        );
+      }
+      
+      await db.commitTransaction(client);
+    } catch (error) {
+      await db.rollbackTransaction(client);
+      throw error;
+    }
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true, count: categories.length });
   } catch (error) {
     console.error('Error saving categories:', error);
@@ -403,7 +615,7 @@ app.post('/api/categories', (req, res) => {
 });
 
 // User Routes
-app.get('/api/users', (req, res) => {
+app.get('/api/users', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
@@ -412,28 +624,34 @@ app.get('/api/users', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const usersFile = getFilePath('users.json');
-    if (!fs.existsSync(usersFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
-      // Return default user for backwards compatibility
-      const defaultUsers = [
+    const result = await db.query('SELECT * FROM users ORDER BY created_at');
+    
+    let users = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      createdAt: row.created_at
+    }));
+    
+    // If no users exist, return default user
+    if (users.length === 0) {
+      users = [
         {
           id: 'default-user',
           name: 'Default',
           createdAt: new Date().toISOString()
         }
       ];
-      return res.json({ users: defaultUsers });
     }
     
-    const data = fs.readFileSync(usersFile, 'utf8');
-    const users = JSON.parse(data);
-    
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ users });
   } catch (error) {
     console.error('Error reading users:', error);
@@ -441,7 +659,7 @@ app.get('/api/users', (req, res) => {
   }
 });
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
   try {
     const { users, isTestMode: requestTestMode } = req.body;
     
@@ -449,14 +667,34 @@ app.post('/api/users', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    ensureArtifactsDir();
-    const usersFile = getFilePath('users.json');
-    fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+    const client = await db.beginTransaction();
+    try {
+      // Delete all existing users
+      await client.query('DELETE FROM users');
+      
+      // Insert all users
+      for (const user of users) {
+        await client.query(
+          'INSERT INTO users (id, name, created_at) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name',
+          [user.id, user.name, user.createdAt || new Date().toISOString()]
+        );
+      }
+      
+      await db.commitTransaction(client);
+    } catch (error) {
+      await db.rollbackTransaction(client);
+      throw error;
+    }
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true, count: users.length });
   } catch (error) {
     console.error('Error saving users:', error);
@@ -465,7 +703,7 @@ app.post('/api/users', (req, res) => {
 });
 
 // Report Routes
-app.get('/api/reports', (req, res) => {
+app.get('/api/reports', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
@@ -474,26 +712,26 @@ app.get('/api/reports', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const reports = [];
-    const reportsDir = path.join(getArtifactsDir(), 'reports');
+    const result = await db.query('SELECT * FROM reports ORDER BY created_at DESC');
     
-    if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir);
-      
-      for (const file of files) {
-        if (file.endsWith('.json')) {
-          const filePath = path.join(reportsDir, file);
-          const data = fs.readFileSync(filePath, 'utf8');
-          const report = JSON.parse(data);
-          reports.push(report);
-        }
-      }
-    }
+    const reports = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      filters: row.filters,
+      createdAt: row.created_at,
+      lastModified: row.last_modified
+    }));
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json(reports);
   } catch (error) {
     console.error('Error reading reports:', error);
@@ -501,7 +739,7 @@ app.get('/api/reports', (req, res) => {
   }
 });
 
-app.post('/api/reports', (req, res) => {
+app.post('/api/reports', async (req, res) => {
   try {
     const { report, isTestMode: requestTestMode } = req.body;
     
@@ -509,15 +747,33 @@ app.post('/api/reports', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    ensureArtifactsDir();
-    const reportsDir = path.join(getArtifactsDir(), 'reports');
-    const reportFile = path.join(reportsDir, `${report.id}.json`);
-    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+    await db.query(
+      `INSERT INTO reports (id, name, description, filters, created_at, last_modified)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         description = EXCLUDED.description,
+         filters = EXCLUDED.filters,
+         last_modified = EXCLUDED.last_modified`,
+      [
+        report.id,
+        report.name,
+        report.description || null,
+        JSON.stringify(report.filters || {}),
+        report.createdAt || new Date().toISOString(),
+        report.lastModified || new Date().toISOString()
+      ]
+    );
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true, reportId: report.id });
   } catch (error) {
     console.error('Error saving report:', error);
@@ -525,22 +781,11 @@ app.post('/api/reports', (req, res) => {
   }
 });
 
-app.delete('/api/reports/:reportId', (req, res) => {
+app.delete('/api/reports/:reportId', async (req, res) => {
   try {
     const { reportId } = req.params;
-    const reportsDir = path.join(getArtifactsDir(), 'reports');
-    const reportFile = path.join(reportsDir, `${reportId}.json`);
-    const reportDataFile = path.join(reportsDir, `${reportId}_data.json`);
     
-    // Delete report file
-    if (fs.existsSync(reportFile)) {
-      fs.unlinkSync(reportFile);
-    }
-    
-    // Delete report data file
-    if (fs.existsSync(reportDataFile)) {
-      fs.unlinkSync(reportDataFile);
-    }
+    await db.query('DELETE FROM reports WHERE id = $1', [reportId]);
     
     res.json({ success: true });
   } catch (error) {
@@ -549,7 +794,7 @@ app.delete('/api/reports/:reportId', (req, res) => {
   }
 });
 
-app.post('/api/reports/:reportId/data', (req, res) => {
+app.post('/api/reports/:reportId/data', async (req, res) => {
   try {
     const { reportId } = req.params;
     const { reportData, isTestMode: requestTestMode } = req.body;
@@ -558,15 +803,18 @@ app.post('/api/reports/:reportId/data', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    ensureArtifactsDir();
-    const reportsDir = path.join(getArtifactsDir(), 'reports');
-    const reportDataFile = path.join(reportsDir, `${reportId}_data.json`);
-    fs.writeFileSync(reportDataFile, JSON.stringify(reportData, null, 2));
+    // Report data is now computed dynamically, so we don't need to store it
+    // This endpoint is kept for backwards compatibility but does nothing
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving report data:', error);
@@ -574,7 +822,7 @@ app.post('/api/reports/:reportId/data', (req, res) => {
   }
 });
 
-app.get('/api/reports/:reportId/data', (req, res) => {
+app.get('/api/reports/:reportId/data', async (req, res) => {
   try {
     const { reportId } = req.params;
     
@@ -585,23 +833,19 @@ app.get('/api/reports/:reportId/data', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const reportsDir = path.join(getArtifactsDir(), 'reports');
-    const reportDataFile = path.join(reportsDir, `${reportId}_data.json`);
-    
-    if (!fs.existsSync(reportDataFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
-      return res.status(404).json({ error: 'Report data not found' });
-    }
-    
-    const data = fs.readFileSync(reportDataFile, 'utf8');
-    const reportData = JSON.parse(data);
+    // Report data is now computed dynamically, so return 404
+    // This endpoint is kept for backwards compatibility
     
     // Restore original test mode
-    isTestMode = originalTestMode;
-    res.json(reportData);
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
+    return res.status(404).json({ error: 'Report data not found' });
   } catch (error) {
     console.error('Error reading report data:', error);
     res.status(500).json({ error: 'Failed to read report data' });
@@ -609,7 +853,7 @@ app.get('/api/reports/:reportId/data', (req, res) => {
 });
 
 // Source Routes
-app.get('/api/sources', (req, res) => {
+app.get('/api/sources', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
@@ -618,19 +862,26 @@ app.get('/api/sources', (req, res) => {
     // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const sourcesFile = getFilePath('source.json');
-    if (!fs.existsSync(sourcesFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
-      return res.json([]);
-    }
-    const data = fs.readFileSync(sourcesFile, 'utf8');
-    const sources = JSON.parse(data);
+    const result = await db.query('SELECT * FROM sources ORDER BY created_at');
+    
+    const sources = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      mappings: row.mappings,
+      flipIncomeExpense: row.flip_income_expense,
+      createdAt: row.created_at,
+      lastUsed: row.last_used
+    }));
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json(sources);
   } catch (error) {
     console.error('Error reading sources:', error);
@@ -638,7 +889,7 @@ app.get('/api/sources', (req, res) => {
   }
 });
 
-app.post('/api/sources', (req, res) => {
+app.post('/api/sources', async (req, res) => {
   try {
     const { source, isTestMode: requestTestMode } = req.body;
     
@@ -646,32 +897,51 @@ app.post('/api/sources', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
-    }
-    
-    // Load existing sources
-    let sources = [];
-    const sourcesFile = getFilePath('source.json');
-    
-    if (fs.existsSync(sourcesFile)) {
-      const data = fs.readFileSync(sourcesFile, 'utf8');
-      sources = JSON.parse(data);
+      db.setTestMode(requestTestMode);
     }
     
     // Check if source name already exists
-    if (sources.some(s => s.name === source.name)) {
+    const existingResult = await db.query('SELECT id FROM sources WHERE name = $1', [source.name]);
+    if (existingResult.rows.length > 0) {
       // Restore original test mode
-      isTestMode = originalTestMode;
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(400).json({ error: 'Source name already exists' });
     }
     
-    // Add new source
-    sources.push(source);
+    // Insert new source
+    await db.query(
+      `INSERT INTO sources (id, name, mappings, flip_income_expense, created_at, last_used)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        source.id,
+        source.name,
+        JSON.stringify(source.mappings || []),
+        source.flipIncomeExpense || false,
+        source.createdAt || new Date().toISOString(),
+        source.lastUsed || new Date().toISOString()
+      ]
+    );
     
-    ensureArtifactsDir();
-    fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
+    // Get all sources
+    const allSourcesResult = await db.query('SELECT * FROM sources ORDER BY created_at');
+    const sources = allSourcesResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      mappings: row.mappings,
+      flipIncomeExpense: row.flip_income_expense,
+      createdAt: row.created_at,
+      lastUsed: row.last_used
+    }));
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true, sources });
   } catch (error) {
     console.error('Error saving source:', error);
@@ -679,22 +949,22 @@ app.post('/api/sources', (req, res) => {
   }
 });
 
-app.delete('/api/sources/:sourceName', (req, res) => {
+app.delete('/api/sources/:sourceName', async (req, res) => {
   try {
     const { sourceName } = req.params;
-    const sourcesFile = getFilePath('source.json');
     
-    if (!fs.existsSync(sourcesFile)) {
-      return res.status(404).json({ error: 'No sources found' });
-    }
+    await db.query('DELETE FROM sources WHERE name = $1', [sourceName]);
     
-    const data = fs.readFileSync(sourcesFile, 'utf8');
-    let sources = JSON.parse(data);
-    
-    // Remove the source
-    sources = sources.filter(s => s.name !== sourceName);
-    
-    fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
+    // Get all remaining sources
+    const result = await db.query('SELECT * FROM sources ORDER BY created_at');
+    const sources = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      mappings: row.mappings,
+      flipIncomeExpense: row.flip_income_expense,
+      createdAt: row.created_at,
+      lastUsed: row.last_used
+    }));
     
     res.json({ success: true, sources });
   } catch (error) {
@@ -704,36 +974,76 @@ app.delete('/api/sources/:sourceName', (req, res) => {
 });
 
 // Update source
-app.put('/api/sources/:sourceId', (req, res) => {
+app.put('/api/sources/:sourceId', async (req, res) => {
   try {
     const { sourceId } = req.params;
-    const { source, isTestMode } = req.body;
+    const { source, isTestMode: requestTestMode } = req.body;
     
-    const sourcesFile = getFilePath('source.json');
-    
-    if (!fs.existsSync(sourcesFile)) {
-      return res.status(404).json({ error: 'No sources found' });
+    // Temporarily set test mode for this request
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const data = fs.readFileSync(sourcesFile, 'utf8');
-    let sources = JSON.parse(data);
-    
-    // Find and update the source
-    const sourceIndex = sources.findIndex(s => s.id === sourceId);
-    if (sourceIndex === -1) {
+    // Check if source exists
+    const existingResult = await db.query('SELECT id FROM sources WHERE id = $1', [sourceId]);
+    if (existingResult.rows.length === 0) {
+      // Restore original test mode
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(404).json({ error: 'Source not found' });
     }
     
     // Check if the new name conflicts with other sources
-    const nameConflict = sources.some(s => s.id !== sourceId && s.name === source.name);
-    if (nameConflict) {
+    const nameConflictResult = await db.query(
+      'SELECT id FROM sources WHERE name = $1 AND id != $2',
+      [source.name, sourceId]
+    );
+    if (nameConflictResult.rows.length > 0) {
+      // Restore original test mode
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(400).json({ error: 'Source name already exists' });
     }
     
     // Update the source
-    sources[sourceIndex] = source;
+    await db.query(
+      `UPDATE sources SET
+         name = $1,
+         mappings = $2,
+         flip_income_expense = $3,
+         last_used = $4
+       WHERE id = $5`,
+      [
+        source.name,
+        JSON.stringify(source.mappings || []),
+        source.flipIncomeExpense || false,
+        source.lastUsed || new Date().toISOString(),
+        sourceId
+      ]
+    );
     
-    fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
+    // Get all sources
+    const allSourcesResult = await db.query('SELECT * FROM sources ORDER BY created_at');
+    const sources = allSourcesResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      mappings: row.mappings,
+      flipIncomeExpense: row.flip_income_expense,
+      createdAt: row.created_at,
+      lastUsed: row.last_used
+    }));
+    
+    // Restore original test mode
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
     
     res.json({ success: true, sources });
   } catch (error) {
@@ -743,13 +1053,10 @@ app.put('/api/sources/:sourceId', (req, res) => {
 });
 
 // Delete all data (transactions and sources)
-app.delete('/api/delete-all', (req, res) => {
+app.delete('/api/delete-all', async (req, res) => {
   try {
-    const transactionsFile = getFilePath('transactions.json');
-    const sourcesFile = getFilePath('source.json');
-    
-    if (fs.existsSync(transactionsFile)) fs.unlinkSync(transactionsFile);
-    if (fs.existsSync(sourcesFile)) fs.unlinkSync(sourcesFile);
+    await db.query('DELETE FROM transactions');
+    await db.query('DELETE FROM sources');
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting all data:', error);
@@ -758,26 +1065,18 @@ app.delete('/api/delete-all', (req, res) => {
 });
 
 // Delete selected data
-app.post('/api/delete-selected', (req, res) => {
+app.post('/api/delete-selected', async (req, res) => {
   try {
     const { deleteTransactions, deleteSources, sourceIds } = req.body;
     
     // Delete all transactions
     if (deleteTransactions) {
-      const transactionsFile = getFilePath('transactions.json');
-      if (fs.existsSync(transactionsFile)) {
-        fs.writeFileSync(transactionsFile, JSON.stringify([], null, 2));
-      }
+      await db.query('DELETE FROM transactions');
     }
     
     // Delete selected sources
-    if (deleteSources && Array.isArray(sourceIds)) {
-      const sourcesFile = getFilePath('source.json');
-      if (fs.existsSync(sourcesFile)) {
-        let sources = JSON.parse(fs.readFileSync(sourcesFile, 'utf8'));
-        sources = sources.filter(source => !sourceIds.includes(source.id));
-        fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
-      }
+    if (deleteSources && Array.isArray(sourceIds) && sourceIds.length > 0) {
+      await db.query('DELETE FROM sources WHERE id = ANY($1)', [sourceIds]);
     }
     
     res.json({ success: true });
@@ -1333,7 +1632,7 @@ function calculateTransferConfidence(t1, t2) {
 }
 
 // Transfer management endpoint
-app.post('/api/transfer-override', (req, res) => {
+app.post('/api/transfer-override', async (req, res) => {
   try {
     const { transactionId, includeInCalculations, isTestMode: requestTestMode } = req.body;
     
@@ -1341,68 +1640,61 @@ app.post('/api/transfer-override', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const transactionsFile = getFilePath('transactions.json');
-    if (!fs.existsSync(transactionsFile)) {
+    // Get the transaction
+    const transactionResult = await db.query('SELECT * FROM transactions WHERE id = $1', [transactionId]);
+    if (transactionResult.rows.length === 0) {
       // Restore original test mode
-      isTestMode = originalTestMode;
-      return res.status(404).json({ error: 'No transactions found' });
-    }
-    
-    const data = fs.readFileSync(transactionsFile, 'utf8');
-    const transactions = JSON.parse(data);
-    
-    // Find and update the transaction
-    const transactionIndex = transactions.findIndex(t => t.id === transactionId);
-    if (transactionIndex === -1) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(404).json({ error: 'Transaction not found' });
     }
     
-    const transaction = transactions[transactionIndex];
-    if (!transaction.transferInfo?.isTransfer) {
+    const transaction = transactionResult.rows[0];
+    const transferInfo = transaction.transfer_info;
+    
+    if (!transferInfo || !transferInfo.isTransfer) {
       // Restore original test mode
-      isTestMode = originalTestMode;
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(400).json({ error: 'Transaction is not a transfer' });
     }
     
     // Update the transfer info
-    transactions[transactionIndex] = {
-      ...transaction,
-      transferInfo: {
-        ...transaction.transferInfo,
-        excludedFromCalculations: !includeInCalculations,
-        userOverride: true
-      }
+    const updatedTransferInfo = {
+      ...transferInfo,
+      excludedFromCalculations: !includeInCalculations,
+      userOverride: true
     };
     
+    // Update this transaction
+    await db.query(
+      'UPDATE transactions SET transfer_info = $1 WHERE id = $2',
+      [JSON.stringify(updatedTransferInfo), transactionId]
+    );
+    
     // If this is part of a transfer pair, update the other transaction too
-    if (transaction.transferInfo.transferId) {
-      const transferId = transaction.transferInfo.transferId;
-      const otherTransactionIndex = transactions.findIndex(t => 
-        t.id !== transactionId && 
-        t.transferInfo?.transferId === transferId
+    if (transferInfo.transferId) {
+      const transferId = transferInfo.transferId;
+      await db.query(
+        `UPDATE transactions SET transfer_info = $1
+         WHERE transfer_info->>'transferId' = $2 AND id != $3`,
+        [JSON.stringify(updatedTransferInfo), transferId, transactionId]
       );
-      
-      if (otherTransactionIndex !== -1) {
-        transactions[otherTransactionIndex] = {
-          ...transactions[otherTransactionIndex],
-          transferInfo: {
-            ...transactions[otherTransactionIndex].transferInfo,
-            excludedFromCalculations: !includeInCalculations,
-            userOverride: true
-          }
-        };
-      }
     }
     
-    // Save updated transactions
-    fs.writeFileSync(transactionsFile, JSON.stringify(transactions, null, 2));
-    
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating transfer override:', error);
@@ -1411,7 +1703,7 @@ app.post('/api/transfer-override', (req, res) => {
 });
 
 // Manual transfer detection endpoint
-app.post('/api/detect-transfers', (req, res) => {
+app.post('/api/detect-transfers', async (req, res) => {
   try {
     const { isTestMode: requestTestMode } = req.body;
     
@@ -1419,26 +1711,66 @@ app.post('/api/detect-transfers', (req, res) => {
     const originalTestMode = isTestMode;
     if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
     
-    const transactionsFile = getFilePath('transactions.json');
-    if (!fs.existsSync(transactionsFile)) {
+    // Load all transactions from database
+    const result = await db.query('SELECT * FROM transactions');
+    const transactions = result.rows.map(row => ({
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      category: row.category,
+      amount: parseFloat(row.amount),
+      type: row.type,
+      user: row.user_id,
+      labels: row.labels || [],
+      metadata: row.metadata || {},
+      transferInfo: row.transfer_info,
+      excludedFromCalculations: row.excluded_from_calculations
+    }));
+    
+    if (transactions.length === 0) {
       // Restore original test mode
-      isTestMode = originalTestMode;
+      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
       return res.status(404).json({ error: 'No transactions found' });
     }
-    
-    const data = fs.readFileSync(transactionsFile, 'utf8');
-    const transactions = JSON.parse(data);
     
     // Detect transfers
     const { transfers, updatedTransactions } = detectTransfers(transactions);
     
-    // Save updated transactions with transfer info
-    fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
+    // Save updated transactions with transfer info to database
+    const client = await db.beginTransaction();
+    try {
+      for (const expense of updatedTransactions) {
+        await client.query(
+          `UPDATE transactions SET
+             transfer_info = $1,
+             excluded_from_calculations = $2
+           WHERE id = $3`,
+          [
+            expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
+            expense.excludedFromCalculations || false,
+            expense.id
+          ]
+        );
+      }
+      
+      await db.commitTransaction(client);
+    } catch (error) {
+      await db.rollbackTransaction(client);
+      throw error;
+    }
     
     // Restore original test mode
-    isTestMode = originalTestMode;
+    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    
     res.json({ 
       success: true, 
       transfersDetected: transfers.length,
@@ -1459,9 +1791,7 @@ app.post('/api/test-mode', (req, res) => {
   try {
     const { isTestMode: newTestMode } = req.body;
     isTestMode = newTestMode;
-    
-    // Ensure the new artifacts directory exists
-    ensureArtifactsDir();
+    db.setTestMode(newTestMode);
     
     res.json({ success: true, isTestMode });
   } catch (error) {
