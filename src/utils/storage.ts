@@ -15,7 +15,7 @@ const SOURCES_STORAGE_KEY = 'sources';
 export class LocalStorage {
   private static API_BASE = 'http://localhost:3001/api';
 
-  static async saveExpenses(expenses: Expense[], isTestMode: boolean = false): Promise<void> {
+  static async saveExpenses(expenses: Expense[]): Promise<void> {
     try {
       const metadata: StorageMetadata = {
         lastUpdated: new Date().toISOString(),
@@ -32,14 +32,14 @@ export class LocalStorage {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ expenses, metadata, isTestMode }),
+        body: JSON.stringify({ expenses, metadata }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save expenses');
       }
 
-      console.log(`Saved ${expenses.length} expenses to server (test mode: ${isTestMode})`);
+      console.log(`Saved ${expenses.length} expenses to server`);
     } catch (error) {
       console.error('Error saving expenses:', error);
       // Fallback to localStorage if server is not available
@@ -48,16 +48,16 @@ export class LocalStorage {
     }
   }
 
-  static async loadExpenses(isTestMode: boolean = false): Promise<Expense[]> {
+  static async loadExpenses(): Promise<Expense[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/expenses?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/expenses`);
       
       if (!response.ok) {
         throw new Error('Failed to load expenses from server');
       }
 
       const expenses = await response.json();
-      console.log(`Loaded ${expenses.length} expenses from server (test mode: ${isTestMode})`);
+      console.log(`Loaded ${expenses.length} expenses from server`);
       return expenses;
     } catch (error) {
       console.error('Error loading expenses from server:', error);
@@ -74,7 +74,6 @@ export class LocalStorage {
 
   /** Options for server-side paginated and filtered expense list */
   static async loadExpensesPage(options: {
-    isTestMode: boolean;
     limit: number;
     offset: number;
     dateRange?: DateRange;
@@ -88,7 +87,6 @@ export class LocalStorage {
     searchText?: string;
   }): Promise<ExpensePageResponse> {
     const {
-      isTestMode,
       limit,
       offset,
       dateRange,
@@ -103,7 +101,6 @@ export class LocalStorage {
     } = options;
 
     const params = new URLSearchParams();
-    params.set('testMode', String(isTestMode));
     params.set('limit', String(limit));
     params.set('offset', String(offset));
     if (dateRange?.start) params.set('dateFrom', typeof dateRange.start === 'string' ? dateRange.start : dateRange.start.toISOString().slice(0, 10));
@@ -137,13 +134,11 @@ export class LocalStorage {
   }
 
   static async loadStats(options: {
-    isTestMode: boolean;
     dateRange: DateRange;
     userId?: string | null;
   }): Promise<DashboardStats | null> {
-    const { isTestMode, dateRange, userId } = options;
+    const { dateRange, userId } = options;
     const params = new URLSearchParams();
-    params.set('testMode', String(isTestMode));
     if (dateRange?.start) params.set('dateFrom', typeof dateRange.start === 'string' ? dateRange.start : dateRange.start.toISOString().slice(0, 10));
     if (dateRange?.end) params.set('dateTo', typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10));
     if (userId != null && userId !== '') params.set('userId', userId);
@@ -158,14 +153,14 @@ export class LocalStorage {
     }
   }
 
-  static async importCSVData(csvText: string, isTestMode: boolean = false): Promise<Expense[]> {
+  static async importCSVData(csvText: string): Promise<Expense[]> {
     try {
       const response = await fetch(`${this.API_BASE}/import-csv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ csvText, isTestMode }),
+        body: JSON.stringify({ csvText }),
       });
 
       if (!response.ok) {
@@ -173,28 +168,28 @@ export class LocalStorage {
       }
 
       const result = await response.json();
-      console.log(`Imported ${result.imported} new expenses, total: ${result.total} (test mode: ${isTestMode})`);
+      console.log(`Imported ${result.imported} new expenses, total: ${result.total}`);
       
       // Reload all expenses after import
-      return await this.loadExpenses(isTestMode);
+      return await this.loadExpenses();
     } catch (error) {
       console.error('Error importing CSV data:', error);
       throw error;
     }
   }
 
-  static async addExpense(expense: Expense, isTestMode: boolean = false): Promise<Expense[]> {
+  static async addExpense(expense: Expense): Promise<Expense[]> {
     try {
       // Load existing expenses
-      const existingExpenses = await this.loadExpenses(isTestMode);
+      const existingExpenses = await this.loadExpenses();
       
       // Add new expense at the beginning (most recent first)
       const updatedExpenses = [expense, ...existingExpenses];
       
       // Save updated data
-      await this.saveExpenses(updatedExpenses, isTestMode);
+      await this.saveExpenses(updatedExpenses);
       
-      console.log(`Added new expense, total: ${updatedExpenses.length} (test mode: ${isTestMode})`);
+      console.log(`Added new expense, total: ${updatedExpenses.length}`);
       return updatedExpenses;
     } catch (error) {
       console.error('Error adding expense:', error);
@@ -202,10 +197,10 @@ export class LocalStorage {
     }
   }
 
-  static async updateExpense(updatedExpense: Expense, isTestMode: boolean = false): Promise<Expense[]> {
+  static async updateExpense(updatedExpense: Expense): Promise<Expense[]> {
     try {
       // Load existing expenses
-      const existingExpenses = await this.loadExpenses(isTestMode);
+      const existingExpenses = await this.loadExpenses();
       
       // Update the expense
       const updatedExpenses = existingExpenses.map(exp => 
@@ -213,9 +208,9 @@ export class LocalStorage {
       );
       
       // Save updated data
-      await this.saveExpenses(updatedExpenses, isTestMode);
+      await this.saveExpenses(updatedExpenses);
       
-      console.log(`Updated expense ${updatedExpense.id} (test mode: ${isTestMode})`);
+      console.log(`Updated expense ${updatedExpense.id}`);
       return updatedExpenses;
     } catch (error) {
       console.error('Error updating expense:', error);
@@ -223,18 +218,18 @@ export class LocalStorage {
     }
   }
 
-  static async deleteExpense(expenseId: string, isTestMode: boolean = false): Promise<Expense[]> {
+  static async deleteExpense(expenseId: string): Promise<Expense[]> {
     try {
       // Load existing expenses
-      const existingExpenses = await this.loadExpenses(isTestMode);
+      const existingExpenses = await this.loadExpenses();
       
       // Remove the expense
       const updatedExpenses = existingExpenses.filter(exp => exp.id !== expenseId);
       
       // Save updated data
-      await this.saveExpenses(updatedExpenses, isTestMode);
+      await this.saveExpenses(updatedExpenses);
       
-      console.log(`Deleted expense ${expenseId}, total: ${updatedExpenses.length} (test mode: ${isTestMode})`);
+      console.log(`Deleted expense ${expenseId}, total: ${updatedExpenses.length}`);
       return updatedExpenses;
     } catch (error) {
       console.error('Error deleting expense:', error);
@@ -274,9 +269,9 @@ export class LocalStorage {
     }
   }
 
-  static async exportData(isTestMode: boolean = false): Promise<string> {
+  static async exportData(): Promise<string> {
     try {
-      const response = await fetch(`${this.API_BASE}/export-csv?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/export-csv`);
       
       if (!response.ok) {
         throw new Error('Failed to export CSV');
@@ -291,21 +286,21 @@ export class LocalStorage {
   }
 
   // Source Methods
-  static async saveSource(source: import('../types').Source, isTestMode: boolean = false): Promise<void> {
+  static async saveSource(source: import('../types').Source): Promise<void> {
     try {
       const response = await fetch(`${this.API_BASE}/sources`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ source, isTestMode }),
+        body: JSON.stringify({ source }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save source');
       }
 
-      console.log(`Saved source ${source.name} (test mode: ${isTestMode})`);
+      console.log(`Saved source ${source.name}`);
     } catch (error) {
       console.error('Error saving source:', error);
       // Fallback to localStorage
@@ -315,24 +310,24 @@ export class LocalStorage {
     }
   }
 
-  static async updateSource(updatedSource: import('../types').Source, isTestMode: boolean = false): Promise<import('../types').Source[]> {
+  static async updateSource(updatedSource: import('../types').Source): Promise<import('../types').Source[]> {
     try {
       const response = await fetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ source: updatedSource, isTestMode }),
+        body: JSON.stringify({ source: updatedSource }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to update source');
       }
 
-      console.log(`Updated source ${updatedSource.name} (test mode: ${isTestMode})`);
+      console.log(`Updated source ${updatedSource.name}`);
       
       // Reload all sources to get the updated list
-      return await this.loadSources(isTestMode);
+      return await this.loadSources();
     } catch (error) {
       console.error('Error updating source:', error);
       // Fallback to localStorage
@@ -345,16 +340,16 @@ export class LocalStorage {
     }
   }
 
-  static async loadSources(isTestMode: boolean = false): Promise<import('../types').Source[]> {
+  static async loadSources(): Promise<import('../types').Source[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/sources?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/sources`);
       
       if (!response.ok) {
         throw new Error('Failed to load sources from server');
       }
 
       const sources = await response.json();
-      console.log(`Loaded ${sources.length} sources from server (test mode: ${isTestMode})`);
+      console.log(`Loaded ${sources.length} sources from server`);
       return sources;
     } catch (error) {
       console.error('Error loading sources from server:', error);
@@ -472,7 +467,7 @@ export class LocalStorage {
   }
 
   // Date Range Persistence Methods
-  static async saveDateRange(dateRange: { start: Date; end: Date }, isTestMode: boolean = false): Promise<void> {
+  static async saveDateRange(dateRange: { start: Date; end: Date }): Promise<void> {
     try {
       const response = await fetch(`${this.API_BASE}/date-range`, {
         method: 'POST',
@@ -481,8 +476,7 @@ export class LocalStorage {
         },
         body: JSON.stringify({ 
           start: dateRange.start.toISOString().split('T')[0],
-          end: dateRange.end.toISOString().split('T')[0],
-          isTestMode 
+          end: dateRange.end.toISOString().split('T')[0]
         }),
       });
 
@@ -490,7 +484,7 @@ export class LocalStorage {
         throw new Error('Failed to save date range');
       }
 
-      console.log(`Saved date range (test mode: ${isTestMode})`);
+      console.log(`Saved date range`);
     } catch (error) {
       console.error('Error saving date range:', error);
       // Fallback to localStorage
@@ -501,9 +495,9 @@ export class LocalStorage {
     }
   }
 
-  static async loadDateRange(isTestMode: boolean = false): Promise<{ start: Date; end: Date } | null> {
+  static async loadDateRange(): Promise<{ start: Date; end: Date } | null> {
     try {
-      const response = await fetch(`${this.API_BASE}/date-range?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/date-range`);
       if (!response.ok) {
         const stored = localStorage.getItem('dateRange');
         if (stored) {
@@ -532,21 +526,21 @@ export class LocalStorage {
   }
 
   // Category Management Methods
-  static async saveCategories(categories: string[], isTestMode: boolean = false): Promise<void> {
+  static async saveCategories(categories: string[]): Promise<void> {
     try {
       const response = await fetch(`${this.API_BASE}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ categories, isTestMode }),
+        body: JSON.stringify({ categories }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save categories');
       }
 
-      console.log(`Saved ${categories.length} categories (test mode: ${isTestMode})`);
+      console.log(`Saved ${categories.length} categories`);
     } catch (error) {
       console.error('Error saving categories:', error);
       // Fallback to localStorage
@@ -554,16 +548,16 @@ export class LocalStorage {
     }
   }
 
-  static async loadCategories(isTestMode: boolean = false): Promise<string[]> {
+  static async loadCategories(): Promise<string[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/categories?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/categories`);
       
       if (!response.ok) {
         throw new Error('Failed to load categories from server');
       }
 
       const result = await response.json();
-      console.log(`Loaded ${result.categories.length} categories from server (test mode: ${isTestMode})`);
+      console.log(`Loaded ${result.categories.length} categories from server`);
       return result.categories;
     } catch (error) {
       console.error('Error loading categories from server:', error);
@@ -588,13 +582,13 @@ export class LocalStorage {
     }
   }
 
-  static async addCategory(category: string, isTestMode: boolean = false): Promise<string[]> {
+  static async addCategory(category: string): Promise<string[]> {
     try {
-      const existingCategories = await this.loadCategories(isTestMode);
+      const existingCategories = await this.loadCategories();
       
       if (!existingCategories.includes(category)) {
         const updatedCategories = [...existingCategories, category];
-        await this.saveCategories(updatedCategories, isTestMode);
+        await this.saveCategories(updatedCategories);
         return updatedCategories;
       }
       
@@ -605,12 +599,12 @@ export class LocalStorage {
     }
   }
 
-  static async deleteCategory(category: string, isTestMode: boolean = false): Promise<string[]> {
+  static async deleteCategory(category: string): Promise<string[]> {
     try {
-      const existingCategories = await this.loadCategories(isTestMode);
+      const existingCategories = await this.loadCategories();
       const updatedCategories = existingCategories.filter(cat => cat !== category);
       
-      await this.saveCategories(updatedCategories, isTestMode);
+      await this.saveCategories(updatedCategories);
       return updatedCategories;
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -618,14 +612,14 @@ export class LocalStorage {
     }
   }
 
-  static async updateCategory(oldCategory: string, newCategory: string, isTestMode: boolean = false): Promise<string[]> {
+  static async updateCategory(oldCategory: string, newCategory: string): Promise<string[]> {
     try {
-      const existingCategories = await this.loadCategories(isTestMode);
+      const existingCategories = await this.loadCategories();
       const updatedCategories = existingCategories.map(cat => 
         cat === oldCategory ? newCategory : cat
       );
       
-      await this.saveCategories(updatedCategories, isTestMode);
+      await this.saveCategories(updatedCategories);
       return updatedCategories;
     } catch (error) {
       console.error('Error updating category:', error);
@@ -634,21 +628,21 @@ export class LocalStorage {
   }
 
   // Report Methods
-  static async saveReport(report: Report, isTestMode: boolean = false): Promise<void> {
+  static async saveReport(report: Report): Promise<void> {
     try {
       const response = await fetch(`${this.API_BASE}/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ report, isTestMode }),
+        body: JSON.stringify({ report }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save report');
       }
 
-      console.log(`Saved report ${report.id} (test mode: ${isTestMode})`);
+      console.log(`Saved report ${report.id}`);
     } catch (error) {
       console.error('Error saving report:', error);
       // Fallback to localStorage
@@ -663,16 +657,16 @@ export class LocalStorage {
     }
   }
 
-  static async loadReports(isTestMode: boolean = false): Promise<Report[]> {
+  static async loadReports(): Promise<Report[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/reports`);
       
       if (!response.ok) {
         throw new Error('Failed to load reports from server');
       }
 
       const reports = await response.json();
-      console.log(`Loaded ${reports.length} reports from server (test mode: ${isTestMode})`);
+      console.log(`Loaded ${reports.length} reports from server`);
       return reports;
     } catch (error) {
       console.error('Error loading reports from server:', error);
@@ -681,9 +675,9 @@ export class LocalStorage {
     }
   }
 
-  static async deleteReport(reportId: string, isTestMode: boolean = false): Promise<void> {
+  static async deleteReport(reportId: string): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports/${reportId}?testMode=${isTestMode}`, {
+      const response = await fetch(`${this.API_BASE}/reports/${reportId}`, {
         method: 'DELETE',
       });
 
@@ -691,7 +685,7 @@ export class LocalStorage {
         throw new Error('Failed to delete report');
       }
 
-      console.log(`Deleted report ${reportId} (test mode: ${isTestMode})`);
+      console.log(`Deleted report ${reportId}`);
     } catch (error) {
       console.error('Error deleting report:', error);
       // Fallback to localStorage
@@ -701,21 +695,21 @@ export class LocalStorage {
     }
   }
 
-  static async saveReportData(reportData: ReportData, isTestMode: boolean = false): Promise<void> {
+  static async saveReportData(reportData: ReportData): Promise<void> {
     try {
       const response = await fetch(`${this.API_BASE}/reports/${reportData.report.id}/data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reportData, isTestMode }),
+        body: JSON.stringify({ reportData }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save report data');
       }
 
-      console.log(`Saved report data for ${reportData.report.id} (test mode: ${isTestMode})`);
+      console.log(`Saved report data for ${reportData.report.id}`);
     } catch (error) {
       console.error('Error saving report data:', error);
       // Fallback to localStorage
@@ -724,16 +718,16 @@ export class LocalStorage {
     }
   }
 
-  static async loadReportData(reportId: string, isTestMode: boolean = false): Promise<ReportData | null> {
+  static async loadReportData(reportId: string): Promise<ReportData | null> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports/${reportId}/data?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/reports/${reportId}/data`);
       
       if (!response.ok) {
         throw new Error('Failed to load report data from server');
       }
 
       const reportData = await response.json();
-      console.log(`Loaded report data for ${reportId} (test mode: ${isTestMode})`);
+      console.log(`Loaded report data for ${reportId}`);
       return reportData;
     } catch (error) {
       console.error('Error loading report data from server:', error);
@@ -769,21 +763,21 @@ export class LocalStorage {
   }
 
   // User Management Methods
-  static async saveUsers(users: import('../types').User[], isTestMode: boolean = false): Promise<void> {
+  static async saveUsers(users: import('../types').User[]): Promise<void> {
     try {
       const response = await fetch(`${this.API_BASE}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ users, isTestMode }),
+        body: JSON.stringify({ users }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save users');
       }
 
-      console.log(`Saved ${users.length} users (test mode: ${isTestMode})`);
+      console.log(`Saved ${users.length} users`);
     } catch (error) {
       console.error('Error saving users:', error);
       // Fallback to localStorage
@@ -791,16 +785,16 @@ export class LocalStorage {
     }
   }
 
-  static async loadUsers(isTestMode: boolean = false): Promise<import('../types').User[]> {
+  static async loadUsers(): Promise<import('../types').User[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/users?testMode=${isTestMode}`);
+      const response = await fetch(`${this.API_BASE}/users`);
       
       if (!response.ok) {
         throw new Error('Failed to load users from server');
       }
 
       const result = await response.json();
-      console.log(`Loaded ${result.users.length} users from server (test mode: ${isTestMode})`);
+      console.log(`Loaded ${result.users.length} users from server`);
       return result.users;
     } catch (error) {
       console.error('Error loading users from server:', error);
@@ -809,13 +803,13 @@ export class LocalStorage {
     }
   }
 
-  static async addUser(user: import('../types').User, isTestMode: boolean = false): Promise<import('../types').User[]> {
+  static async addUser(user: import('../types').User): Promise<import('../types').User[]> {
     try {
-      const existingUsers = await this.loadUsers(isTestMode);
+      const existingUsers = await this.loadUsers();
       
       if (!existingUsers.some(u => u.name === user.name)) {
         const updatedUsers = [...existingUsers, user];
-        await this.saveUsers(updatedUsers, isTestMode);
+        await this.saveUsers(updatedUsers);
         return updatedUsers;
       }
       
@@ -826,12 +820,12 @@ export class LocalStorage {
     }
   }
 
-  static async deleteUser(userId: string, isTestMode: boolean = false): Promise<import('../types').User[]> {
+  static async deleteUser(userId: string): Promise<import('../types').User[]> {
     try {
-      const existingUsers = await this.loadUsers(isTestMode);
+      const existingUsers = await this.loadUsers();
       const updatedUsers = existingUsers.filter(user => user.id !== userId);
       
-      await this.saveUsers(updatedUsers, isTestMode);
+      await this.saveUsers(updatedUsers);
       return updatedUsers;
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -839,14 +833,14 @@ export class LocalStorage {
     }
   }
 
-  static async updateUser(updatedUser: import('../types').User, isTestMode: boolean = false): Promise<import('../types').User[]> {
+  static async updateUser(updatedUser: import('../types').User): Promise<import('../types').User[]> {
     try {
-      const existingUsers = await this.loadUsers(isTestMode);
+      const existingUsers = await this.loadUsers();
       const updatedUsers = existingUsers.map(user => 
         user.id === updatedUser.id ? updatedUser : user
       );
       
-      await this.saveUsers(updatedUsers, isTestMode);
+      await this.saveUsers(updatedUsers);
       return updatedUsers;
     } catch (error) {
       console.error('Error updating user:', error);

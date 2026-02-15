@@ -5,36 +5,6 @@ require('dotenv').config();
 const db = require('./database');
 
 /**
- * Ensure test database exists
- */
-const ensureTestDatabase = async () => {
-  const adminConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    user: process.env.DB_USER || 'expense_tracker',
-    password: process.env.DB_PASSWORD || 'expense_tracker_password',
-    database: 'postgres', // Connect to default postgres database
-  };
-  
-  const adminPool = new Pool(adminConfig);
-  
-  try {
-    const testDbName = process.env.DB_NAME_TEST || 'expense_tracker_test';
-    const result = await adminPool.query(
-      `SELECT 1 FROM pg_database WHERE datname = $1`,
-      [testDbName]
-    );
-    
-    if (result.rows.length === 0) {
-      await adminPool.query(`CREATE DATABASE ${testDbName}`);
-      console.log(`Created test database: ${testDbName}`);
-    }
-  } finally {
-    await adminPool.end();
-  }
-};
-
-/**
  * Check if migration has already been completed
  */
 const isMigrationComplete = async () => {
@@ -78,17 +48,17 @@ const markMigrationComplete = async () => {
 };
 
 /**
- * Get artifacts directory based on test mode
+ * Get artifacts directory
  */
-const getArtifactsDir = (isTestMode) => {
-  return isTestMode ? '.test_artifacts' : '.artifacts';
+const getArtifactsDir = () => {
+  return '.artifacts';
 };
 
 /**
  * Migrate transactions from JSON to database
  */
-const migrateTransactions = async (isTestMode) => {
-  const artifactsDir = getArtifactsDir(isTestMode);
+const migrateTransactions = async () => {
+  const artifactsDir = getArtifactsDir();
   const transactionsFile = path.join(artifactsDir, 'transactions.json');
   
   if (!fs.existsSync(transactionsFile)) {
@@ -150,8 +120,8 @@ const migrateTransactions = async (isTestMode) => {
 /**
  * Migrate categories from JSON to database
  */
-const migrateCategories = async (isTestMode) => {
-  const artifactsDir = getArtifactsDir(isTestMode);
+const migrateCategories = async () => {
+  const artifactsDir = getArtifactsDir();
   const categoriesFile = path.join(artifactsDir, 'categories.json');
   
   if (!fs.existsSync(categoriesFile)) {
@@ -197,8 +167,8 @@ const migrateCategories = async (isTestMode) => {
 /**
  * Migrate users from JSON to database
  */
-const migrateUsers = async (isTestMode) => {
-  const artifactsDir = getArtifactsDir(isTestMode);
+const migrateUsers = async () => {
+  const artifactsDir = getArtifactsDir();
   const usersFile = path.join(artifactsDir, 'users.json');
   
   if (!fs.existsSync(usersFile)) {
@@ -244,8 +214,8 @@ const migrateUsers = async (isTestMode) => {
 /**
  * Migrate sources from JSON to database
  */
-const migrateSources = async (isTestMode) => {
-  const artifactsDir = getArtifactsDir(isTestMode);
+const migrateSources = async () => {
+  const artifactsDir = getArtifactsDir();
   const sourcesFile = path.join(artifactsDir, 'source.json');
   
   if (!fs.existsSync(sourcesFile)) {
@@ -299,8 +269,8 @@ const migrateSources = async (isTestMode) => {
 /**
  * Migrate reports from JSON files to database
  */
-const migrateReports = async (isTestMode) => {
-  const artifactsDir = getArtifactsDir(isTestMode);
+const migrateReports = async () => {
+  const artifactsDir = getArtifactsDir();
   const reportsDir = path.join(artifactsDir, 'reports');
   
   if (!fs.existsSync(reportsDir)) {
@@ -359,8 +329,8 @@ const migrateReports = async (isTestMode) => {
 /**
  * Migrate date range from JSON to database
  */
-const migrateDateRange = async (isTestMode) => {
-  const artifactsDir = getArtifactsDir(isTestMode);
+const migrateDateRange = async () => {
+  const artifactsDir = getArtifactsDir();
   const dateRangeFile = path.join(artifactsDir, 'date-range.json');
   
   if (!fs.existsSync(dateRangeFile)) {
@@ -392,18 +362,9 @@ const migrateDateRange = async (isTestMode) => {
 /**
  * Main migration function
  */
-const runMigration = async (isTestMode = false) => {
+const runMigration = async () => {
   try {
     console.log('Starting database migration...');
-    console.log(`Test mode: ${isTestMode}`);
-    
-    // Ensure test database exists if migrating test mode
-    if (isTestMode) {
-      await ensureTestDatabase();
-    }
-    
-    // Set test mode in database module
-    db.setTestMode(isTestMode);
     
     // Wait for database to be ready
     await db.waitForDatabase();
@@ -419,12 +380,12 @@ const runMigration = async (isTestMode = false) => {
     await createSchema();
     
     // Migrate data
-    const transactionCount = await migrateTransactions(isTestMode);
-    const categoryCount = await migrateCategories(isTestMode);
-    const userCount = await migrateUsers(isTestMode);
-    const sourceCount = await migrateSources(isTestMode);
-    const reportCount = await migrateReports(isTestMode);
-    const dateRangeCount = await migrateDateRange(isTestMode);
+    const transactionCount = await migrateTransactions();
+    const categoryCount = await migrateCategories();
+    const userCount = await migrateUsers();
+    const sourceCount = await migrateSources();
+    const reportCount = await migrateReports();
+    const dateRangeCount = await migrateDateRange();
     
     // Mark migration as complete
     await markMigrationComplete();
@@ -446,8 +407,7 @@ const runMigration = async (isTestMode = false) => {
 
 // Run migration if called directly
 if (require.main === module) {
-  const isTestMode = process.argv.includes('--test-mode');
-  runMigration(isTestMode)
+  runMigration()
     .then(() => {
       console.log('Migration script completed');
       process.exit(0);

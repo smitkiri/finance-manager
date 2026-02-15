@@ -3,7 +3,6 @@ import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { TestModeProvider, useTestMode } from './contexts/TestModeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User, DashboardStats } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
@@ -22,7 +21,6 @@ import { ITEMS_PER_PAGE } from './constants';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
-  const { isTestMode } = useTestMode();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -59,24 +57,24 @@ function AppContent() {
     
     const saveDateRange = async () => {
       try {
-        await LocalStorage.saveDateRange(dateRange, isTestMode);
+        await LocalStorage.saveDateRange(dateRange);
       } catch (error) {
         console.error('Error saving date range:', error);
       }
     };
     
     saveDateRange();
-  }, [dateRange, isInitialLoadComplete, isTestMode]);
+  }, [dateRange, isInitialLoadComplete]);
 
   // Initial load: categories, users, sources, date range only (no full expenses – defer until Dashboard/Reports)
   useEffect(() => {
     const loadData = async () => {
       try {
         const [loadedSources, loadedDateRange, loadedCategories, loadedUsers] = await Promise.all([
-          LocalStorage.loadSources(isTestMode),
-          LocalStorage.loadDateRange(isTestMode),
-          LocalStorage.loadCategories(isTestMode),
-          LocalStorage.loadUsers(isTestMode)
+          LocalStorage.loadSources(),
+          LocalStorage.loadDateRange(),
+          LocalStorage.loadCategories(),
+          LocalStorage.loadUsers()
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
@@ -91,14 +89,14 @@ function AppContent() {
       }
     };
     loadData();
-  }, [isTestMode]);
+  }, []);
 
   // Load dashboard stats from API (aggregates only) when user visits Dashboard
   useEffect(() => {
     if (!isInitialLoadComplete || activeTab !== 'dashboard') return;
     let cancelled = false;
     setDashboardStatsLoading(true);
-    LocalStorage.loadStats({ isTestMode, dateRange, userId: selectedUserId }).then((stats) => {
+    LocalStorage.loadStats({ dateRange, userId: selectedUserId }).then((stats) => {
       if (!cancelled) {
         setDashboardStats(stats ?? null);
         setDashboardStatsLoading(false);
@@ -107,14 +105,14 @@ function AppContent() {
       if (!cancelled) setDashboardStatsLoading(false);
     });
     return () => { cancelled = true; };
-  }, [isInitialLoadComplete, activeTab, isTestMode, dateRange, selectedUserId]);
+  }, [isInitialLoadComplete, activeTab, dateRange, selectedUserId]);
 
   // Load full expenses only when user visits Reports (Dashboard uses /api/stats)
   useEffect(() => {
     if (!isInitialLoadComplete || activeTab !== 'reports') return;
     let cancelled = false;
     setExpensesLoading(true);
-    LocalStorage.loadExpenses(isTestMode).then((loaded) => {
+    LocalStorage.loadExpenses().then((loaded) => {
       if (!cancelled) {
         setExpenses(loaded);
         setExpensesLoading(false);
@@ -123,7 +121,7 @@ function AppContent() {
       if (!cancelled) setExpensesLoading(false);
     });
     return () => { cancelled = true; };
-  }, [isInitialLoadComplete, activeTab, isTestMode]);
+  }, [isInitialLoadComplete, activeTab]);
 
   // Load expenses when Settings or Transaction Details opens and we don't have them yet
   useEffect(() => {
@@ -131,7 +129,7 @@ function AppContent() {
     if (!isSettingsOpen && !isTransactionDetailsOpen) return;
     let cancelled = false;
     setExpensesLoading(true);
-    LocalStorage.loadExpenses(isTestMode).then((loaded) => {
+    LocalStorage.loadExpenses().then((loaded) => {
       if (!cancelled) {
         setExpenses(loaded);
         setExpensesLoading(false);
@@ -140,7 +138,7 @@ function AppContent() {
       if (!cancelled) setExpensesLoading(false);
     });
     return () => { cancelled = true; };
-  }, [isInitialLoadComplete, isSettingsOpen, isTransactionDetailsOpen, expenses.length, expensesLoading, isTestMode]);
+  }, [isInitialLoadComplete, isSettingsOpen, isTransactionDetailsOpen, expenses.length, expensesLoading]);
 
   // Debounce search text for transactions to avoid refetching on every keystroke
   useEffect(() => {
@@ -159,7 +157,6 @@ function AppContent() {
     setTransactionList([]);
 
     LocalStorage.loadExpensesPage({
-      isTestMode,
       limit: ITEMS_PER_PAGE,
       offset: 0,
       dateRange,
@@ -183,13 +180,12 @@ function AppContent() {
     });
 
     return () => { cancelled = true; };
-  }, [activeTab, isInitialLoadComplete, isTestMode, dateRange, selectedUserId, transactionFilters.categories, transactionFilters.labels, transactionFilters.types, transactionFilters.sources, transactionFilters.minAmount, transactionFilters.maxAmount, debouncedSearchText, transactionListVersion]);
+  }, [activeTab, isInitialLoadComplete, dateRange, selectedUserId, transactionFilters.categories, transactionFilters.labels, transactionFilters.types, transactionFilters.sources, transactionFilters.minAmount, transactionFilters.maxAmount, debouncedSearchText, transactionListVersion]);
 
   const handleLoadMoreTransactions = useCallback(async () => {
     const currentList = transactionList ?? [];
     const offset = currentList.length;
     const data = await LocalStorage.loadExpensesPage({
-      isTestMode,
       limit: ITEMS_PER_PAGE,
       offset,
       dateRange,
@@ -206,7 +202,7 @@ function AppContent() {
     const total = typeof data.total === 'number' ? data.total : currentList.length;
     setTransactionList(prev => [...(prev ?? []), ...nextExpenses]);
     setTransactionTotal(total);
-  }, [isTestMode, transactionList?.length ?? 0, dateRange, selectedUserId, transactionFilters, debouncedSearchText]);
+  }, [transactionList?.length ?? 0, dateRange, selectedUserId, transactionFilters, debouncedSearchText]);
 
   const bumpTransactionListVersion = useCallback(() => {
     setTransactionListVersion(v => v + 1);
@@ -228,14 +224,14 @@ function AppContent() {
     };
 
     try {
-      const updatedExpenses = await LocalStorage.addExpense(newExpense, isTestMode);
+      const updatedExpenses = await LocalStorage.addExpense(newExpense);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
       setIsFormOpen(false);
     } catch (error) {
       console.error('Error adding expense:', error);
     }
-  }, [isTestMode, bumpTransactionListVersion]);
+  }, [bumpTransactionListVersion]);
 
   const handleEditExpense = useCallback((expense: Expense) => {
     setEditingExpense(expense);
@@ -256,7 +252,7 @@ function AppContent() {
     };
 
     try {
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
       setEditingExpense(null);
@@ -264,17 +260,17 @@ function AppContent() {
     } catch (error) {
       console.error('Error updating expense:', error);
     }
-  }, [editingExpense, isTestMode, bumpTransactionListVersion]);
+  }, [editingExpense, bumpTransactionListVersion]);
 
   const handleDeleteExpense = useCallback(async (id: string) => {
     try {
-      const updatedExpenses = await LocalStorage.deleteExpense(id, isTestMode);
+      const updatedExpenses = await LocalStorage.deleteExpense(id);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
     } catch (error) {
       console.error('Error deleting expense:', error);
     }
-  }, [isTestMode, bumpTransactionListVersion]);
+  }, [bumpTransactionListVersion]);
 
   const handleUpdateCategory = useCallback(async (expenseId: string, newCategory: string) => {
     try {
@@ -286,13 +282,13 @@ function AppContent() {
         category: newCategory,
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
     } catch (error) {
       console.error('Error updating category:', error);
     }
-  }, [expenses, isTestMode, bumpTransactionListVersion]);
+  }, [expenses, bumpTransactionListVersion]);
 
   const handleAddLabel = useCallback(async (expenseId: string, label: string) => {
     try {
@@ -308,13 +304,13 @@ function AppContent() {
         labels: [...currentLabels, label],
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
     } catch (error) {
       console.error('Error adding label:', error);
     }
-  }, [expenses, isTestMode, bumpTransactionListVersion]);
+  }, [expenses, bumpTransactionListVersion]);
 
   const handleRemoveLabel = useCallback(async (expenseId: string, label: string) => {
     try {
@@ -329,28 +325,28 @@ function AppContent() {
         labels: updatedLabels,
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
     } catch (error) {
       console.error('Error removing label:', error);
     }
-  }, [expenses, isTestMode, bumpTransactionListVersion]);
+  }, [expenses, bumpTransactionListVersion]);
 
   const handleAddCategory = useCallback(async (category: string) => {
     try {
-      const updatedCategories = await LocalStorage.addCategory(category, isTestMode);
+      const updatedCategories = await LocalStorage.addCategory(category);
       setCategories(updatedCategories);
     } catch (error) {
       console.error('Error adding category:', error);
     }
-  }, [isTestMode]);
+  }, []);
 
   const handleDeleteCategory = useCallback(async (category: string) => {
     try {
       const [updatedCategories, updatedExpenses] = await Promise.all([
-        LocalStorage.deleteCategory(category, isTestMode),
-        LocalStorage.loadExpenses(isTestMode)
+        LocalStorage.deleteCategory(category),
+        LocalStorage.loadExpenses()
       ]);
       setCategories(updatedCategories);
       setExpenses(updatedExpenses);
@@ -358,13 +354,13 @@ function AppContent() {
     } catch (error) {
       console.error('Error deleting category:', error);
     }
-  }, [isTestMode, bumpTransactionListVersion]);
+  }, [bumpTransactionListVersion]);
 
   const handleUpdateCategoryName = useCallback(async (oldCategory: string, newCategory: string) => {
     try {
       const [updatedCategories, updatedExpenses] = await Promise.all([
-        LocalStorage.updateCategory(oldCategory, newCategory, isTestMode),
-        LocalStorage.loadExpenses(isTestMode)
+        LocalStorage.updateCategory(oldCategory, newCategory),
+        LocalStorage.loadExpenses()
       ]);
       setCategories(updatedCategories);
       setExpenses(updatedExpenses);
@@ -372,7 +368,7 @@ function AppContent() {
     } catch (error) {
       console.error('Error updating category name:', error);
     }
-  }, [isTestMode, bumpTransactionListVersion]);
+  }, [bumpTransactionListVersion]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -394,7 +390,7 @@ function AppContent() {
 
   const handleSaveSource = async (source: Source, userId: string) => {
     try {
-      await LocalStorage.saveSource(source, isTestMode);
+      await LocalStorage.saveSource(source);
       setSources(prev => [...prev, source]);
       if (csvPreview) {
         const csvText = await getCSVTextFromFile();
@@ -408,8 +404,7 @@ function AppContent() {
           body: JSON.stringify({
             csvText,
             mapping: source,
-            userId,
-            isTestMode
+            userId
           }),
         });
 
@@ -459,7 +454,7 @@ function AppContent() {
         );
         
         // Reload expenses from backend
-        const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+        const updatedExpenses = await LocalStorage.loadExpenses();
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
       }
@@ -490,8 +485,7 @@ function AppContent() {
         body: JSON.stringify({
           csvText,
           mapping: source,
-          userId,
-          isTestMode
+          userId
         }),
       });
       if (!response.ok) {
@@ -540,7 +534,7 @@ function AppContent() {
       );
       
       // Reload expenses from backend
-      const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+      const updatedExpenses = await LocalStorage.loadExpenses();
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
       setIsSourceModalOpen(false);
@@ -567,8 +561,7 @@ function AppContent() {
         },
         body: JSON.stringify({
           sourceName,
-          importedAt,
-          isTestMode
+          importedAt
         }),
       });
 
@@ -589,7 +582,7 @@ function AppContent() {
       });
       
       // Reload expenses from backend
-      const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+      const updatedExpenses = await LocalStorage.loadExpenses();
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
     } catch (error) {
@@ -620,7 +613,7 @@ function AppContent() {
 
   const handleExportCSV = async () => {
     try {
-      const csvContent = await LocalStorage.exportData(isTestMode);
+      const csvContent = await LocalStorage.exportData();
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -731,7 +724,7 @@ function AppContent() {
 
   const handleUpdateSource = async (updatedSource: Source) => {
     try {
-      const updatedSources = await LocalStorage.updateSource(updatedSource, isTestMode);
+      const updatedSources = await LocalStorage.updateSource(updatedSource);
       setSources(updatedSources);
     } catch (error) {
       console.error('Error updating source:', error);
@@ -752,14 +745,13 @@ function AppContent() {
         },
         body: JSON.stringify({
           transactionId,
-          includeInCalculations,
-          isTestMode
+          includeInCalculations
         }),
       });
 
       if (response.ok) {
         // Reload expenses to get updated transfer info
-        const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
+        const updatedExpenses = await LocalStorage.loadExpenses();
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
       } else {
@@ -778,7 +770,7 @@ function AppContent() {
         ...expenseToUpdate,
         excludedFromCalculations: exclude,
       };
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
+      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
       // If the selected transaction is open, update it in state as well
@@ -834,7 +826,7 @@ function AppContent() {
       });
 
       // Save to storage
-      await LocalStorage.saveExpenses(updatedExpenses, isTestMode);
+      await LocalStorage.saveExpenses(updatedExpenses);
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
 
@@ -859,7 +851,7 @@ function AppContent() {
 
   const handleAddUser = async (user: User) => {
     try {
-      const updatedUsers = await LocalStorage.addUser(user, isTestMode);
+      const updatedUsers = await LocalStorage.addUser(user);
       setUsers(updatedUsers);
     } catch (error) {
       console.error('Error adding user:', error);
@@ -868,7 +860,7 @@ function AppContent() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const updatedUsers = await LocalStorage.deleteUser(userId, isTestMode);
+      const updatedUsers = await LocalStorage.deleteUser(userId);
       setUsers(updatedUsers);
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -877,7 +869,7 @@ function AppContent() {
 
   const handleUpdateUser = async (updatedUser: User) => {
     try {
-      const updatedUsers = await LocalStorage.updateUser(updatedUser, isTestMode);
+      const updatedUsers = await LocalStorage.updateUser(updatedUser);
       setUsers(updatedUsers);
     } catch (error) {
       console.error('Error updating user:', error);
@@ -895,20 +887,12 @@ function AppContent() {
       />
 
       {/* Header */}
-      <header className={`backdrop-blur-md shadow-lg border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-10 ${
-        isTestMode 
-          ? 'bg-gradient-to-r from-orange-400/90 to-red-500/90 dark:from-orange-600/90 dark:to-red-600/90' 
-          : 'bg-white/90 dark:bg-slate-800/90'
-      }`}>
+      <header className={`backdrop-blur-md shadow-lg border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-10 bg-white/90 dark:bg-slate-800/90`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className={`text-3xl font-bold bg-clip-text text-transparent ${
-                isTestMode 
-                  ? 'bg-gradient-to-r from-white to-yellow-200' 
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600'
-              }`}>
-                {isTestMode ? 'Expense Tracker (Test Mode)' : 'Expense Tracker'}
+              <h1 className={`text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600`}>
+                Expense Tracker
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -1063,10 +1047,10 @@ function AppContent() {
         onUpdateUser={handleUpdateUser}
         onRefreshData={async () => {
           const [loadedExpenses, loadedSources, loadedCategories, loadedUsers] = await Promise.all([
-            LocalStorage.loadExpenses(isTestMode),
-            LocalStorage.loadSources(isTestMode),
-            LocalStorage.loadCategories(isTestMode),
-            LocalStorage.loadUsers(isTestMode)
+            LocalStorage.loadExpenses(),
+            LocalStorage.loadSources(),
+            LocalStorage.loadCategories(),
+            LocalStorage.loadUsers()
           ]);
           setExpenses(loadedExpenses);
           setSources(loadedSources);
@@ -1099,12 +1083,10 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <TestModeProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          <AppContent />
-          <ToastContainer />
-        </div>
-      </TestModeProvider>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <AppContent />
+        <ToastContainer />
+      </div>
     </ThemeProvider>
   );
 }

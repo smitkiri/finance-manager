@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight } from 'lucide-react';
-import { useTestMode } from '../../contexts/TestModeContext';
 import { User, Source, StandardizedColumn } from '../../types';
 
 interface SettingsProps {
@@ -45,7 +44,6 @@ export const Settings: React.FC<SettingsProps> = ({
   onExportCSV,
   onUpdateSource
 }) => {
-  const { isTestMode, toggleTestMode } = useTestMode();
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -54,7 +52,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [showSelectDelete, setShowSelectDelete] = useState(false);
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
-  const [showDisableTestModeConfirm, setShowDisableTestModeConfirm] = useState(false);
   const [deleteTransactions, setDeleteTransactions] = useState(false);
   const [deleteSources, setDeleteSources] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
@@ -646,43 +643,6 @@ export const Settings: React.FC<SettingsProps> = ({
             {activeSection === 'general' && (
               <>
                 <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Test Mode</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white">Enable Test Mode</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Enable test mode for local development.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (isTestMode) {
-                            setShowDisableTestModeConfirm(true);
-                          } else {
-                            toggleTestMode();
-                          }
-                        }}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                          isTestMode
-                            ? 'bg-red-600 text-white hover:bg-red-700'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                      >
-                        {isTestMode ? 'Disable Test Mode' : 'Enable Test Mode'}
-                      </button>
-                    </div>
-                    {isTestMode && (
-                      <div className="p-3 bg-orange-100 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
-                        <p className="text-sm text-orange-800 dark:text-orange-200">
-                          <strong>Test Mode Active:</strong> The app is currently using the test database. 
-                          All data will be stored in .test_artifacts instead of .artifacts.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="mb-8">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Export Data</h3>
                   <div className="space-y-4">
                     <button
@@ -857,34 +817,6 @@ export const Settings: React.FC<SettingsProps> = ({
                           onClick={() => setShowDeleteSuccess(false)}
                         >
                           OK
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {/* Disable Test Mode Confirmation Dialog */}
-                {showDisableTestModeConfirm && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Disable Test Mode?</h3>
-                      <p className="mb-6 text-gray-700 dark:text-gray-300">
-                        Are you sure you want to disable test mode? This will switch back to the main database (.artifacts) and remove the test mode visual indicators.
-                      </p>
-                      <div className="flex justify-end space-x-3">
-                        <button
-                          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                          onClick={() => setShowDisableTestModeConfirm(false)}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                          onClick={() => {
-                            toggleTestMode();
-                            setShowDisableTestModeConfirm(false);
-                          }}
-                        >
-                          Disable Test Mode
                         </button>
                       </div>
                     </div>

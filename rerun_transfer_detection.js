@@ -203,8 +203,7 @@ function calculateTransferConfidence(t1, t2) {
 
 // Helper functions
 function getArtifactsDir() {
-  const isTestMode = process.argv.includes('--test-mode');
-  return isTestMode ? '.test_artifacts' : '.artifacts';
+  return '.artifacts';
 }
 
 function getFilePath(filename) {
@@ -222,8 +221,7 @@ function ensureArtifactsDir() {
 function rerunTransferDetection() {
   console.log('🔄 Starting transfer detection re-run...');
   
-  const isTestMode = process.argv.includes('--test-mode');
-  const mode = isTestMode ? 'TEST' : 'PRODUCTION';
+  const mode = 'PRODUCTION';
   console.log(`📁 Mode: ${mode}`);
   
   ensureArtifactsDir();

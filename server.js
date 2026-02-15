@@ -12,17 +12,12 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Test mode state
-let isTestMode = false;
-
 // Initialize database and run migration on startup
 (async () => {
   try {
     await db.waitForDatabase();
     // Migrate production database
     await runMigration(false);
-    // Migrate test database
-    await runMigration(true);
     console.log('Database initialized and migration completed');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -32,7 +27,7 @@ let isTestMode = false;
 
 // Function to get the appropriate artifacts directory
 const getArtifactsDir = () => {
-  return isTestMode ? '.test_artifacts' : '.artifacts';
+  return '.artifacts';
 };
 
 // Function to get file paths based on test mode
@@ -145,15 +140,6 @@ function rowToExpense(row) {
 // Routes
 app.get('/api/expenses', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-
     const limit = req.query.limit != null ? parseInt(req.query.limit, 10) : null;
     const offset = req.query.offset != null ? parseInt(req.query.offset, 10) : 0;
 
@@ -193,10 +179,6 @@ app.get('/api/expenses', async (req, res) => {
       );
       const expenses = result.rows.map(rowToExpense);
 
-      if (requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.json({ expenses, total });
     }
 
@@ -207,10 +189,6 @@ app.get('/api/expenses', async (req, res) => {
     );
     const expenses = result.rows.map(rowToExpense);
 
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     res.json(expenses);
   } catch (error) {
     console.error('Error reading expenses:', error);
@@ -242,13 +220,6 @@ function buildStatsWhereClause(dateFrom, dateTo, userId) {
 
 app.get('/api/stats', async (req, res) => {
   try {
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-
     const dateFrom = req.query.dateFrom || undefined;
     const dateTo = req.query.dateTo || undefined;
     const userId = req.query.userId || undefined;
@@ -353,10 +324,6 @@ app.get('/api/stats', async (req, res) => {
       user: row.user_id || ''
     }));
 
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     res.json({
       totalExpenses,
       totalIncome,
@@ -376,14 +343,7 @@ app.get('/api/stats', async (req, res) => {
 
 app.post('/api/expenses', async (req, res) => {
   try {
-    const { expenses, metadata, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { expenses, metadata } = req.body;
     
     const client = await db.beginTransaction();
     try {
@@ -435,12 +395,6 @@ app.post('/api/expenses', async (req, res) => {
       
       await db.commitTransaction(client);
       
-      // Restore original test mode
-      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
-      
       res.json({ success: true, count: expenses.length });
     } catch (error) {
       await db.rollbackTransaction(client);
@@ -454,14 +408,7 @@ app.post('/api/expenses', async (req, res) => {
 
 app.post('/api/import-csv', async (req, res) => {
   try {
-    const { csvText, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { csvText } = req.body;
     
     // Parse CSV
     const expenses = parseCSV(csvText);
@@ -523,12 +470,6 @@ app.post('/api/import-csv', async (req, res) => {
       throw error;
     }
     
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ 
       success: true, 
       imported: expenses.length,
@@ -543,24 +484,9 @@ app.post('/api/import-csv', async (req, res) => {
 
 app.get('/api/export-csv', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     const result = await db.query('SELECT * FROM transactions ORDER BY date DESC');
     
     if (result.rows.length === 0) {
-      // Restore original test mode
-      if (requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.status(404).json({ error: 'No expenses found' });
     }
     
@@ -585,12 +511,6 @@ app.get('/api/export-csv', async (req, res) => {
         exp.type
       ].join(','))
     ].join('\n');
-    
-    // Restore original test mode
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=expenses.csv');
@@ -646,18 +566,11 @@ app.post('/api/column-mappings', (req, res) => {
 
 app.post('/api/import-with-mapping', async (req, res) => {
   try {
-    const { csvText, mapping, userId, isTestMode: requestTestMode } = req.body;
+    const { csvText, mapping, userId } = req.body;
     
     // Validate required fields
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
-    }
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
     }
     
     // Load existing expenses from database
@@ -720,12 +633,6 @@ app.post('/api/import-with-mapping', async (req, res) => {
       throw error;
     }
     
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ 
       success: true, 
       imported: expenses.length,
@@ -739,24 +646,12 @@ app.post('/api/import-with-mapping', async (req, res) => {
   }
 });
 
-// Date Range Routes
 app.get('/api/date-range', async (req, res) => {
   try {
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-
     const dateRangeFile = getFilePath('date-range.json');
     if (fs.existsSync(dateRangeFile)) {
       const data = fs.readFileSync(dateRangeFile, 'utf8');
       const dateRange = JSON.parse(data);
-      if (originalTestMode !== isTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.json(dateRange);
     }
 
@@ -767,10 +662,6 @@ app.get('/api/date-range', async (req, res) => {
       if (result.rows.length > 0) {
         const row = result.rows[0];
         const dateRange = { start: row.start_date, end: row.end_date };
-        if (originalTestMode !== isTestMode) {
-          isTestMode = originalTestMode;
-          db.setTestMode(originalTestMode);
-        }
         return res.json(dateRange);
       }
     } catch (dbErr) {
@@ -781,10 +672,6 @@ app.get('/api/date-range', async (req, res) => {
     const end = now;
     const start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()); // One month ago from today
     const defaultRange = { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
-    if (originalTestMode !== isTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     res.json(defaultRange);
   } catch (error) {
     console.error('Error reading date range:', error);
@@ -794,25 +681,12 @@ app.get('/api/date-range', async (req, res) => {
 
 app.post('/api/date-range', async (req, res) => {
   try {
-    const { start, end, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { start, end } = req.body;
     
     await db.query(
       'INSERT INTO date_ranges (start_date, end_date) VALUES ($1, $2) ON CONFLICT (start_date, end_date) DO UPDATE SET created_at = CURRENT_TIMESTAMP',
       [start, end]
     );
-    
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     res.json({ success: true });
   } catch (error) {
@@ -824,16 +698,6 @@ app.post('/api/date-range', async (req, res) => {
 // Category Routes
 app.get('/api/categories', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     const result = await db.query('SELECT name FROM categories ORDER BY name');
     
     let categories = result.rows.map(row => row.name);
@@ -855,12 +719,6 @@ app.get('/api/categories', async (req, res) => {
       categories = defaultCategories;
     }
     
-    // Restore original test mode
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ categories });
   } catch (error) {
     console.error('Error reading categories:', error);
@@ -870,14 +728,7 @@ app.get('/api/categories', async (req, res) => {
 
 app.post('/api/categories', async (req, res) => {
   try {
-    const { categories, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { categories } = req.body;
     
     const client = await db.beginTransaction();
     try {
@@ -898,12 +749,6 @@ app.post('/api/categories', async (req, res) => {
       throw error;
     }
     
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ success: true, count: categories.length });
   } catch (error) {
     console.error('Error saving categories:', error);
@@ -914,16 +759,6 @@ app.post('/api/categories', async (req, res) => {
 // User Routes
 app.get('/api/users', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     const result = await db.query('SELECT * FROM users ORDER BY created_at');
     
     let users = result.rows.map(row => ({
@@ -943,12 +778,6 @@ app.get('/api/users', async (req, res) => {
       ];
     }
     
-    // Restore original test mode
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ users });
   } catch (error) {
     console.error('Error reading users:', error);
@@ -958,14 +787,7 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
-    const { users, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { users } = req.body;
     
     const client = await db.beginTransaction();
     try {
@@ -986,12 +808,6 @@ app.post('/api/users', async (req, res) => {
       throw error;
     }
     
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ success: true, count: users.length });
   } catch (error) {
     console.error('Error saving users:', error);
@@ -1002,16 +818,6 @@ app.post('/api/users', async (req, res) => {
 // Report Routes
 app.get('/api/reports', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     const result = await db.query('SELECT * FROM reports ORDER BY created_at DESC');
     
     const reports = result.rows.map(row => ({
@@ -1023,12 +829,6 @@ app.get('/api/reports', async (req, res) => {
       lastModified: row.last_modified
     }));
     
-    // Restore original test mode
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json(reports);
   } catch (error) {
     console.error('Error reading reports:', error);
@@ -1038,14 +838,7 @@ app.get('/api/reports', async (req, res) => {
 
 app.post('/api/reports', async (req, res) => {
   try {
-    const { report, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { report } = req.body;
     
     await db.query(
       `INSERT INTO reports (id, name, description, filters, created_at, last_modified)
@@ -1064,12 +857,6 @@ app.post('/api/reports', async (req, res) => {
         report.lastModified || new Date().toISOString()
       ]
     );
-    
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     res.json({ success: true, reportId: report.id });
   } catch (error) {
@@ -1094,23 +881,10 @@ app.delete('/api/reports/:reportId', async (req, res) => {
 app.post('/api/reports/:reportId/data', async (req, res) => {
   try {
     const { reportId } = req.params;
-    const { reportData, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { reportData } = req.body;
     
     // Report data is now computed dynamically, so we don't need to store it
     // This endpoint is kept for backwards compatibility but does nothing
-    
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     res.json({ success: true });
   } catch (error) {
@@ -1123,24 +897,8 @@ app.get('/api/reports/:reportId/data', async (req, res) => {
   try {
     const { reportId } = req.params;
     
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     // Report data is now computed dynamically, so return 404
     // This endpoint is kept for backwards compatibility
-    
-    // Restore original test mode
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     return res.status(404).json({ error: 'Report data not found' });
   } catch (error) {
@@ -1152,16 +910,6 @@ app.get('/api/reports/:reportId/data', async (req, res) => {
 // Source Routes
 app.get('/api/sources', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
-    const requestTestMode = req.query.testMode === 'true';
-    const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
-    if (requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     const result = await db.query('SELECT * FROM sources ORDER BY created_at');
     
     const sources = result.rows.map(row => ({
@@ -1173,12 +921,6 @@ app.get('/api/sources', async (req, res) => {
       lastUsed: row.last_used
     }));
     
-    // Restore original test mode
-    if (requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json(sources);
   } catch (error) {
     console.error('Error reading sources:', error);
@@ -1188,23 +930,11 @@ app.get('/api/sources', async (req, res) => {
 
 app.post('/api/sources', async (req, res) => {
   try {
-    const { source, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { source } = req.body;
     
     // Check if source name already exists
     const existingResult = await db.query('SELECT id FROM sources WHERE name = $1', [source.name]);
     if (existingResult.rows.length > 0) {
-      // Restore original test mode
-      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.status(400).json({ error: 'Source name already exists' });
     }
     
@@ -1232,12 +962,6 @@ app.post('/api/sources', async (req, res) => {
       createdAt: row.created_at,
       lastUsed: row.last_used
     }));
-    
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     res.json({ success: true, sources });
   } catch (error) {
@@ -1274,23 +998,11 @@ app.delete('/api/sources/:sourceName', async (req, res) => {
 app.put('/api/sources/:sourceId', async (req, res) => {
   try {
     const { sourceId } = req.params;
-    const { source, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
+    const { source } = req.body;
     
     // Check if source exists
     const existingResult = await db.query('SELECT id FROM sources WHERE id = $1', [sourceId]);
     if (existingResult.rows.length === 0) {
-      // Restore original test mode
-      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.status(404).json({ error: 'Source not found' });
     }
     
@@ -1300,11 +1012,6 @@ app.put('/api/sources/:sourceId', async (req, res) => {
       [source.name, sourceId]
     );
     if (nameConflictResult.rows.length > 0) {
-      // Restore original test mode
-      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.status(400).json({ error: 'Source name already exists' });
     }
     
@@ -1335,12 +1042,6 @@ app.put('/api/sources/:sourceId', async (req, res) => {
       createdAt: row.created_at,
       lastUsed: row.last_used
     }));
-    
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
     
     res.json({ success: true, sources });
   } catch (error) {
@@ -1386,13 +1087,7 @@ app.post('/api/delete-selected', async (req, res) => {
 // Undo Import Routes
 app.post('/api/undo-import', (req, res) => {
   try {
-    const { importSessionId, importedAt, sourceName, isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-    }
+    const { importSessionId, importedAt, sourceName } = req.body;
     
     // Load existing expenses
     let existingExpenses = [];
@@ -1418,8 +1113,6 @@ app.post('/api/undo-import', (req, res) => {
     });
     
     if (transactionsToRemove.length === 0) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
       return res.status(404).json({ error: 'No transactions found to undo' });
     }
     
@@ -1430,9 +1123,6 @@ app.post('/api/undo-import', (req, res) => {
     // Save the filtered transactions
     ensureArtifactsDir();
     fs.writeFileSync(transactionsFile, JSON.stringify(transactionsToKeep, null, 2));
-    
-    // Restore original test mode
-    isTestMode = originalTestMode;
     
     res.json({ 
       success: true, 
@@ -2002,15 +1692,6 @@ app.post('/api/transfer-override', async (req, res) => {
 // Manual transfer detection endpoint
 app.post('/api/detect-transfers', async (req, res) => {
   try {
-    const { isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-      db.setTestMode(requestTestMode);
-    }
-    
     // Load all transactions from database
     const result = await db.query('SELECT * FROM transactions');
     const transactions = result.rows.map(row => ({
@@ -2028,11 +1709,6 @@ app.post('/api/detect-transfers', async (req, res) => {
     }));
     
     if (transactions.length === 0) {
-      // Restore original test mode
-      if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-        isTestMode = originalTestMode;
-        db.setTestMode(originalTestMode);
-      }
       return res.status(404).json({ error: 'No transactions found' });
     }
     
@@ -2062,12 +1738,6 @@ app.post('/api/detect-transfers', async (req, res) => {
       throw error;
     }
     
-    // Restore original test mode
-    if (requestTestMode !== undefined && requestTestMode !== originalTestMode) {
-      isTestMode = originalTestMode;
-      db.setTestMode(originalTestMode);
-    }
-    
     res.json({ 
       success: true, 
       transfersDetected: transfers.length,
@@ -2079,39 +1749,11 @@ app.post('/api/detect-transfers', async (req, res) => {
   }
 });
 
-// Test mode endpoint
-app.get('/api/test-mode', (req, res) => {
-  res.json({ isTestMode });
-});
-
-app.post('/api/test-mode', (req, res) => {
-  try {
-    const { isTestMode: newTestMode } = req.body;
-    isTestMode = newTestMode;
-    db.setTestMode(newTestMode);
-    
-    res.json({ success: true, isTestMode });
-  } catch (error) {
-    console.error('Error setting test mode:', error);
-    res.status(500).json({ error: 'Failed to set test mode' });
-  }
-});
-
 // Re-run transfer detection endpoint for backwards compatibility
 app.post('/api/rerun-transfer-detection', (req, res) => {
   try {
-    const { isTestMode: requestTestMode } = req.body;
-    
-    // Temporarily set test mode for this request
-    const originalTestMode = isTestMode;
-    if (requestTestMode !== undefined && requestTestMode !== isTestMode) {
-      isTestMode = requestTestMode;
-    }
-    
     const transactionsFile = getFilePath('transactions.json');
     if (!fs.existsSync(transactionsFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
       return res.status(404).json({ error: 'No transactions found' });
     }
     
@@ -2130,9 +1772,6 @@ app.post('/api/rerun-transfer-detection', (req, res) => {
     // Save updated transactions
     ensureArtifactsDir();
     fs.writeFileSync(transactionsFile, JSON.stringify(updatedTransactions, null, 2));
-    
-    // Restore original test mode
-    isTestMode = originalTestMode;
     
     res.json({ 
       success: true, 

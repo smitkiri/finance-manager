@@ -13,15 +13,8 @@ const config = {
   connectionTimeoutMillis: 2000,
 };
 
-// Test mode database configuration
-const testConfig = {
-  ...config,
-  database: process.env.DB_NAME_TEST || 'expense_tracker_test',
-};
-
 // Create connection pools
 const pool = new Pool(config);
-const testPool = new Pool(testConfig);
 
 // Handle pool errors
 pool.on('error', (err) => {
@@ -29,33 +22,11 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
-testPool.on('error', (err) => {
-  console.error('Unexpected error on idle test client', err);
-  process.exit(-1);
-});
-
-// Test mode state (similar to server.js)
-let isTestMode = false;
-
 /**
  * Get the appropriate database pool based on test mode
  */
 const getPool = () => {
-  return isTestMode ? testPool : pool;
-};
-
-/**
- * Set test mode
- */
-const setTestMode = (mode) => {
-  isTestMode = mode;
-};
-
-/**
- * Get current test mode
- */
-const getTestMode = () => {
-  return isTestMode;
+  return pool;
 };
 
 /**
@@ -140,7 +111,6 @@ const waitForDatabase = async (maxRetries = 30, delay = 1000) => {
  */
 const close = async () => {
   await pool.end();
-  await testPool.end();
 };
 
 module.exports = {
@@ -151,8 +121,5 @@ module.exports = {
   healthCheck,
   waitForDatabase,
   close,
-  setTestMode,
-  getTestMode,
   getPool,
 };
-
