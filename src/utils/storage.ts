@@ -197,21 +197,23 @@ export class LocalStorage {
     }
   }
 
-  static async updateExpense(updatedExpense: Expense): Promise<Expense[]> {
+  static async updateExpense(updatedExpense: Expense): Promise<Expense> {
     try {
-      // Load existing expenses
-      const existingExpenses = await this.loadExpenses();
-      
-      // Update the expense
-      const updatedExpenses = existingExpenses.map(exp => 
-        exp.id === updatedExpense.id ? updatedExpense : exp
-      );
-      
-      // Save updated data
-      await this.saveExpenses(updatedExpenses);
-      
+      const response = await fetch(`${this.API_BASE}/expenses/${updatedExpense.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedExpense),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update expense on server');
+      }
+
+      const returnedExpense = await response.json();
       console.log(`Updated expense ${updatedExpense.id}`);
-      return updatedExpenses;
+      return returnedExpense;
     } catch (error) {
       console.error('Error updating expense:', error);
       throw error;

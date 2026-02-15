@@ -342,6 +342,73 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+app.patch('/api/expenses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const expenseData = req.body;
+
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (expenseData.date) {
+      fields.push(`date = $${paramIndex++}`);
+      values.push(expenseData.date);
+    }
+    if (expenseData.description) {
+      fields.push(`description = $${paramIndex++}`);
+      values.push(expenseData.description);
+    }
+    if (expenseData.hasOwnProperty('category')) {
+      fields.push(`category = $${paramIndex++}`);
+      values.push(expenseData.category || null);
+    }
+    if (expenseData.amount) {
+      fields.push(`amount = $${paramIndex++}`);
+      values.push(expenseData.amount);
+    }
+    if (expenseData.type) {
+      fields.push(`type = $${paramIndex++}`);
+      values.push(expenseData.type);
+    }
+    if (expenseData.user) {
+      fields.push(`user_id = $${paramIndex++}`);
+      values.push(expenseData.user);
+    }
+    if (expenseData.labels) {
+      fields.push(`labels = $${paramIndex++}`);
+      values.push(JSON.stringify(expenseData.labels));
+    }
+    if (expenseData.excludedFromCalculations !== undefined) {
+      fields.push(`excluded_from_calculations = $${paramIndex++}`);
+      values.push(expenseData.excludedFromCalculations);
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    const setClause = fields.join(', ');
+    values.push(id);
+
+    const query = `UPDATE transactions SET ${setClause} WHERE id = $${paramIndex}`;
+    const result = await db.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const updatedResult = await db.query('SELECT * FROM transactions WHERE id = $1', [id]);
+    const updatedExpense = rowToExpense(updatedResult.rows[0]);
+
+    res.json(updatedExpense);
+  } catch (error) {
+    console.error('Error updating expense:', error);
+    res.status(500).json({ error: 'Failed to update expense' });
+  }
+});
+
 app.post('/api/expenses', async (req, res) => {
   try {
     const { expenses, metadata } = req.body;

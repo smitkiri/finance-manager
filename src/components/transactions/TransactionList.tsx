@@ -189,142 +189,149 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
         </div>
       )}
       
-      {visibleExpenses.map((expense) => (
-        <div
-          key={expense.id}
-          className={`rounded-lg border transition-shadow duration-200 p-3 cursor-pointer ${
-            isTransactionExcluded(expense)
-              ? 'bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-600 opacity-50'
-              : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:shadow-sm'
-          }`}
-          onClick={() => onViewDetails(expense)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {expense.description}
-                    </p>
-                    <div
-                      className={`font-semibold text-sm ${
-                        expense.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                      }`}
-                    >
-                      {expense.type === 'expense' ? '-' : '+'}
-                      {formatCurrency(expense.amount)}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(expense.date).toLocaleDateString()}
-                    </span>
-                    <div className="relative category-dropdown">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleDropdown(expense.id);
-                        }}
-                        className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 rounded px-2 py-1 hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors flex items-center space-x-1"
+      {visibleExpenses.map((expense) => {
+        const isUncategorized = !expense.category || expense.category === 'Uncategorized';
+        const categoryClasses = isUncategorized
+          ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300 border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-800/30'
+          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800/30';
+
+        return (
+          <div
+            key={expense.id}
+            className={`rounded-lg border transition-shadow duration-200 p-3 cursor-pointer ${
+              isTransactionExcluded(expense)
+                ? 'bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-600 opacity-50'
+                : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:shadow-sm'
+            }`}
+            onClick={() => onViewDetails(expense)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {expense.description}
+                      </p>
+                      <div
+                        className={`font-semibold text-sm ${
+                          expense.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                        }`}
                       >
-                        <span>{expense.category || 'Uncategorized'}</span>
-                        {openDropdowns.has(expense.id) ? (
-                          <ChevronUp size={12} />
-                        ) : (
-                          <ChevronDown size={12} />
+                        {expense.type === 'expense' ? '-' : '+'}
+                        {formatCurrency(expense.amount)}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(expense.date).toLocaleDateString()}
+                      </span>
+                      <div className="relative category-dropdown">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleDropdown(expense.id);
+                          }}
+                          className={`text-xs border rounded px-2 py-1 transition-colors flex items-center space-x-1 ${categoryClasses}`}
+                        >
+                          <span>{expense.category || 'Uncategorized'}</span>
+                          {openDropdowns.has(expense.id) ? (
+                            <ChevronUp size={12} />
+                          ) : (
+                            <ChevronDown size={12} />
+                          )}
+                        </button>
+                        
+                        {openDropdowns.has(expense.id) && (
+                          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-10 min-w-32 max-h-48 overflow-y-auto">
+                            {sortedCategories.map((category) => (
+                              <button
+                                key={category}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCategorySelect(expense.id, category);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
+                                  expense.category === category 
+                                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+                                    : 'text-gray-700 dark:text-gray-300'
+                                }`}
+                              >
+                                {category}
+                              </button>
+                            ))}
+                          </div>
                         )}
-                      </button>
-                      
-                      {openDropdowns.has(expense.id) && (
-                        <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-10 min-w-32 max-h-48 overflow-y-auto">
-                          {sortedCategories.map((category) => (
-                            <button
-                              key={category}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCategorySelect(expense.id, category);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
-                                expense.category === category 
-                                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                                  : 'text-gray-700 dark:text-gray-300'
-                              }`}
+                      </div>
+                      {expense.transferInfo?.isTransfer && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                          expense.transferInfo.transferType === 'user' 
+                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                            : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                        }`}>
+                          {expense.transferInfo.transferType === 'user' ? 'User Transfer' : 'Self Transfer'}
+                        </span>
+                      )}
+                      {expense.labels && expense.labels.length > 0 && (
+                        <div className="flex space-x-1">
+                          {expense.labels.map((label, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                             >
-                              {category}
-                            </button>
+                              {label}
+                            </span>
                           ))}
                         </div>
                       )}
                     </div>
-                    {expense.transferInfo?.isTransfer && (
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                        expense.transferInfo.transferType === 'user' 
-                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                          : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                      }`}>
-                        {expense.transferInfo.transferType === 'user' ? 'User Transfer' : 'Self Transfer'}
-                      </span>
-                    )}
-                    {expense.labels && expense.labels.length > 0 && (
-                      <div className="flex space-x-1">
-                        {expense.labels.map((label, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-1 ml-2">
-              {/* Add Label Button */}
-              {(expense.labels?.length || 0) < 3 && (
+              
+              <div className="flex items-center space-x-1 ml-2">
+                {/* Add Label Button */}
+                {(expense.labels?.length || 0) < 3 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddLabelClick(expense.id, e);
+                    }}
+                    className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
+                    title="Add label"
+                  >
+                    <div className="relative">
+                      <Plus size={14} />
+                      <div className="absolute inset-0 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAddLabelClick(expense.id, e);
+                    onEdit(expense);
                   }}
-                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
-                  title="Add label"
+                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                  title="Edit transaction"
                 >
-                  <div className="relative">
-                    <Plus size={14} />
-                    <div className="absolute inset-0 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  <Edit size={14} />
                 </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(expense);
-                }}
-                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                title="Edit transaction"
-              >
-                <Edit size={14} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(expense.id);
-                }}
-                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                title="Delete transaction"
-              >
-                <Trash2 size={14} />
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(expense.id);
+                  }}
+                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                  title="Delete transaction"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       
       {hasMore && (
         <div className="flex justify-center pt-3">

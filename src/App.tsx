@@ -252,15 +252,15 @@ function AppContent() {
     };
 
     try {
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
-      setExpenses(updatedExpenses);
-      bumpTransactionListVersion();
+      const returnedExpense = await LocalStorage.updateExpense(updatedExpense);
+      setExpenses(prev => prev.map(e => e.id === returnedExpense.id ? returnedExpense : e));
+      setTransactionList(prev => prev.map(e => e.id === returnedExpense.id ? returnedExpense : e));
       setEditingExpense(null);
       setIsFormOpen(false);
     } catch (error) {
       console.error('Error updating expense:', error);
     }
-  }, [editingExpense, bumpTransactionListVersion]);
+  }, [editingExpense]);
 
   const handleDeleteExpense = useCallback(async (id: string) => {
     try {
@@ -274,64 +274,70 @@ function AppContent() {
 
   const handleUpdateCategory = useCallback(async (expenseId: string, newCategory: string) => {
     try {
-      const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      let expenseToUpdate = transactionList.find(exp => exp.id === expenseId);
+      if (!expenseToUpdate) {
+        expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      }
+      
       if (!expenseToUpdate) return;
 
-      const updatedExpense: Expense = {
-        ...expenseToUpdate,
-        category: newCategory,
-      };
+      const updatedExpenseData = { ...expenseToUpdate, category: newCategory };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
-      setExpenses(updatedExpenses);
-      bumpTransactionListVersion();
+      const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+      
+      setExpenses(prev => prev.map(e => e.id === returnedExpense.id ? returnedExpense : e));
+      setTransactionList(prev => prev.map(e => e.id === returnedExpense.id ? returnedExpense : e));
     } catch (error) {
       console.error('Error updating category:', error);
     }
-  }, [expenses, bumpTransactionListVersion]);
+  }, [expenses, transactionList]);
 
   const handleAddLabel = useCallback(async (expenseId: string, label: string) => {
     try {
-      const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      let expenseToUpdate = transactionList.find(exp => exp.id === expenseId) || expenses.find(exp => exp.id === expenseId);
       if (!expenseToUpdate) return;
 
       const currentLabels = expenseToUpdate.labels || [];
       if (currentLabels.length >= 3) return; // Max 3 labels
       if (currentLabels.includes(label)) return; // Don't add duplicate
 
-      const updatedExpense: Expense = {
+      const updatedExpenseData: Expense = {
         ...expenseToUpdate,
         labels: [...currentLabels, label],
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
-      setExpenses(updatedExpenses);
-      bumpTransactionListVersion();
+      const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+      
+      setExpenses(prev => prev.map(e => e.id === expenseId ? returnedExpense : e));
+      setTransactionList(prev => prev.map(e => e.id === expenseId ? returnedExpense : e));
+
     } catch (error) {
       console.error('Error adding label:', error);
     }
-  }, [expenses, bumpTransactionListVersion]);
+  }, [expenses, transactionList]);
 
   const handleRemoveLabel = useCallback(async (expenseId: string, label: string) => {
     try {
-      const expenseToUpdate = expenses.find(exp => exp.id === expenseId);
+      let expenseToUpdate = transactionList.find(exp => exp.id === expenseId) || expenses.find(exp => exp.id === expenseId);
       if (!expenseToUpdate) return;
 
       const currentLabels = expenseToUpdate.labels || [];
       const updatedLabels = currentLabels.filter(l => l !== label);
 
-      const updatedExpense: Expense = {
+      const updatedExpenseData: Expense = {
         ...expenseToUpdate,
         labels: updatedLabels,
       };
 
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
-      setExpenses(updatedExpenses);
-      bumpTransactionListVersion();
+      const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+
+      setExpenses(prev => prev.map(e => e.id === expenseId ? returnedExpense : e));
+      setTransactionList(prev => prev.map(e => e.id === expenseId ? returnedExpense : e));
+
     } catch (error) {
       console.error('Error removing label:', error);
     }
-  }, [expenses, bumpTransactionListVersion]);
+  }, [expenses, transactionList]);
 
   const handleAddCategory = useCallback(async (category: string) => {
     try {
@@ -764,18 +770,21 @@ function AppContent() {
 
   const handleExcludeToggle = async (transactionId: string, exclude: boolean) => {
     try {
-      const expenseToUpdate = expenses.find(exp => exp.id === transactionId);
+      let expenseToUpdate = transactionList.find(exp => exp.id === transactionId) || expenses.find(exp => exp.id === transactionId);
       if (!expenseToUpdate) return;
-      const updatedExpense = {
+
+      const updatedExpenseData = {
         ...expenseToUpdate,
         excludedFromCalculations: exclude,
       };
-      const updatedExpenses = await LocalStorage.updateExpense(updatedExpense);
-      setExpenses(updatedExpenses);
-      bumpTransactionListVersion();
-      // If the selected transaction is open, update it in state as well
+
+      const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+      
+      setExpenses(prev => prev.map(e => e.id === transactionId ? returnedExpense : e));
+      setTransactionList(prev => prev.map(e => e.id === transactionId ? returnedExpense : e));
+      
       if (selectedTransaction && selectedTransaction.id === transactionId) {
-        setSelectedTransaction(updatedExpense);
+        setSelectedTransaction(returnedExpense);
       }
     } catch (error) {
       console.error('Error updating excludedFromCalculations:', error);
