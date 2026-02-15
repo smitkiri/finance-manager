@@ -2,7 +2,7 @@
 
 A modern, open-source web application for tracking personal expenses and income, fully written by AI!
 
-## 🚀 Welcome to the AI-Powered Expense Tracker!
+## 🚀 Welcome to the Expense Tracker!
 
 This system is entirely AI-written, born from my personal journey to test out vibe-coding and familiarize myself with AI coding tools, all while building something genuinely useful. I've leveraged various AI assistants like Cursor, Codex, Jules, and Gemini throughout its development.
 
