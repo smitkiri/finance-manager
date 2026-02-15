@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight } from 'lucide-react';
 import { User, Source, StandardizedColumn } from '../../types';
+import { BackupManager } from './BackupManager';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -642,6 +643,7 @@ export const Settings: React.FC<SettingsProps> = ({
             )}
             {activeSection === 'general' && (
               <>
+                <BackupManager />
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Export Data</h3>
                   <div className="space-y-4">

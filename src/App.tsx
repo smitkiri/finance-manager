@@ -202,7 +202,7 @@ function AppContent() {
     const total = typeof data.total === 'number' ? data.total : currentList.length;
     setTransactionList(prev => [...(prev ?? []), ...nextExpenses]);
     setTransactionTotal(total);
-  }, [transactionList?.length ?? 0, dateRange, selectedUserId, transactionFilters, debouncedSearchText]);
+  }, [transactionList, dateRange, selectedUserId, transactionFilters, debouncedSearchText]);
 
   const bumpTransactionListVersion = useCallback(() => {
     setTransactionListVersion(v => v + 1);
