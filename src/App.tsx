@@ -892,7 +892,7 @@ function AppContent() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <h1 className={`text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600`}>
-                Expense Tracker
+                Finance Manager
               </h1>
             </div>
             <div className="flex items-center space-x-4">

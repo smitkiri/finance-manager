@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "--- Expense Tracker Setup ---"
+echo "--- Finance Manager Setup ---"
 echo "This script will install dependencies, set up the database, and start the application."
 echo "It is safe to run this script multiple times."
 

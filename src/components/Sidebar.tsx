@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, o
           {/* Header */}
           <div className="p-6 border-b border-gray-200 dark:border-slate-700">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Expense Tracker
+              Finance Manager
             </h1>
           </div>
 

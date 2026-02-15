@@ -1,6 +1,6 @@
 # Code Organization
 
-This document outlines the improved code organization structure for the expense tracker application.
+This document outlines the improved code organization structure for the finance manager application.
 
 ## Directory Structure
 

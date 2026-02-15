@@ -1,4 +1,4 @@
--- Database schema for expense tracker
+-- Database schema for finance manager
 
 -- Transactions table (expenses)
 CREATE TABLE IF NOT EXISTS transactions (

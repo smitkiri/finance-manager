@@ -1,8 +1,8 @@
-# Expense Tracker
+# Finance Manager
 
 A modern, open-source web application for tracking personal expenses and income, fully written by AI!
 
-## 🚀 Welcome to the Expense Tracker!
+## 🚀 Welcome to the Finance Manager!
 
 This system is entirely AI-written, born from my personal journey to test out vibe-coding and familiarize myself with AI coding tools, all while building something genuinely useful. I've leveraged various AI assistants like Cursor, Codex, Jules, and Gemini throughout its development.
 
@@ -10,7 +10,7 @@ I've been using this system to meticulously track my family's expenses since Jul
 
 ## 🛠️ Getting Started
 
-Follow these steps to set up and run the Expense Tracker locally.
+Follow these steps to set up and run the Finance Manager locally.
 
 ### Prerequisites
 
@@ -21,7 +21,7 @@ Before you begin, ensure you have the following installed:
 
 ### Quick Setup
 
-To get the Expense Tracker up and running quickly, follow these steps:
+To get the Finance Manager up and running quickly, follow these steps:
 
 1.  **Clone the repository:**
 
