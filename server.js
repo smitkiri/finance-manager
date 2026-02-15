@@ -54,48 +54,323 @@ const ensureArtifactsDir = () => {
   }
 };
 
+// Helper: build WHERE clause and params for filtered expenses query
+function buildExpensesWhereClause(query) {
+  const conditions = [];
+  const params = [];
+  let paramIndex = 1;
+
+  if (query.dateFrom) {
+    conditions.push(`date >= $${paramIndex}`);
+    params.push(query.dateFrom);
+    paramIndex++;
+  }
+  if (query.dateTo) {
+    conditions.push(`date <= $${paramIndex}`);
+    params.push(query.dateTo);
+    paramIndex++;
+  }
+  if (query.userId) {
+    conditions.push(`user_id = $${paramIndex}`);
+    params.push(query.userId);
+    paramIndex++;
+  }
+  if (query.categories && query.categories.length > 0) {
+    conditions.push(`category = ANY($${paramIndex}::text[])`);
+    params.push(Array.isArray(query.categories) ? query.categories : [query.categories]);
+    paramIndex++;
+  }
+  if (query.types && query.types.length > 0) {
+    conditions.push(`type = ANY($${paramIndex}::text[])`);
+    params.push(Array.isArray(query.types) ? query.types : [query.types]);
+    paramIndex++;
+  }
+  if (query.minAmount != null && query.minAmount !== '') {
+    conditions.push(`amount >= $${paramIndex}`);
+    params.push(parseFloat(query.minAmount));
+    paramIndex++;
+  }
+  if (query.maxAmount != null && query.maxAmount !== '') {
+    conditions.push(`amount <= $${paramIndex}`);
+    params.push(parseFloat(query.maxAmount));
+    paramIndex++;
+  }
+  if (query.search && query.search.trim()) {
+    const searchTerm = `%${query.search.trim().toLowerCase()}%`;
+    conditions.push(`(
+      LOWER(description) LIKE $${paramIndex}
+      OR LOWER(category) LIKE $${paramIndex}
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(COALESCE(labels, '[]'::jsonb)) AS lbl
+        WHERE LOWER(lbl) LIKE $${paramIndex}
+      )
+    )`);
+    params.push(searchTerm);
+    paramIndex++;
+  }
+  if (query.labels && query.labels.length > 0) {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(COALESCE(labels, '[]'::jsonb)) AS lbl
+      WHERE lbl = ANY($${paramIndex}::text[])
+    )`);
+    params.push(Array.isArray(query.labels) ? query.labels : [query.labels]);
+    paramIndex++;
+  }
+  if (query.sources && query.sources.length > 0) {
+    conditions.push(`metadata->>'sourceId' = ANY($${paramIndex}::text[])`);
+    params.push(Array.isArray(query.sources) ? query.sources : [query.sources]);
+    paramIndex++;
+  }
+
+  const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { whereSql, params };
+}
+
+function rowToExpense(row) {
+  return {
+    id: row.id,
+    date: row.date,
+    description: row.description,
+    category: row.category,
+    amount: parseFloat(row.amount),
+    type: row.type,
+    user: row.user_id,
+    labels: row.labels || [],
+    metadata: row.metadata || {},
+    transferInfo: row.transfer_info ? row.transfer_info : undefined,
+    excludedFromCalculations: row.excluded_from_calculations || false
+  };
+}
+
 // Routes
 app.get('/api/expenses', async (req, res) => {
   try {
     // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
     const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
+
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
       db.setTestMode(requestTestMode);
     }
-    
+
+    const limit = req.query.limit != null ? parseInt(req.query.limit, 10) : null;
+    const offset = req.query.offset != null ? parseInt(req.query.offset, 10) : 0;
+
+    // Parse filter query params (support comma-separated or repeated keys)
+    const parseList = (val) => {
+      if (val == null) return undefined;
+      if (Array.isArray(val)) return val.filter(Boolean);
+      return val.split(',').map(s => s.trim()).filter(Boolean);
+    };
+    const filters = {
+      dateFrom: req.query.dateFrom || undefined,
+      dateTo: req.query.dateTo || undefined,
+      userId: req.query.userId || undefined,
+      categories: parseList(req.query.categories),
+      types: parseList(req.query.types),
+      labels: parseList(req.query.labels),
+      sources: parseList(req.query.sources),
+      minAmount: req.query.minAmount,
+      maxAmount: req.query.maxAmount,
+      search: req.query.search
+    };
+
+    const { whereSql, params } = buildExpensesWhereClause(filters);
+    const orderBy = 'ORDER BY date DESC';
+
+    if (limit != null && limit >= 0) {
+      // Paginated response: { expenses, total }
+      const countResult = await db.query(
+        `SELECT COUNT(*)::int AS total FROM transactions ${whereSql}`,
+        params
+      );
+      const total = countResult.rows[0].total;
+
+      const result = await db.query(
+        `SELECT * FROM transactions ${whereSql} ${orderBy} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      );
+      const expenses = result.rows.map(rowToExpense);
+
+      if (requestTestMode !== originalTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
+      return res.json({ expenses, total });
+    }
+
+    // No limit: return all (backward compatible)
     const result = await db.query(
-      'SELECT * FROM transactions ORDER BY date DESC'
+      `SELECT * FROM transactions ${whereSql} ${orderBy}`,
+      params
     );
-    
-    // Convert database rows to expense format
-    const expenses = result.rows.map(row => ({
+    const expenses = result.rows.map(rowToExpense);
+
+    if (requestTestMode !== originalTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    res.json(expenses);
+  } catch (error) {
+    console.error('Error reading expenses:', error);
+    res.status(500).json({ error: 'Failed to read expenses' });
+  }
+});
+
+// Dashboard stats: aggregates only (no full transaction list). Replicates transfer/exclusion logic.
+function buildStatsWhereClause(dateFrom, dateTo, userId) {
+  const conditions = [
+    '($1::date IS NULL OR date >= $1)',
+    '($2::date IS NULL OR date <= $2)',
+    '($3::text IS NULL OR user_id = $3)',
+    'excluded_from_calculations IS NOT TRUE',
+    `(
+      transfer_info IS NULL
+      OR (transfer_info->>'isTransfer') IS DISTINCT FROM 'true'
+      OR (
+        (transfer_info->>'userOverride') IS NOT NULL AND (COALESCE((transfer_info->>'excludedFromCalculations')::boolean, false) = false)
+        OR (transfer_info->>'transferType') = 'user' AND $3 IS NOT NULL
+        OR (transfer_info->>'transferType') = 'self' AND (COALESCE((transfer_info->>'excludedFromCalculations')::boolean, false) = false)
+        OR ((transfer_info->>'transferType') IS NULL OR (transfer_info->>'transferType') NOT IN ('user', 'self')) AND (COALESCE((transfer_info->>'excludedFromCalculations')::boolean, false) = false)
+      )
+    )`
+  ];
+  const params = [dateFrom || null, dateTo || null, userId || null];
+  return { whereSql: 'WHERE ' + conditions.join(' AND '), params };
+}
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const requestTestMode = req.query.testMode === 'true';
+    const originalTestMode = isTestMode;
+    if (requestTestMode !== isTestMode) {
+      isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
+    }
+
+    const dateFrom = req.query.dateFrom || undefined;
+    const dateTo = req.query.dateTo || undefined;
+    const userId = req.query.userId || undefined;
+    const { whereSql, params } = buildStatsWhereClause(dateFrom, dateTo, userId);
+
+    const baseTable = `(SELECT id, date, type, amount, category, description, user_id FROM transactions ${whereSql}) filtered`;
+    const totalResult = await db.query(
+      `SELECT
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN ABS(amount) ELSE 0 END), 0)::float AS total_expenses,
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0)::float AS total_income
+      FROM ${baseTable}`,
+      params
+    );
+    const categoryResult = await db.query(
+      `SELECT category, COALESCE(SUM(ABS(amount)), 0)::float AS total
+       FROM ${baseTable} WHERE type = 'expense' GROUP BY category`,
+      params
+    );
+    const incomeCategoryResult = await db.query(
+      `SELECT category, COALESCE(SUM(amount), 0)::float AS total
+       FROM ${baseTable} WHERE type = 'income' GROUP BY category`,
+      params
+    );
+    const monthlyResult = await db.query(
+      `SELECT
+        to_char(date, 'YYYY-MM') AS iso_month,
+        to_char(date, 'Mon YYYY') AS display_month,
+        date_trunc('month', date) AS month_start,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN ABS(amount) ELSE 0 END), 0)::float AS expenses,
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0)::float AS income
+       FROM ${baseTable}
+       GROUP BY to_char(date, 'YYYY-MM'), to_char(date, 'Mon YYYY'), date_trunc('month', date)
+       ORDER BY month_start`,
+      params
+    );
+    const monthlyCategoryResult = await db.query(
+      `SELECT
+        to_char(date, 'Mon YYYY') AS display_month,
+        date_trunc('month', date) AS month_start,
+        category,
+        COALESCE(SUM(ABS(amount)), 0)::float AS total
+       FROM ${baseTable} WHERE type = 'expense'
+       GROUP BY to_char(date, 'Mon YYYY'), date_trunc('month', date), category
+       ORDER BY month_start`,
+      params
+    );
+    const topExpensesResult = await db.query(
+      `SELECT id, date, description, category, amount, type FROM ${baseTable}
+       WHERE type = 'expense' ORDER BY ABS(amount) DESC LIMIT 10`,
+      params
+    );
+    const topIncomeResult = await db.query(
+      `SELECT id, date, description, category, amount, type FROM ${baseTable}
+       WHERE type = 'income' ORDER BY amount DESC LIMIT 10`,
+      params
+    );
+
+    const totalExpenses = parseFloat(totalResult.rows[0].total_expenses) || 0;
+    const totalIncome = parseFloat(totalResult.rows[0].total_income) || 0;
+    const categoryBreakdown = {};
+    categoryResult.rows.forEach(row => {
+      const cat = row.category || 'Uncategorized';
+      categoryBreakdown[cat] = parseFloat(row.total) || 0;
+    });
+    const incomeCategoryBreakdown = {};
+    incomeCategoryResult.rows.forEach(row => {
+      const cat = row.category || 'Uncategorized';
+      incomeCategoryBreakdown[cat] = parseFloat(row.total) || 0;
+    });
+    const monthlyData = monthlyResult.rows.map(row => ({
+      month: row.display_month,
+      expenses: parseFloat(row.expenses) || 0,
+      income: parseFloat(row.income) || 0
+    }));
+    const monthOrder = monthlyResult.rows.map(r => r.display_month);
+    const monthlyCategoryMap = new Map();
+    monthlyCategoryResult.rows.forEach(row => {
+      const key = row.display_month;
+      if (!monthlyCategoryMap.has(key)) {
+        monthlyCategoryMap.set(key, { month: key });
+      }
+      monthlyCategoryMap.get(key)[row.category || 'Uncategorized'] = parseFloat(row.total) || 0;
+    });
+    const monthlyCategoryData = monthOrder.map(m => monthlyCategoryMap.get(m) || { month: m });
+
+    const topExpenses = topExpensesResult.rows.map(row => ({
       id: row.id,
       date: row.date,
       description: row.description,
       category: row.category,
       amount: parseFloat(row.amount),
-      type: row.type,
-      user: row.user_id,
-      labels: row.labels || [],
-      metadata: row.metadata || {},
-      transferInfo: row.transfer_info ? row.transfer_info : undefined,
-      excludedFromCalculations: row.excluded_from_calculations || false
+      type: 'expense',
+      user: row.user_id || ''
     }));
-    
-    // Restore original test mode
+    const topIncome = topIncomeResult.rows.map(row => ({
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      category: row.category,
+      amount: parseFloat(row.amount),
+      type: 'income',
+      user: row.user_id || ''
+    }));
+
     if (requestTestMode !== originalTestMode) {
       isTestMode = originalTestMode;
       db.setTestMode(originalTestMode);
     }
-    
-    res.json(expenses);
+    res.json({
+      totalExpenses,
+      totalIncome,
+      netAmount: totalIncome - totalExpenses,
+      categoryBreakdown,
+      incomeCategoryBreakdown,
+      monthlyData,
+      monthlyCategoryData,
+      topExpenses,
+      topIncome
+    });
   } catch (error) {
-    console.error('Error reading expenses:', error);
-    res.status(500).json({ error: 'Failed to read expenses' });
+    console.error('Error reading stats:', error);
+    res.status(500).json({ error: 'Failed to read stats' });
   }
 });
 
@@ -465,30 +740,52 @@ app.post('/api/import-with-mapping', async (req, res) => {
 });
 
 // Date Range Routes
-app.get('/api/date-range', (req, res) => {
+app.get('/api/date-range', async (req, res) => {
   try {
-    // Check if test mode is requested via query parameter
     const requestTestMode = req.query.testMode === 'true';
     const originalTestMode = isTestMode;
-    
-    // Temporarily set test mode for this request
     if (requestTestMode !== isTestMode) {
       isTestMode = requestTestMode;
+      db.setTestMode(requestTestMode);
     }
-    
+
     const dateRangeFile = getFilePath('date-range.json');
-    if (!fs.existsSync(dateRangeFile)) {
-      // Restore original test mode
-      isTestMode = originalTestMode;
-      return res.status(404).json({ error: 'No date range found' });
+    if (fs.existsSync(dateRangeFile)) {
+      const data = fs.readFileSync(dateRangeFile, 'utf8');
+      const dateRange = JSON.parse(data);
+      if (originalTestMode !== isTestMode) {
+        isTestMode = originalTestMode;
+        db.setTestMode(originalTestMode);
+      }
+      return res.json(dateRange);
     }
-    
-    const data = fs.readFileSync(dateRangeFile, 'utf8');
-    const dateRange = JSON.parse(data);
-    
-    // Restore original test mode
-    isTestMode = originalTestMode;
-    res.json(dateRange);
+
+    try {
+      const result = await db.query(
+        'SELECT start_date, end_date FROM date_ranges ORDER BY created_at DESC LIMIT 1'
+      );
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        const dateRange = { start: row.start_date, end: row.end_date };
+        if (originalTestMode !== isTestMode) {
+          isTestMode = originalTestMode;
+          db.setTestMode(originalTestMode);
+        }
+        return res.json(dateRange);
+      }
+    } catch (dbErr) {
+      // DB might not have date_ranges or table empty
+    }
+
+    const now = new Date();
+    const end = now;
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()); // One month ago from today
+    const defaultRange = { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+    if (originalTestMode !== isTestMode) {
+      isTestMode = originalTestMode;
+      db.setTestMode(originalTestMode);
+    }
+    res.json(defaultRange);
   } catch (error) {
     console.error('Error reading date range:', error);
     res.status(500).json({ error: 'Failed to read date range' });
@@ -1849,7 +2146,24 @@ app.post('/api/rerun-transfer-detection', (req, res) => {
   }
 });
 
+
+
 app.listen(PORT, () => {
+
+
+
   console.log(`Server running on http://localhost:${PORT}`);
+
+
+
   console.log(`Artifacts directory: ${path.resolve(getArtifactsDir())}`);
-}); 
+
+
+
+});
+
+
+
+
+
+ 

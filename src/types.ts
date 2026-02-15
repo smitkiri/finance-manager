@@ -48,12 +48,25 @@ export interface DateRange {
   end: Date;
 }
 
+export interface ExpensePageResponse {
+  expenses: Expense[];
+  total: number;
+}
+
 export interface ExpenseStats {
   totalExpenses: number;
   totalIncome: number;
   netAmount: number;
   categoryBreakdown: { [key: string]: number };
   monthlyData: { month: string; expenses: number; income: number }[];
+}
+
+/** Dashboard stats from API (aggregates only, no full list) */
+export interface DashboardStats extends ExpenseStats {
+  incomeCategoryBreakdown?: { [key: string]: number };
+  monthlyCategoryData?: Record<string, string | number>[];
+  topExpenses?: Array<{ id: string; date: string; description: string; category: string; amount: number; type: 'expense'; user: string }>;
+  topIncome?: Array<{ id: string; date: string; description: string; category: string; amount: number; type: 'income'; user: string }>;
 }
 
 export interface Stats {

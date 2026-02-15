@@ -6,6 +6,9 @@ import { LabelSelector } from '../ui/LabelSelector';
 
 interface TransactionListProps {
   expenses: Expense[];
+  totalCount?: number;
+  onLoadMore?: () => void;
+  isLoading?: boolean;
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
   onUpdateCategory: (expenseId: string, newCategory: string) => void;
@@ -16,7 +19,7 @@ interface TransactionListProps {
   selectedUserId?: string | null;
 }
 
-const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories, selectedUserId }) => {
+const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, totalCount, onLoadMore, isLoading = false, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories, selectedUserId }) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [labelSelectorState, setLabelSelectorState] = useState<{
     isOpen: boolean;
@@ -30,9 +33,10 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
   
   const ITEMS_PER_PAGE = 30;
+  const useServerPagination = totalCount !== undefined && onLoadMore != null;
   
-  const visibleExpenses = expenses.slice(0, visibleCount);
-  const hasMore = visibleCount < expenses.length;
+  const visibleExpenses = useServerPagination ? expenses : expenses.slice(0, visibleCount);
+  const hasMore = useServerPagination ? (expenses.length < totalCount!) : (visibleCount < expenses.length);
 
   // Memoize category usage calculation
   const categoryUsage = useMemo(() => {
@@ -91,8 +95,12 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
   }, []);
 
   const handleShowMore = useCallback(() => {
-    setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
-  }, [expenses.length]);
+    if (useServerPagination && onLoadMore) {
+      onLoadMore();
+    } else {
+      setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
+    }
+  }, [useServerPagination, onLoadMore, expenses.length]);
 
   const handleAddLabelClick = useCallback((expenseId: string, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -146,6 +154,14 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
     return false;
   }, [selectedUserId]);
 
+  if (isLoading && expenses.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-pulse text-gray-400 dark:text-gray-500 mb-4">Loading transactions...</div>
+      </div>
+    );
+  }
+
   if (expenses.length === 0) {
     return (
       <div className="text-center py-12">
@@ -168,7 +184,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
             Recent Transactions
           </h3>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Showing {visibleExpenses.length} of {expenses.length}
+            Showing {visibleExpenses.length} of {useServerPagination ? totalCount : expenses.length}
           </span>
         </div>
       )}
@@ -325,7 +341,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, on
       {!hasMore && expenses.length > 0 && (
         <div className="text-center py-3">
           <p className="text-gray-500 dark:text-gray-400 text-xs">
-            Showing all {expenses.length} transactions
+            Showing all {useServerPagination ? totalCount : expenses.length} transactions
           </p>
         </div>
       )}

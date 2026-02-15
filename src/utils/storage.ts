@@ -1,4 +1,4 @@
-import { Expense, CSVPreview, Report, ReportData } from '../types';
+import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -69,6 +69,92 @@ export class LocalStorage {
         return expenses;
       }
       return [];
+    }
+  }
+
+  /** Options for server-side paginated and filtered expense list */
+  static async loadExpensesPage(options: {
+    isTestMode: boolean;
+    limit: number;
+    offset: number;
+    dateRange?: DateRange;
+    userId?: string | null;
+    categories?: string[];
+    labels?: string[];
+    types?: ('expense' | 'income')[];
+    sources?: string[];
+    minAmount?: number;
+    maxAmount?: number;
+    searchText?: string;
+  }): Promise<ExpensePageResponse> {
+    const {
+      isTestMode,
+      limit,
+      offset,
+      dateRange,
+      userId,
+      categories,
+      labels,
+      types,
+      sources,
+      minAmount,
+      maxAmount,
+      searchText
+    } = options;
+
+    const params = new URLSearchParams();
+    params.set('testMode', String(isTestMode));
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+    if (dateRange?.start) params.set('dateFrom', typeof dateRange.start === 'string' ? dateRange.start : dateRange.start.toISOString().slice(0, 10));
+    if (dateRange?.end) params.set('dateTo', typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10));
+    if (userId != null && userId !== '') params.set('userId', userId);
+    if (categories?.length) params.set('categories', categories.join(','));
+    if (labels?.length) params.set('labels', labels.join(','));
+    if (types?.length) params.set('types', types.join(','));
+    if (sources?.length) params.set('sources', sources.join(','));
+    if (minAmount != null) params.set('minAmount', String(minAmount));
+    if (maxAmount != null) params.set('maxAmount', String(maxAmount));
+    if (searchText?.trim()) params.set('search', searchText.trim());
+
+    try {
+      const response = await fetch(`${this.API_BASE}/expenses?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to load expenses page from server');
+      }
+      const data = await response.json();
+      // Backend may return { expenses, total } (paginated) or a plain array (legacy)
+      if (Array.isArray(data)) {
+        return { expenses: data, total: data.length };
+      }
+      const expenses = Array.isArray(data?.expenses) ? data.expenses : [];
+      const total = typeof data?.total === 'number' ? data.total : expenses.length;
+      return { expenses, total };
+    } catch (error) {
+      console.error('Error loading expenses page:', error);
+      return { expenses: [], total: 0 };
+    }
+  }
+
+  static async loadStats(options: {
+    isTestMode: boolean;
+    dateRange: DateRange;
+    userId?: string | null;
+  }): Promise<DashboardStats | null> {
+    const { isTestMode, dateRange, userId } = options;
+    const params = new URLSearchParams();
+    params.set('testMode', String(isTestMode));
+    if (dateRange?.start) params.set('dateFrom', typeof dateRange.start === 'string' ? dateRange.start : dateRange.start.toISOString().slice(0, 10));
+    if (dateRange?.end) params.set('dateTo', typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10));
+    if (userId != null && userId !== '') params.set('userId', userId);
+    try {
+      const response = await fetch(`${this.API_BASE}/stats?${params.toString()}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data as DashboardStats;
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      return null;
     }
   }
 
@@ -418,28 +504,28 @@ export class LocalStorage {
   static async loadDateRange(isTestMode: boolean = false): Promise<{ start: Date; end: Date } | null> {
     try {
       const response = await fetch(`${this.API_BASE}/date-range?testMode=${isTestMode}`);
-      
       if (!response.ok) {
-        throw new Error('Failed to load date range from server');
+        const stored = localStorage.getItem('dateRange');
+        if (stored) {
+          const dateRange = JSON.parse(stored);
+          return { start: new Date(dateRange.start), end: new Date(dateRange.end) };
+        }
+        return null;
       }
-
       const dateRange = await response.json();
-      console.log(`Loaded date range from server (test mode: ${isTestMode})`);
-      
       return {
         start: new Date(dateRange.start),
         end: new Date(dateRange.end)
       };
     } catch (error) {
-      console.error('Error loading date range from server:', error);
-      // Fallback to localStorage
       const stored = localStorage.getItem('dateRange');
       if (stored) {
-        const dateRange = JSON.parse(stored);
-        return {
-          start: new Date(dateRange.start),
-          end: new Date(dateRange.end)
-        };
+        try {
+          const dateRange = JSON.parse(stored);
+          return { start: new Date(dateRange.start), end: new Date(dateRange.end) };
+        } catch {
+          return null;
+        }
       }
       return null;
     }

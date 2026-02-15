@@ -24,6 +24,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
   const [tempStartDate, setTempStartDate] = useState(currentRange.start);
   const [tempEndDate, setTempEndDate] = useState(currentRange.end);
 
+  const areSameDay = (date1: Date, date2: Date): boolean => {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+  };
+
   const getQuickRange = (months?: number, years?: number): DateRange => {
     const end = new Date();
     let start: Date;
@@ -84,31 +90,31 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
     const oneYearAgo = subYears(now, 1);
     
     // Check for quick ranges
-    if (range.start.getTime() === startOfDay(oneMonthAgo).getTime() && 
-        range.end.getTime() === endOfDay(now).getTime()) {
+    if (areSameDay(range.start, startOfDay(oneMonthAgo)) && 
+        areSameDay(range.end, endOfDay(now))) {
       return 'Last 1 month';
     }
     
-    if (range.start.getTime() === startOfDay(threeMonthsAgo).getTime() && 
-        range.end.getTime() === endOfDay(now).getTime()) {
+    if (areSameDay(range.start, startOfDay(threeMonthsAgo)) && 
+        areSameDay(range.end, endOfDay(now))) {
       return 'Last 3 months';
     }
     
-    if (range.start.getTime() === startOfDay(sixMonthsAgo).getTime() && 
-        range.end.getTime() === endOfDay(now).getTime()) {
+    if (areSameDay(range.start, startOfDay(sixMonthsAgo)) && 
+        areSameDay(range.end, endOfDay(now))) {
       return 'Last 6 months';
     }
     
-    if (range.start.getTime() === startOfDay(oneYearAgo).getTime() && 
-        range.end.getTime() === endOfDay(now).getTime()) {
+    if (areSameDay(range.start, startOfDay(oneYearAgo)) && 
+        areSameDay(range.end, endOfDay(now))) {
       return 'Last 1 year';
     }
     
     // Check if it's a single month
     const startMonth = startOfMonth(range.start);
     const endMonth = endOfMonth(range.end);
-    if (range.start.getTime() === startMonth.getTime() && 
-        range.end.getTime() === endMonth.getTime()) {
+    if (areSameDay(range.start, startMonth) && 
+        areSameDay(range.end, endMonth)) {
       return format(range.start, 'MMMM yyyy');
     }
     

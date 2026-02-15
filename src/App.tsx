@@ -4,7 +4,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { TestModeProvider, useTestMode } from './contexts/TestModeContext';
-import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User } from './types';
+import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User, DashboardStats } from './types';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
@@ -18,6 +18,7 @@ import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
 import { UserFilter } from './components/UserFilter';
+import { ITEMS_PER_PAGE } from './constants';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -42,6 +43,15 @@ function AppContent() {
   const [isTransactionDetailsOpen, setIsTransactionDetailsOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  // Server-side paginated list for Transactions tab
+  const [transactionList, setTransactionList] = useState<Expense[]>([]);
+  const [transactionTotal, setTransactionTotal] = useState(0);
+  const [transactionListLoading, setTransactionListLoading] = useState(false);
+  const [transactionListVersion, setTransactionListVersion] = useState(0);
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+  const [expensesLoading, setExpensesLoading] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [dashboardStatsLoading, setDashboardStatsLoading] = useState(false);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -58,37 +68,149 @@ function AppContent() {
     saveDateRange();
   }, [dateRange, isInitialLoadComplete, isTestMode]);
 
-  // Load expenses, date range, and categories on component mount
+  // Initial load: categories, users, sources, date range only (no full expenses – defer until Dashboard/Reports)
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedExpenses, loadedSources, loadedDateRange, loadedCategories, loadedUsers] = await Promise.all([
-          LocalStorage.loadExpenses(isTestMode),
+        const [loadedSources, loadedDateRange, loadedCategories, loadedUsers] = await Promise.all([
           LocalStorage.loadSources(isTestMode),
           LocalStorage.loadDateRange(isTestMode),
           LocalStorage.loadCategories(isTestMode),
           LocalStorage.loadUsers(isTestMode)
         ]);
-        setExpenses(loadedExpenses);
         setSources(loadedSources);
         setCategories(loadedCategories);
         setUsers(loadedUsers);
-        
-        // Set date range if loaded, otherwise use default
         if (loadedDateRange) {
           setDateRange(loadedDateRange);
         }
-        
-        // Mark initial load as complete
         setIsInitialLoadComplete(true);
       } catch (error) {
         console.error('Error loading data:', error);
         setIsInitialLoadComplete(true);
       }
     };
-    
     loadData();
-  }, [isTestMode]); // Reload when test mode changes
+  }, [isTestMode]);
+
+  // Load dashboard stats from API (aggregates only) when user visits Dashboard
+  useEffect(() => {
+    if (!isInitialLoadComplete || activeTab !== 'dashboard') return;
+    let cancelled = false;
+    setDashboardStatsLoading(true);
+    LocalStorage.loadStats({ isTestMode, dateRange, userId: selectedUserId }).then((stats) => {
+      if (!cancelled) {
+        setDashboardStats(stats ?? null);
+        setDashboardStatsLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setDashboardStatsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [isInitialLoadComplete, activeTab, isTestMode, dateRange, selectedUserId]);
+
+  // Load full expenses only when user visits Reports (Dashboard uses /api/stats)
+  useEffect(() => {
+    if (!isInitialLoadComplete || activeTab !== 'reports') return;
+    let cancelled = false;
+    setExpensesLoading(true);
+    LocalStorage.loadExpenses(isTestMode).then((loaded) => {
+      if (!cancelled) {
+        setExpenses(loaded);
+        setExpensesLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setExpensesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [isInitialLoadComplete, activeTab, isTestMode]);
+
+  // Load expenses when Settings or Transaction Details opens and we don't have them yet
+  useEffect(() => {
+    if (!isInitialLoadComplete || expenses.length > 0 || expensesLoading) return;
+    if (!isSettingsOpen && !isTransactionDetailsOpen) return;
+    let cancelled = false;
+    setExpensesLoading(true);
+    LocalStorage.loadExpenses(isTestMode).then((loaded) => {
+      if (!cancelled) {
+        setExpenses(loaded);
+        setExpensesLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setExpensesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [isInitialLoadComplete, isSettingsOpen, isTransactionDetailsOpen, expenses.length, expensesLoading, isTestMode]);
+
+  // Debounce search text for transactions to avoid refetching on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearchText(transactionFilters.searchText ?? '');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [transactionFilters.searchText]);
+
+  // Load paginated transactions when on Transactions tab (or when filters/version change)
+  useEffect(() => {
+    if (activeTab !== 'transactions' || !isInitialLoadComplete) return;
+
+    let cancelled = false;
+    setTransactionListLoading(true);
+    setTransactionList([]);
+
+    LocalStorage.loadExpensesPage({
+      isTestMode,
+      limit: ITEMS_PER_PAGE,
+      offset: 0,
+      dateRange,
+      userId: selectedUserId ?? undefined,
+      categories: transactionFilters.categories,
+      labels: transactionFilters.labels,
+      types: transactionFilters.types,
+      sources: transactionFilters.sources,
+      minAmount: transactionFilters.minAmount,
+      maxAmount: transactionFilters.maxAmount,
+      searchText: debouncedSearchText || undefined
+    }).then((data) => {
+      if (!cancelled) {
+        const pageExpenses = data?.expenses;
+        const total = typeof data?.total === 'number' ? data.total : 0;
+        setTransactionList(Array.isArray(pageExpenses) ? pageExpenses : []);
+        setTransactionTotal(total);
+      }
+    }).finally(() => {
+      if (!cancelled) setTransactionListLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [activeTab, isInitialLoadComplete, isTestMode, dateRange, selectedUserId, transactionFilters.categories, transactionFilters.labels, transactionFilters.types, transactionFilters.sources, transactionFilters.minAmount, transactionFilters.maxAmount, debouncedSearchText, transactionListVersion]);
+
+  const handleLoadMoreTransactions = useCallback(async () => {
+    const currentList = transactionList ?? [];
+    const offset = currentList.length;
+    const data = await LocalStorage.loadExpensesPage({
+      isTestMode,
+      limit: ITEMS_PER_PAGE,
+      offset,
+      dateRange,
+      userId: selectedUserId ?? undefined,
+      categories: transactionFilters.categories,
+      labels: transactionFilters.labels,
+      types: transactionFilters.types,
+      sources: transactionFilters.sources,
+      minAmount: transactionFilters.minAmount,
+      maxAmount: transactionFilters.maxAmount,
+      searchText: debouncedSearchText || undefined
+    });
+    const nextExpenses = Array.isArray(data.expenses) ? data.expenses : [];
+    const total = typeof data.total === 'number' ? data.total : currentList.length;
+    setTransactionList(prev => [...(prev ?? []), ...nextExpenses]);
+    setTransactionTotal(total);
+  }, [isTestMode, transactionList?.length ?? 0, dateRange, selectedUserId, transactionFilters, debouncedSearchText]);
+
+  const bumpTransactionListVersion = useCallback(() => {
+    setTransactionListVersion(v => v + 1);
+  }, []);
 
   const handleAddExpense = useCallback(async (formData: TransactionFormData) => {
     const newExpense: Expense = {
@@ -108,11 +230,12 @@ function AppContent() {
     try {
       const updatedExpenses = await LocalStorage.addExpense(newExpense, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
       setIsFormOpen(false);
     } catch (error) {
       console.error('Error adding expense:', error);
     }
-  }, [isTestMode]);
+  }, [isTestMode, bumpTransactionListVersion]);
 
   const handleEditExpense = useCallback((expense: Expense) => {
     setEditingExpense(expense);
@@ -135,21 +258,23 @@ function AppContent() {
     try {
       const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
       setEditingExpense(null);
       setIsFormOpen(false);
     } catch (error) {
       console.error('Error updating expense:', error);
     }
-  }, [editingExpense, isTestMode]);
+  }, [editingExpense, isTestMode, bumpTransactionListVersion]);
 
   const handleDeleteExpense = useCallback(async (id: string) => {
     try {
       const updatedExpenses = await LocalStorage.deleteExpense(id, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error deleting expense:', error);
     }
-  }, [isTestMode]);
+  }, [isTestMode, bumpTransactionListVersion]);
 
   const handleUpdateCategory = useCallback(async (expenseId: string, newCategory: string) => {
     try {
@@ -163,10 +288,11 @@ function AppContent() {
 
       const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error updating category:', error);
     }
-  }, [expenses, isTestMode]);
+  }, [expenses, isTestMode, bumpTransactionListVersion]);
 
   const handleAddLabel = useCallback(async (expenseId: string, label: string) => {
     try {
@@ -184,10 +310,11 @@ function AppContent() {
 
       const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error adding label:', error);
     }
-  }, [expenses, isTestMode]);
+  }, [expenses, isTestMode, bumpTransactionListVersion]);
 
   const handleRemoveLabel = useCallback(async (expenseId: string, label: string) => {
     try {
@@ -204,10 +331,11 @@ function AppContent() {
 
       const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error removing label:', error);
     }
-  }, [expenses, isTestMode]);
+  }, [expenses, isTestMode, bumpTransactionListVersion]);
 
   const handleAddCategory = useCallback(async (category: string) => {
     try {
@@ -226,10 +354,11 @@ function AppContent() {
       ]);
       setCategories(updatedCategories);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error deleting category:', error);
     }
-  }, [isTestMode]);
+  }, [isTestMode, bumpTransactionListVersion]);
 
   const handleUpdateCategoryName = useCallback(async (oldCategory: string, newCategory: string) => {
     try {
@@ -239,10 +368,11 @@ function AppContent() {
       ]);
       setCategories(updatedCategories);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error updating category name:', error);
     }
-  }, [isTestMode]);
+  }, [isTestMode, bumpTransactionListVersion]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -331,6 +461,7 @@ function AppContent() {
         // Reload expenses from backend
         const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
         setExpenses(updatedExpenses);
+        bumpTransactionListVersion();
       }
       setIsSourceModalOpen(false);
       setCsvPreview(null);
@@ -411,6 +542,7 @@ function AppContent() {
       // Reload expenses from backend
       const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
       setIsSourceModalOpen(false);
       setCsvPreview(null);
     } catch (error) {
@@ -459,6 +591,7 @@ function AppContent() {
       // Reload expenses from backend
       const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
     } catch (error) {
       console.error('Error undoing import:', error);
       toast.error('Failed to undo import', {
@@ -628,6 +761,7 @@ function AppContent() {
         // Reload expenses to get updated transfer info
         const updatedExpenses = await LocalStorage.loadExpenses(isTestMode);
         setExpenses(updatedExpenses);
+        bumpTransactionListVersion();
       } else {
         console.error('Failed to update transfer override');
       }
@@ -646,6 +780,7 @@ function AppContent() {
       };
       const updatedExpenses = await LocalStorage.updateExpense(updatedExpense, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
       // If the selected transaction is open, update it in state as well
       if (selectedTransaction && selectedTransaction.id === transactionId) {
         setSelectedTransaction(updatedExpense);
@@ -701,6 +836,7 @@ function AppContent() {
       // Save to storage
       await LocalStorage.saveExpenses(updatedExpenses, isTestMode);
       setExpenses(updatedExpenses);
+      bumpTransactionListVersion();
 
       // Update selected transaction if it's one of the updated ones
       if (selectedTransaction && (selectedTransaction.id === transactionId || selectedTransaction.id === pairTransactionId)) {
@@ -831,6 +967,8 @@ function AppContent() {
             selectedUserId={selectedUserId}
             users={users}
             onViewDetails={handleViewTransactionDetails}
+            isLoading={dashboardStatsLoading}
+            statsFromApi={dashboardStats}
           />
         ) : activeTab === 'reports' ? (
           <Reports
@@ -841,10 +979,13 @@ function AppContent() {
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Transactions List */}
+            {/* Transactions List (server-side paginated) */}
             <div className="lg:col-span-3">
               <Transactions
-                expenses={filteredExpenses}
+                expenses={transactionList ?? []}
+                totalCount={transactionTotal}
+                isLoading={transactionListLoading}
+                onLoadMore={handleLoadMoreTransactions}
                 onDelete={handleDeleteExpense}
                 onEdit={handleEditExpense}
                 onUpdateCategory={handleUpdateCategory}
@@ -931,6 +1072,7 @@ function AppContent() {
           setSources(loadedSources);
           setCategories(loadedCategories);
           setUsers(loadedUsers);
+          bumpTransactionListVersion();
         }}
         onExportCSV={handleExportCSV}
         onUpdateSource={handleUpdateSource}

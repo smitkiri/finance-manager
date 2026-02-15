@@ -5,6 +5,9 @@ import { Search } from 'lucide-react';
 
 interface TransactionsProps {
   expenses: Expense[];
+  totalCount?: number;
+  isLoading?: boolean;
+  onLoadMore?: () => void;
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
   onUpdateCategory: (expenseId: string, newCategory: string) => void;
@@ -19,6 +22,9 @@ interface TransactionsProps {
 
 export const Transactions: React.FC<TransactionsProps> = ({
   expenses,
+  totalCount,
+  isLoading = false,
+  onLoadMore,
   onDelete,
   onEdit,
   onUpdateCategory,
@@ -30,6 +36,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
   onSearchChange,
   selectedUserId
 }) => {
+  const displayTotal = totalCount !== undefined ? totalCount : expenses.length;
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -38,7 +45,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
           Transactions
         </h1>
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          {expenses.length} transaction{expenses.length !== 1 ? 's' : ''}
+          {isLoading ? 'Loading...' : `${displayTotal} transaction${displayTotal !== 1 ? 's' : ''}`}
         </div>
       </div>
 
@@ -63,6 +70,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
       {/* Transaction List */}
       <TransactionList
         expenses={expenses}
+        totalCount={totalCount}
+        onLoadMore={onLoadMore}
+        isLoading={isLoading}
         onDelete={onDelete}
         onEdit={onEdit}
         onUpdateCategory={onUpdateCategory}

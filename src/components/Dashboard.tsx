@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
-import { Expense, User } from '../types';
+import { Expense, User, DashboardStats } from '../types';
 import { calculateStats, formatCurrency, formatDate } from '../utils';
 import { filterTransfersForCalculations } from '../utils/transferDetection';
 import { Check } from 'lucide-react';
@@ -12,71 +12,80 @@ interface DashboardProps {
   selectedUserId: string | null;
   users: User[];
   onViewDetails?: (expense: Expense) => void;
+  isLoading?: boolean;
+  statsFromApi?: DashboardStats | null;
 }
 
-export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categories, selectedUserId, users, onViewDetails }) => {
+export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categories, selectedUserId, users, onViewDetails, isLoading, statsFromApi }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
   const [topTransactionCount, setTopTransactionCount] = useState<number>(10);
 
-  // Memoize filtered expenses to prevent recalculation on every render
   const filteredExpenses = useMemo(() => 
     filterTransfersForCalculations(expenses, selectedUserId), [expenses, selectedUserId]
   );
 
-  // Memoize statistics calculation using filtered expenses
+  const statsFromExpenses = useMemo(() => calculateStats(filteredExpenses), [filteredExpenses]);
+
   const stats = useMemo(() => 
-    calculateStats(filteredExpenses), [filteredExpenses]
+    statsFromApi ?? statsFromExpenses,
+    [statsFromApi, statsFromExpenses]
   );
 
-  // Memoize category breakdown for expenses
-  const expenseCategoryBreakdown = useMemo(() => 
-    categories.map(category => {
-      const categoryExpenses = filteredExpenses.filter(expense => 
-        expense.type === 'expense' && expense.category === category
-      );
+  const expenseCategoryBreakdown = useMemo(() => {
+    if (statsFromApi?.categoryBreakdown) {
+      const total = statsFromApi.totalExpenses || 0;
+      return Object.entries(statsFromApi.categoryBreakdown)
+        .map(([category, amount]) => ({
+          category: category || 'Uncategorized',
+          amount,
+          percentage: total > 0 ? Math.round((amount / total) * 10000) / 100 : 0
+        }))
+        .filter(item => item.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+    }
+    return categories.map(category => {
+      const categoryExpenses = filteredExpenses.filter(expense => expense.type === 'expense' && expense.category === category);
       const total = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
       const percentage = stats.totalExpenses > 0 ? (total / stats.totalExpenses) * 100 : 0;
-      
-      return {
-        category: category || 'Uncategorized',
-        amount: total,
-        percentage: Math.round(percentage * 100) / 100
-      };
-    }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount), 
-    [categories, filteredExpenses, stats.totalExpenses]
-  );
+      return { category: category || 'Uncategorized', amount: total, percentage: Math.round(percentage * 100) / 100 };
+    }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
+  }, [statsFromApi, categories, filteredExpenses, stats.totalExpenses]);
 
-  // Memoize category breakdown for income
-  const incomeCategoryBreakdown = useMemo(() => 
-    categories.map(category => {
-      const categoryIncome = filteredExpenses.filter(expense => 
-        expense.type === 'income' && expense.category === category
-      );
+  const incomeCategoryBreakdown = useMemo(() => {
+    if (statsFromApi?.incomeCategoryBreakdown) {
+      const total = statsFromApi.totalIncome || 0;
+      return Object.entries(statsFromApi.incomeCategoryBreakdown)
+        .map(([category, amount]) => ({
+          category: category || 'Uncategorized',
+          amount,
+          percentage: total > 0 ? Math.round((amount / total) * 10000) / 100 : 0
+        }))
+        .filter(item => item.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+    }
+    return categories.map(category => {
+      const categoryIncome = filteredExpenses.filter(expense => expense.type === 'income' && expense.category === category);
       const total = categoryIncome.reduce((sum, expense) => sum + expense.amount, 0);
       const percentage = stats.totalIncome > 0 ? (total / stats.totalIncome) * 100 : 0;
-      
-      return {
-        category: category || 'Uncategorized',
-        amount: total,
-        percentage: Math.round(percentage * 100) / 100
-      };
-    }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount), 
-    [categories, filteredExpenses, stats.totalIncome]
-  );
+      return { category: category || 'Uncategorized', amount: total, percentage: Math.round(percentage * 100) / 100 };
+    }).filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
+  }, [statsFromApi, categories, filteredExpenses, stats.totalIncome]);
 
-  // Memoize categories to show
   const categoriesToShow = useMemo(() => 
     selectedCategories.length > 0 ? selectedCategories : categories, 
     [selectedCategories, categories]
   );
 
-  // Memoize category line chart data
-  const categoryLineData = useMemo(() => 
-    prepareCategoryLineData(filteredExpenses, categoriesToShow), 
-    [filteredExpenses, categoriesToShow]
-  );
+  const categoryLineData = useMemo(() => {
+    if (statsFromApi?.monthlyCategoryData && statsFromApi.monthlyCategoryData.length > 0) {
+      return statsFromApi.monthlyCategoryData.map(row => {
+        const { month, ...rest } = row;
+        return { month, ...rest };
+      });
+    }
+    return prepareCategoryLineData(filteredExpenses, categoriesToShow);
+  }, [statsFromApi?.monthlyCategoryData, filteredExpenses, categoriesToShow]);
 
-  // Memoize savings monthly data
   const savingsMonthlyData = useMemo(() => 
     stats.monthlyData.map(month => ({
       month: month.month,
@@ -84,36 +93,22 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
     })), [stats.monthlyData]
   );
 
-  // Memoize donut chart data
   const donutData = useMemo(() => 
     stats.netAmount >= 0 
-      ? [
-          { name: 'Savings', value: stats.netAmount },
-          { name: 'Expenses', value: stats.totalExpenses }
-        ]
-      : [
-          { name: 'Expenses', value: stats.totalExpenses }
-        ], 
+      ? [{ name: 'Savings', value: stats.netAmount }, { name: 'Expenses', value: stats.totalExpenses }]
+      : [{ name: 'Expenses', value: stats.totalExpenses }], 
     [stats.netAmount, stats.totalExpenses]
   );
 
-  // Memoize top expenses by amount
-  const topExpenses = useMemo(() => 
-    filteredExpenses
-      .filter(exp => exp.type === 'expense')
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, topTransactionCount),
-    [filteredExpenses, topTransactionCount]
-  );
+  const topExpenses = useMemo(() => {
+    if (statsFromApi?.topExpenses?.length) return statsFromApi.topExpenses.slice(0, topTransactionCount);
+    return filteredExpenses.filter(exp => exp.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, topTransactionCount);
+  }, [statsFromApi?.topExpenses, filteredExpenses, topTransactionCount]);
 
-  // Memoize top income by amount
-  const topIncome = useMemo(() => 
-    filteredExpenses
-      .filter(exp => exp.type === 'income')
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, topTransactionCount),
-    [filteredExpenses, topTransactionCount]
-  );
+  const topIncome = useMemo(() => {
+    if (statsFromApi?.topIncome?.length) return statsFromApi.topIncome.slice(0, topTransactionCount);
+    return filteredExpenses.filter(exp => exp.type === 'income').sort((a, b) => b.amount - a.amount).slice(0, topTransactionCount);
+  }, [statsFromApi?.topIncome, filteredExpenses, topTransactionCount]);
 
   // Function to prepare category line chart data
   function prepareCategoryLineData(expenses: Expense[], categoriesToShow: string[]) {
@@ -180,6 +175,14 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
     }
     return 'All Users';
   }, [selectedUserId, users]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-gray-500 dark:text-gray-400">Loading dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -403,7 +406,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                 {topExpenses.map((expense, index) => (
                   <button
                     key={expense.id}
-                    onClick={() => onViewDetails?.(expense)}
+                    onClick={() => onViewDetails?.(expense as Expense)}
                     className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
@@ -448,7 +451,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                 {topIncome.map((expense, index) => (
                   <button
                     key={expense.id}
-                    onClick={() => onViewDetails?.(expense)}
+                    onClick={() => onViewDetails?.(expense as Expense)}
                     className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
