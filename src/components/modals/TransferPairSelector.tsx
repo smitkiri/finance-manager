@@ -32,7 +32,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
       // Must be opposite type (income vs expense)
       if (t.type === currentTransaction.type) return false;
       
-      // Must be same user (self transfer)
+      // Must be same user (transfer/refund)
       if (t.user !== currentTransaction.user) return false;
       
       // Apply search filter

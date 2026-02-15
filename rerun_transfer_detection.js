@@ -280,7 +280,7 @@ function rerunTransferDetection() {
   const selfTransfers = transfers.filter(t => t.credit.user === t.debit.user);
   
   console.log(`👥 User transfers: ${userTransfers.length}`);
-  console.log(`🔄 Self transfers: ${selfTransfers.length}`);
+  console.log(`🔄 Transfer/Refunds: ${selfTransfers.length}`);
   
   // Save updated expenses
   const outputPath = getFilePath('transactions.json');
@@ -325,7 +325,7 @@ function rerunTransferDetection() {
   console.log(`   Total transactions: ${expenses.length}`);
   console.log(`   Transfers detected: ${transfers.length}`);
   console.log(`   User transfers: ${userTransfers.length}`);
-  console.log(`   Self transfers: ${selfTransfers.length}`);
+  console.log(`   Transfer/Refunds: ${selfTransfers.length}`);
 }
 
 // Run the script

@@ -142,7 +142,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
         // User transfers: exclude when "All users" is selected, include when specific user is selected
         return selectedUserId === null;
       } else if (expense.transferInfo.transferType === 'self') {
-        // Self transfers: always exclude from calculations (they cancel each other out)
+        // Transfer/Refunds: always exclude from calculations (they cancel each other out)
         return expense.transferInfo.excludedFromCalculations;
       }
       
@@ -270,7 +270,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                             ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                             : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                         }`}>
-                          {expense.transferInfo.transferType === 'user' ? 'User Transfer' : 'Self Transfer'}
+                          {expense.transferInfo.transferType === 'user' ? 'User Transfer' : 'Transfer/Refund'}
                         </span>
                       )}
                       {expense.labels && expense.labels.length > 0 && (

@@ -256,7 +256,7 @@ export function filterTransfersForCalculations(transactions: Expense[], selected
         // User transfers: include when a specific user is selected, exclude when "All users" is selected
         return selectedUserId !== null;
       } else if (transaction.transferInfo.transferType === 'self') {
-        // Self transfers: always exclude from calculations (they cancel each other out)
+        // Transfer/Refunds: always exclude from calculations (they cancel each other out)
         return !transaction.transferInfo.excludedFromCalculations;
       }
       

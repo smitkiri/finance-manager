@@ -791,7 +791,7 @@ function AppContent() {
     }
   };
 
-  const handleMarkAsSelfTransfer = async (transactionId: string, pairTransactionId: string) => {
+  const handleMarkAsTransferRefund = async (transactionId: string, pairTransactionId: string) => {
     try {
       const transaction1 = expenses.find(exp => exp.id === transactionId);
       const transaction2 = expenses.find(exp => exp.id === pairTransactionId);
@@ -845,13 +845,13 @@ function AppContent() {
         setSelectedTransaction(updatedSelected);
       }
 
-      toast.success('Transactions marked as self-transfer pair', {
+      toast.success('Transactions marked as transfer/refund pair', {
         position: "bottom-right",
         autoClose: 3000,
       });
     } catch (error) {
       console.error('Error marking as self-transfer:', error);
-      toast.error('Failed to mark transactions as self-transfer', {
+      toast.error('Failed to mark transactions as transfer/refund', {
         position: "bottom-right",
         autoClose: 3000,
       });
@@ -1081,7 +1081,7 @@ function AppContent() {
         }}
         onTransferOverride={handleTransferOverride}
         onExcludeToggle={handleExcludeToggle}
-        onMarkAsSelfTransfer={handleMarkAsSelfTransfer}
+        onMarkAsTransferRefund={handleMarkAsTransferRefund}
         allTransactions={expenses}
         selectedUserId={selectedUserId}
       />

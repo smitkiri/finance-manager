@@ -11,7 +11,7 @@ interface TransactionDetailsModalProps {
   onClose: () => void;
   onTransferOverride?: (transactionId: string, includeInCalculations: boolean) => void;
   onExcludeToggle?: (transactionId: string, exclude: boolean) => void;
-  onMarkAsSelfTransfer?: (transactionId: string, pairTransactionId: string) => void;
+  onMarkAsTransferRefund?: (transactionId: string, pairTransactionId: string) => void;
   allTransactions?: Expense[];
   selectedUserId?: string | null;
 }
@@ -22,7 +22,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   onClose,
   onTransferOverride,
   onExcludeToggle,
-  onMarkAsSelfTransfer,
+  onMarkAsTransferRefund,
   allTransactions = [],
   selectedUserId
 }) => {
@@ -54,7 +54,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         // User transfers: exclude when "All users" is selected, include when specific user is selected
         return selectedUserId === null;
       } else if (transaction.transferInfo.transferType === 'self') {
-        // Self transfers: always exclude from calculations (they cancel each other out)
+        // Transfer/Refunds: always exclude from calculations (they cancel each other out)
         return transaction.transferInfo.excludedFromCalculations;
       }
       
@@ -78,15 +78,15 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     }
   };
 
-  const handleMarkAsSelfTransfer = (pairTransactionId: string) => {
-    if (onMarkAsSelfTransfer) {
-      onMarkAsSelfTransfer(transaction.id, pairTransactionId);
+  const handleMarkAsTransferRefund = (pairTransactionId: string) => {
+    if (onMarkAsTransferRefund) {
+      onMarkAsTransferRefund(transaction.id, pairTransactionId);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50">
           <div className="flex items-center space-x-3">
@@ -142,7 +142,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                         ? 'text-orange-800 dark:text-orange-200'
                         : 'text-purple-800 dark:text-purple-200'
                     }`}>
-                      {transaction.transferInfo?.transferType === 'user' ? 'User Transfer' : 'Self Transfer'} Detected
+                      {transaction.transferInfo?.transferType === 'user' ? 'User Transfer' : 'Transfer/Refund'} Detected
                     </h3>
                     <p className={`text-sm mb-3 ${
                       transaction.transferInfo?.transferType === 'user' 
@@ -151,7 +151,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     }`}>
                       {transaction.transferInfo?.transferType === 'user' 
                         ? 'This transaction appears to be part of a transfer between different users. User transfers are included in calculations when a specific user is selected, but excluded when viewing "All users".'
-                        : 'This transaction appears to be part of a transfer within the same user account. Self transfers are excluded from calculations by default to avoid double-counting.'
+                        : 'This transaction appears to be part of a transfer within the same user account. Transfers/Refunds are excluded from calculations by default to avoid double-counting.'
                       }
                     </p>
                     
@@ -244,13 +244,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     </button>
                   )}
                 </div>
-                {onMarkAsSelfTransfer && (
+                {onMarkAsTransferRefund && (
                   <button
                     onClick={() => setIsPairSelectorOpen(true)}
                     className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
                   >
                     <ArrowRightLeft size={16} />
-                    <span>Mark as Self Transfer</span>
+                    <span>Mark as Transfer/Refund</span>
                   </button>
                 )}
               </div>
@@ -395,7 +395,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
       <TransferPairSelector
         isOpen={isPairSelectorOpen}
         onClose={() => setIsPairSelectorOpen(false)}
-        onSelect={handleMarkAsSelfTransfer}
+        onSelect={handleMarkAsTransferRefund}
         currentTransaction={transaction}
         allTransactions={allTransactions}
       />
