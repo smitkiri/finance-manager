@@ -5,21 +5,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, onTabChange }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isOnRoutePage = location.pathname === '/settings' || location.pathname === '/reports';
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'transactions', label: 'Transactions', icon: Receipt },
-  ];
-
-  const routeItems = [
+  const navItems = [
+    { path: '/', label: 'Dashboard', icon: BarChart3 },
+    { path: '/transactions', label: 'Transactions', icon: Receipt },
     { path: '/reports', label: 'Reports', icon: FileText },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
@@ -60,32 +54,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, o
           {/* Navigation */}
           <nav className="flex-1 p-4">
             <ul className="space-y-2">
-              {menuItems.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
-                return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => {
-                        if (isOnRoutePage) {
-                          navigate('/');
-                        }
-                        onTabChange(item.id);
-                        onToggle(); // Close sidebar on mobile
-                      }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                        !isOnRoutePage && activeTab === item.id
-                          ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      <Icon size={20} />
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-              {routeItems.map((item) => {
-                const Icon = item.icon;
+                const isActive = item.path === '/'
+                  ? location.pathname === '/'
+                  : location.pathname === item.path;
                 return (
                   <li key={item.path}>
                     <button
@@ -94,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, o
                         onToggle();
                       }}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                        location.pathname === item.path
+                        isActive
                           ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                       }`}

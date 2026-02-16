@@ -38,7 +38,6 @@ function AppContent() {
   const isSettingsRoute = location.pathname === '/settings';
   const [categories, setCategories] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [sources, setSources] = useState<Source[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<Expense | null>(null);
   const [isTransactionDetailsOpen, setIsTransactionDetailsOpen] = useState(false);
@@ -96,7 +95,7 @@ function AppContent() {
 
   // Load dashboard stats from API (aggregates only) when user visits Dashboard
   useEffect(() => {
-    if (!isInitialLoadComplete || activeTab !== 'dashboard') return;
+    if (!isInitialLoadComplete || location.pathname !== '/') return;
     let cancelled = false;
     setDashboardStatsLoading(true);
     LocalStorage.loadStats({ dateRange, userId: selectedUserId }).then((stats) => {
@@ -108,7 +107,7 @@ function AppContent() {
       if (!cancelled) setDashboardStatsLoading(false);
     });
     return () => { cancelled = true; };
-  }, [isInitialLoadComplete, activeTab, dateRange, selectedUserId]);
+  }, [isInitialLoadComplete, location.pathname, dateRange, selectedUserId]);
 
   // Load full expenses only when user visits Reports (Dashboard uses /api/stats)
   useEffect(() => {
@@ -153,7 +152,7 @@ function AppContent() {
 
   // Load paginated transactions when on Transactions tab (or when filters/version change)
   useEffect(() => {
-    if (activeTab !== 'transactions' || !isInitialLoadComplete) return;
+    if (location.pathname !== '/transactions' || !isInitialLoadComplete) return;
 
     let cancelled = false;
     setTransactionListLoading(true);
@@ -183,7 +182,7 @@ function AppContent() {
     });
 
     return () => { cancelled = true; };
-  }, [activeTab, isInitialLoadComplete, dateRange, selectedUserId, transactionFilters.categories, transactionFilters.labels, transactionFilters.types, transactionFilters.sources, transactionFilters.minAmount, transactionFilters.maxAmount, debouncedSearchText, transactionListVersion]);
+  }, [location.pathname, isInitialLoadComplete, dateRange, selectedUserId, transactionFilters.categories, transactionFilters.labels, transactionFilters.types, transactionFilters.sources, transactionFilters.minAmount, transactionFilters.maxAmount, debouncedSearchText, transactionListVersion]);
 
   const handleLoadMoreTransactions = useCallback(async () => {
     const currentList = transactionList ?? [];
@@ -894,8 +893,6 @@ function AppContent() {
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
       />
 
       {/* Header */}
@@ -995,55 +992,54 @@ function AppContent() {
               globalDateRange={dateRange}
             />
           } />
-          <Route path="*" element={
-            activeTab === 'dashboard' ? (
-              <Dashboard
-                expenses={dashboardExpenses}
-                categories={categories}
-                selectedUserId={selectedUserId}
-                users={users}
-                onViewDetails={handleViewTransactionDetails}
-                isLoading={dashboardStatsLoading}
-                statsFromApi={dashboardStats}
-              />
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Transactions List (server-side paginated) */}
-                <div className="lg:col-span-3">
-                  <Transactions
-                    expenses={transactionList ?? []}
-                    totalCount={transactionTotal}
-                    isLoading={transactionListLoading}
-                    onLoadMore={handleLoadMoreTransactions}
-                    onDelete={handleDeleteExpense}
-                    onEdit={handleEditExpense}
-                    onUpdateCategory={handleUpdateCategory}
-                    onAddLabel={handleAddLabel}
-                    onRemoveLabel={handleRemoveLabel}
-                    onViewDetails={handleViewTransactionDetails}
+          <Route path="/transactions" element={
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Transactions List (server-side paginated) */}
+              <div className="lg:col-span-3">
+                <Transactions
+                  expenses={transactionList ?? []}
+                  totalCount={transactionTotal}
+                  isLoading={transactionListLoading}
+                  onLoadMore={handleLoadMoreTransactions}
+                  onDelete={handleDeleteExpense}
+                  onEdit={handleEditExpense}
+                  onUpdateCategory={handleUpdateCategory}
+                  onAddLabel={handleAddLabel}
+                  onRemoveLabel={handleRemoveLabel}
+                  onViewDetails={handleViewTransactionDetails}
+                  categories={categories}
+                  searchText={transactionFilters.searchText || ''}
+                  onSearchChange={(searchText) => setTransactionFilters(prev => ({ ...prev, searchText: searchText || undefined }))}
+                  selectedUserId={selectedUserId}
+                />
+              </div>
+
+              {/* Filters Sidebar */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-6">
+                  <TransactionFiltersComponent
+                    filters={transactionFilters}
+                    onFiltersChange={setTransactionFilters}
                     categories={categories}
-                    searchText={transactionFilters.searchText || ''}
-                    onSearchChange={(searchText) => setTransactionFilters(prev => ({ ...prev, searchText: searchText || undefined }))}
-                    selectedUserId={selectedUserId}
+                    sources={sources}
+                    allLabels={allLabels}
+                    isCompact={true}
+                    onClearFilters={() => setTransactionFilters({})}
                   />
                 </div>
-
-                {/* Filters Sidebar */}
-                <div className="lg:col-span-1">
-                  <div className="sticky top-6">
-                    <TransactionFiltersComponent
-                      filters={transactionFilters}
-                      onFiltersChange={setTransactionFilters}
-                      categories={categories}
-                      sources={sources}
-                      allLabels={allLabels}
-                      isCompact={true}
-                      onClearFilters={() => setTransactionFilters({})}
-                    />
-                  </div>
-                </div>
               </div>
-            )
+            </div>
+          } />
+          <Route path="*" element={
+            <Dashboard
+              expenses={dashboardExpenses}
+              categories={categories}
+              selectedUserId={selectedUserId}
+              users={users}
+              onViewDetails={handleViewTransactionDetails}
+              isLoading={dashboardStatsLoading}
+              statsFromApi={dashboardStats}
+            />
           } />
         </Routes>
       </main>
