@@ -35,7 +35,7 @@ npm run docker:down    # Stop PostgreSQL container
 
 ## Architecture
 
-**Frontend** (`src/`): React 18 + TypeScript, built with Create React App (react-scripts). Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React.
+**Frontend** (`src/`): React 18 + TypeScript, built with Create React App (react-scripts). Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
 
 **Backend** (`server.js`): Single-file Express.js server (~2000 lines) serving RESTful API at `/api/*`. Uses `pg` connection pool from `database.js`.
 
@@ -48,9 +48,19 @@ npm run docker:down    # Stop PostgreSQL container
 3. Backend builds dynamic SQL queries with parameterized WHERE clauses
 4. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
 
+### Routing
+
+Uses react-router-dom v7 with `BrowserRouter`. All pages are route-based:
+- `/` — Dashboard (catch-all `*` route)
+- `/transactions` — Transactions list with filters sidebar
+- `/reports` — Reports page
+- `/settings` — Settings page (converted from modal, supports `asPage` prop)
+
+Sidebar (`src/components/Sidebar.tsx`) uses `useNavigate`/`useLocation` for all navigation. Data-loading useEffects in App.tsx trigger based on `location.pathname`.
+
 ### Frontend organization
 
-- `src/App.tsx` — Main state holder, routes, and top-level logic (~1100 lines)
+- `src/App.tsx` — Main state holder, routes, and top-level logic
 - `src/components/` — Feature-grouped: `transactions/`, `modals/`, `reports/`, `charts/`, `ui/`
 - `src/hooks/` — `useCategories`, `useFilters` for shared logic
 - `src/services/csvService.ts` — CSV import/export parsing
@@ -70,7 +80,7 @@ All under `/api/`: `expenses`, `categories`, `users`, `sources`, `reports`, `sta
 
 - Frontend components are PascalCase `.tsx` files; utilities are camelCase `.ts`
 - Constants use UPPER_SNAKE_CASE
-- State lives in App.tsx and is passed via props; ThemeContext is the only React Context
+- State lives in App.tsx and is passed via props to route components; ThemeContext is the only React Context
 - Pagination version-bumping pattern: increment a version number to trigger re-fetch
 - Debounced search (400ms) on text input to reduce API calls
 - `cancelled` flag pattern in useEffect for cleanup on unmount
