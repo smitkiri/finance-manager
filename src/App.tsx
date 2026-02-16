@@ -112,7 +112,7 @@ function AppContent() {
 
   // Load full expenses only when user visits Reports (Dashboard uses /api/stats)
   useEffect(() => {
-    if (!isInitialLoadComplete || activeTab !== 'reports') return;
+    if (!isInitialLoadComplete || location.pathname !== '/reports') return;
     let cancelled = false;
     setExpensesLoading(true);
     LocalStorage.loadExpenses().then((loaded) => {
@@ -124,7 +124,7 @@ function AppContent() {
       if (!cancelled) setExpensesLoading(false);
     });
     return () => { cancelled = true; };
-  }, [isInitialLoadComplete, activeTab]);
+  }, [isInitialLoadComplete, location.pathname]);
 
   // Load expenses when Settings or Transaction Details opens and we don't have them yet
   useEffect(() => {
@@ -987,6 +987,14 @@ function AppContent() {
               onUpdateSource={handleUpdateSource}
             />
           } />
+          <Route path="/reports" element={
+            <Reports
+              expenses={filteredExpenses}
+              categories={categories}
+              sources={sources}
+              globalDateRange={dateRange}
+            />
+          } />
           <Route path="*" element={
             activeTab === 'dashboard' ? (
               <Dashboard
@@ -997,13 +1005,6 @@ function AppContent() {
                 onViewDetails={handleViewTransactionDetails}
                 isLoading={dashboardStatsLoading}
                 statsFromApi={dashboardStats}
-              />
-            ) : activeTab === 'reports' ? (
-              <Reports
-                expenses={filteredExpenses}
-                categories={categories}
-                sources={sources}
-                globalDateRange={dateRange}
               />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

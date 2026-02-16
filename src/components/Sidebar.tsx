@@ -12,12 +12,16 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, onTabChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isSettingsActive = location.pathname === '/settings';
+  const isOnRoutePage = location.pathname === '/settings' || location.pathname === '/reports';
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'transactions', label: 'Transactions', icon: Receipt },
-    { id: 'reports', label: 'Reports', icon: FileText },
+  ];
+
+  const routeItems = [
+    { path: '/reports', label: 'Reports', icon: FileText },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (
@@ -62,14 +66,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, o
                   <li key={item.id}>
                     <button
                       onClick={() => {
-                        if (isSettingsActive) {
+                        if (isOnRoutePage) {
                           navigate('/');
                         }
                         onTabChange(item.id);
                         onToggle(); // Close sidebar on mobile
                       }}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                        !isSettingsActive && activeTab === item.id
+                        !isOnRoutePage && activeTab === item.id
                           ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                       }`}
@@ -80,22 +84,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, o
                   </li>
                 );
               })}
-              <li>
-                <button
-                  onClick={() => {
-                    navigate('/settings');
-                    onToggle();
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                    isSettingsActive
-                      ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <Settings size={20} />
-                  <span className="font-medium">Settings</span>
-                </button>
-              </li>
+              {routeItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.path}>
+                    <button
+                      onClick={() => {
+                        navigate(item.path);
+                        onToggle();
+                      }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                        location.pathname === item.path
+                          ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <Icon size={20} />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>
