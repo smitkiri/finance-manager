@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight } from 'lucide-react';
+import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { User, Source, StandardizedColumn } from '../../types';
 import { BackupManager } from './BackupManager';
 
 interface SettingsProps {
-  isOpen: boolean;
-  onClose: () => void;
+  asPage?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
   categories: string[];
   onAddCategory: (category: string) => void;
   onDeleteCategory: (category: string) => void;
@@ -29,7 +31,8 @@ const STANDARDIZED_COLUMNS: StandardizedColumn[] = [
 ];
 
 export const Settings: React.FC<SettingsProps> = ({
-  isOpen,
+  asPage = false,
+  isOpen = true,
   onClose,
   categories,
   onAddCategory,
@@ -231,13 +234,17 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  const navigate = useNavigate();
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50 flex">
-        {/* Sidebar */}
-        <div className="w-48 bg-gray-50 dark:bg-gray-900/80 border-r border-white/20 dark:border-slate-700/50 flex flex-col py-6">
+  if (!asPage && !isOpen) return null;
+
+  const settingsContent = (
+    <div className={asPage
+      ? "bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-3xl w-full min-h-[60vh] border border-white/20 dark:border-slate-700/50 flex"
+      : "bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50 flex"
+    }>
+      {/* Sidebar */}
+      <div className="w-48 bg-gray-50 dark:bg-gray-900/80 border-r border-white/20 dark:border-slate-700/50 flex flex-col py-6">
           <button
             className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'general' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             onClick={() => setActiveSection('general')}
@@ -268,17 +275,28 @@ export const Settings: React.FC<SettingsProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50">
             <div className="flex items-center space-x-3">
+              {asPage ? (
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Go back"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              ) : null}
               <SettingsIcon size={20} className="text-blue-600 dark:text-blue-400" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Settings</h2>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <X size={20} />
-            </button>
+            {!asPage && (
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] flex-1">
+          <div className={`p-6 overflow-y-auto flex-1 ${asPage ? '' : 'max-h-[calc(90vh-140px)]'}`}>
             {activeSection === 'categories' && (
               <>
                 {/* Categories Section */}
@@ -829,6 +847,15 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
       </div>
+  );
+
+  if (asPage) {
+    return settingsContent;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {settingsContent}
     </div>
   );
 }; 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -32,7 +33,9 @@ function AppContent() {
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<CSVPreview | null>(null);
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isSettingsRoute = location.pathname === '/settings';
   const [categories, setCategories] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -126,7 +129,7 @@ function AppContent() {
   // Load expenses when Settings or Transaction Details opens and we don't have them yet
   useEffect(() => {
     if (!isInitialLoadComplete || expenses.length > 0 || expensesLoading) return;
-    if (!isSettingsOpen && !isTransactionDetailsOpen) return;
+    if (!isSettingsRoute && !isTransactionDetailsOpen) return;
     let cancelled = false;
     setExpensesLoading(true);
     LocalStorage.loadExpenses().then((loaded) => {
@@ -138,7 +141,7 @@ function AppContent() {
       if (!cancelled) setExpensesLoading(false);
     });
     return () => { cancelled = true; };
-  }, [isInitialLoadComplete, isSettingsOpen, isTransactionDetailsOpen, expenses.length, expensesLoading]);
+  }, [isInitialLoadComplete, isSettingsRoute, isTransactionDetailsOpen, expenses.length, expensesLoading]);
 
   // Debounce search text for transactions to avoid refetching on every keystroke
   useEffect(() => {
@@ -922,7 +925,7 @@ function AppContent() {
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
               <button
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={() => navigate('/settings')}
                 className="p-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all duration-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md"
                 title="Settings"
               >
@@ -953,61 +956,95 @@ function AppContent() {
       </header>
 
       <main className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12`}>
-        {activeTab === 'dashboard' ? (
-          <Dashboard
-            expenses={dashboardExpenses}
-            categories={categories}
-            selectedUserId={selectedUserId}
-            users={users}
-            onViewDetails={handleViewTransactionDetails}
-            isLoading={dashboardStatsLoading}
-            statsFromApi={dashboardStats}
-          />
-        ) : activeTab === 'reports' ? (
-          <Reports
-            expenses={filteredExpenses}
-            categories={categories}
-            sources={sources}
-            globalDateRange={dateRange}
-          />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Transactions List (server-side paginated) */}
-            <div className="lg:col-span-3">
-              <Transactions
-                expenses={transactionList ?? []}
-                totalCount={transactionTotal}
-                isLoading={transactionListLoading}
-                onLoadMore={handleLoadMoreTransactions}
-                onDelete={handleDeleteExpense}
-                onEdit={handleEditExpense}
-                onUpdateCategory={handleUpdateCategory}
-                onAddLabel={handleAddLabel}
-                onRemoveLabel={handleRemoveLabel}
-                onViewDetails={handleViewTransactionDetails}
+        <Routes>
+          <Route path="/settings" element={
+            <Settings
+              asPage
+              categories={categories}
+              onAddCategory={handleAddCategory}
+              onDeleteCategory={handleDeleteCategory}
+              onUpdateCategory={handleUpdateCategoryName}
+              expenses={expenses}
+              sources={sources}
+              users={users}
+              onAddUser={handleAddUser}
+              onDeleteUser={handleDeleteUser}
+              onUpdateUser={handleUpdateUser}
+              onRefreshData={async () => {
+                const [loadedExpenses, loadedSources, loadedCategories, loadedUsers] = await Promise.all([
+                  LocalStorage.loadExpenses(),
+                  LocalStorage.loadSources(),
+                  LocalStorage.loadCategories(),
+                  LocalStorage.loadUsers()
+                ]);
+                setExpenses(loadedExpenses);
+                setSources(loadedSources);
+                setCategories(loadedCategories);
+                setUsers(loadedUsers);
+                bumpTransactionListVersion();
+              }}
+              onExportCSV={handleExportCSV}
+              onUpdateSource={handleUpdateSource}
+            />
+          } />
+          <Route path="*" element={
+            activeTab === 'dashboard' ? (
+              <Dashboard
+                expenses={dashboardExpenses}
                 categories={categories}
-                searchText={transactionFilters.searchText || ''}
-                onSearchChange={(searchText) => setTransactionFilters(prev => ({ ...prev, searchText: searchText || undefined }))}
                 selectedUserId={selectedUserId}
+                users={users}
+                onViewDetails={handleViewTransactionDetails}
+                isLoading={dashboardStatsLoading}
+                statsFromApi={dashboardStats}
               />
-            </div>
+            ) : activeTab === 'reports' ? (
+              <Reports
+                expenses={filteredExpenses}
+                categories={categories}
+                sources={sources}
+                globalDateRange={dateRange}
+              />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Transactions List (server-side paginated) */}
+                <div className="lg:col-span-3">
+                  <Transactions
+                    expenses={transactionList ?? []}
+                    totalCount={transactionTotal}
+                    isLoading={transactionListLoading}
+                    onLoadMore={handleLoadMoreTransactions}
+                    onDelete={handleDeleteExpense}
+                    onEdit={handleEditExpense}
+                    onUpdateCategory={handleUpdateCategory}
+                    onAddLabel={handleAddLabel}
+                    onRemoveLabel={handleRemoveLabel}
+                    onViewDetails={handleViewTransactionDetails}
+                    categories={categories}
+                    searchText={transactionFilters.searchText || ''}
+                    onSearchChange={(searchText) => setTransactionFilters(prev => ({ ...prev, searchText: searchText || undefined }))}
+                    selectedUserId={selectedUserId}
+                  />
+                </div>
 
-            {/* Filters Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-6">
-                <TransactionFiltersComponent
-                  filters={transactionFilters}
-                  onFiltersChange={setTransactionFilters}
-                  categories={categories}
-                  sources={sources}
-                  allLabels={allLabels}
-                  isCompact={true}
-                  onClearFilters={() => setTransactionFilters({})}
-                />
+                {/* Filters Sidebar */}
+                <div className="lg:col-span-1">
+                  <div className="sticky top-6">
+                    <TransactionFiltersComponent
+                      filters={transactionFilters}
+                      onFiltersChange={setTransactionFilters}
+                      categories={categories}
+                      sources={sources}
+                      allLabels={allLabels}
+                      isCompact={true}
+                      onClearFilters={() => setTransactionFilters({})}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )
+          } />
+        </Routes>
       </main>
 
       {/* Form Modal */}
@@ -1040,37 +1077,6 @@ function AppContent() {
         />
       )}
 
-      {/* Settings Modal */}
-      <Settings
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        categories={categories}
-        onAddCategory={handleAddCategory}
-        onDeleteCategory={handleDeleteCategory}
-        onUpdateCategory={handleUpdateCategoryName}
-        expenses={expenses}
-        sources={sources}
-        users={users}
-        onAddUser={handleAddUser}
-        onDeleteUser={handleDeleteUser}
-        onUpdateUser={handleUpdateUser}
-        onRefreshData={async () => {
-          const [loadedExpenses, loadedSources, loadedCategories, loadedUsers] = await Promise.all([
-            LocalStorage.loadExpenses(),
-            LocalStorage.loadSources(),
-            LocalStorage.loadCategories(),
-            LocalStorage.loadUsers()
-          ]);
-          setExpenses(loadedExpenses);
-          setSources(loadedSources);
-          setCategories(loadedCategories);
-          setUsers(loadedUsers);
-          bumpTransactionListVersion();
-        }}
-        onExportCSV={handleExportCSV}
-        onUpdateSource={handleUpdateSource}
-      />
-
       {/* Transaction Details Modal */}
       <TransactionDetailsModal
         transaction={selectedTransaction}
@@ -1091,12 +1097,14 @@ function AppContent() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <AppContent />
-        <ToastContainer />
-      </div>
-    </ThemeProvider>
+    <BrowserRouter>
+      <ThemeProvider>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <AppContent />
+          <ToastContainer />
+        </div>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 
