@@ -25,7 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
     if (categories.length > 0 && selectedCategories.length === 0) {
       setSelectedCategories(categories);
     }
-  }, [categories]);
+  }, [categories, selectedCategories.length]);
 
   const filteredExpenses = useMemo(() => 
     filterTransfersForCalculations(expenses, selectedUserId), [expenses, selectedUserId]

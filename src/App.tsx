@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Plus, Upload, Sun, Moon } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -33,7 +33,6 @@ function AppContent() {
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<CSVPreview | null>(null);
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
-  const navigate = useNavigate();
   const location = useLocation();
   const isSettingsRoute = location.pathname === '/settings';
   const [categories, setCategories] = useState<string[]>([]);
