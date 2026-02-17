@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Upload, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Upload, Sun, Moon } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -920,13 +920,6 @@ function AppContent() {
                 title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
               >
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-              </button>
-              <button
-                onClick={() => navigate('/settings')}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                title="Settings"
-              >
-                <SettingsIcon size={20} />
               </button>
               <label className="cursor-pointer">
                 <input
