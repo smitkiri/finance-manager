@@ -43,11 +43,11 @@ export const StatsCard: React.FC<StatsCardProps> = ({ title, value, type, change
   };
 
   return (
-    <div className="card group hover:scale-105 transition-all duration-300">
+    <div className="card">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">{title}</p>
-          <p className={`text-3xl font-bold ${getValueColor()} mb-1`}>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{title}</p>
+          <p className={`text-2xl font-bold ${getValueColor()} mb-1`}>
             {formatCurrency(value)}
           </p>
           {change !== undefined && (
@@ -56,7 +56,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({ title, value, type, change
             </p>
           )}
         </div>
-        <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl group-hover:shadow-lg transition-all duration-300">
+        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
           {getIcon()}
         </div>
       </div>

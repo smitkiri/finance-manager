@@ -16,8 +16,8 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium">{label}</p>
+        <div className="bg-white dark:bg-gray-900 p-3 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900 dark:text-white">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} style={{ 
               color: entry.dataKey === 'savings' && entry.value < 0 ? '#ef4444' : entry.color 
@@ -36,7 +36,7 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
       case 'line':
         return (
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="month" 
               stroke="#6b7280"
@@ -86,7 +86,7 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
       case 'savings-bar':
         return (
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="month" 
               stroke="#6b7280"

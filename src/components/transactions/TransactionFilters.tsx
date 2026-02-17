@@ -106,9 +106,9 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
   if (isCompact) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="bg-gray-50 dark:bg-gray-900 px-5 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Filter size={18} className="text-blue-600 dark:text-blue-400" />
@@ -122,7 +122,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
             {hasActiveFilters() && onClearFilters && (
               <button
                 onClick={onClearFilters}
-                className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <X size={14} />
                 <span>Clear</span>
@@ -133,10 +133,10 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
         <div className="p-4 space-y-3">
           {/* Transaction Type - Always visible */}
-          <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection('types')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <div className="flex items-center space-x-2">
                 <Filter size={16} className="text-blue-600 dark:text-blue-400" />
@@ -154,13 +154,13 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               )}
             </button>
             {expandedSections.has('types') && (
-              <div className="p-3 space-y-2 bg-white dark:bg-slate-800">
+              <div className="p-3 space-y-2 bg-white dark:bg-gray-900">
                 <button
                   onClick={() => handleTypeChange('expense', !filters.types?.includes('expense'))}
                   className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                     filters.types?.includes('expense')
                       ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-2 border-red-300 dark:border-red-700'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
                   Expenses
@@ -170,7 +170,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                     filters.types?.includes('income')
                       ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-2 border-green-300 dark:border-green-700'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
                   Income
@@ -180,10 +180,10 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
           </div>
 
           {/* Categories */}
-          <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection('categories')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <div className="flex items-center space-x-2">
                 <Tag size={16} className="text-blue-600 dark:text-blue-400" />
@@ -201,16 +201,16 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               )}
             </button>
             {expandedSections.has('categories') && (
-              <div className="p-3 bg-white dark:bg-slate-800">
+              <div className="p-3 bg-white dark:bg-gray-900">
                 <div className="flex flex-wrap gap-2">
                   {categories.map((category) => (
                     <button
                       key={category}
                       onClick={() => handleCategoryChange(category, !filters.categories?.includes(category))}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                         filters.categories?.includes(category)
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
                       {category}
@@ -223,10 +223,10 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
           {/* Labels */}
           {allLabels.length > 0 && (
-            <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
               <button
                 onClick={() => toggleSection('labels')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Tag size={16} className="text-blue-600 dark:text-blue-400" />
@@ -244,16 +244,16 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                 )}
               </button>
               {expandedSections.has('labels') && (
-                <div className="p-3 bg-white dark:bg-slate-800">
+                <div className="p-3 bg-white dark:bg-gray-900">
                   <div className="flex flex-wrap gap-2">
                     {allLabels.map((label) => (
                       <button
                         key={label}
                         onClick={() => handleLabelChange(label, !filters.labels?.includes(label))}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           filters.labels?.includes(label)
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                         }`}
                       >
                         {label}
@@ -267,10 +267,10 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
           {/* Sources */}
           {sources.length > 0 && (
-            <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
               <button
                 onClick={() => toggleSection('sources')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <div className="flex items-center space-x-2">
                   <Filter size={16} className="text-blue-600 dark:text-blue-400" />
@@ -288,16 +288,16 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                 )}
               </button>
               {expandedSections.has('sources') && (
-                <div className="p-3 bg-white dark:bg-slate-800">
+                <div className="p-3 bg-white dark:bg-gray-900">
                   <div className="flex flex-wrap gap-2">
                     {sources.map((source) => (
                       <button
                         key={source.id}
                         onClick={() => handleSourceChange(source.id, !filters.sources?.includes(source.id))}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           filters.sources?.includes(source.id)
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                         }`}
                       >
                         {source.name}
@@ -310,10 +310,10 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
           )}
 
           {/* Amount Range */}
-          <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection('amount')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <div className="flex items-center space-x-2">
                 <DollarSign size={16} className="text-blue-600 dark:text-blue-400" />
@@ -331,7 +331,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               )}
             </button>
             {expandedSections.has('amount') && (
-              <div className="p-3 bg-white dark:bg-slate-800 space-y-3">
+              <div className="p-3 bg-white dark:bg-gray-900 space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Minimum
@@ -343,7 +343,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                     placeholder="0.00"
                     step="0.01"
                     min="0"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
@@ -357,7 +357,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                     placeholder="0.00"
                     step="0.01"
                     min="0"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -372,7 +372,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   return (
     <div className="space-y-6">
       {/* Category Filter */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Tag size={20} className="text-blue-600 dark:text-blue-400" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Categories</h3>
@@ -394,7 +394,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
       {/* Label Filter */}
       {allLabels.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Tag size={20} className="text-blue-600 dark:text-blue-400" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Labels</h3>
@@ -416,7 +416,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
       )}
 
       {/* Type Filter */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Filter size={20} className="text-blue-600 dark:text-blue-400" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Transaction Type</h3>
@@ -445,7 +445,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
       {/* Source Filter */}
       {sources.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Filter size={20} className="text-blue-600 dark:text-blue-400" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sources</h3>
@@ -467,7 +467,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
       )}
 
       {/* Amount Range Filter */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
         <div className="flex items-center space-x-2 mb-4">
           <DollarSign size={20} className="text-blue-600 dark:text-blue-400" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Amount Range</h3>

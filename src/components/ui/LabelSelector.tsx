@@ -83,7 +83,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
       
       {/* Label Selector */}
       <div
-        className="fixed z-50 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 min-w-64 max-w-80"
+        className="fixed z-50 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 min-w-64 max-w-80"
         style={{
           left: position.x,
           top: position.y,
@@ -91,7 +91,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
           marginTop: '-8px'
         }}
       >
-        <div className="p-3 border-b border-gray-200 dark:border-slate-700">
+        <div className="p-3 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               Add Label
@@ -112,7 +112,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type to search or create new label..."
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </form>
         </div>
@@ -124,7 +124,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
                 <button
                   key={label}
                   onClick={() => handleLabelClick(label)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center space-x-2"
+                  className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center space-x-2"
                 >
                   <Plus size={14} className="text-gray-400" />
                   <span>{label}</span>

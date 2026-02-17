@@ -84,16 +84,16 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/30">
               <ArrowRightLeft size={20} className="text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Select Transfer Pair
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -116,7 +116,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
           </p>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">
+              <p className="font-semibold text-gray-900 dark:text-white">
                 {currentTransaction.description}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -135,7 +135,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
         </div>
 
         {/* Search */}
-        <div className="p-6 border-b border-white/20 dark:border-slate-700/50">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -143,7 +143,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
               placeholder="Search transactions..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
             />
           </div>
         </div>
@@ -169,13 +169,13 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
                     className={`w-full text-left p-4 rounded-lg border transition-all cursor-pointer ${
                       isExactMatch
                         ? 'border-purple-400 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30 hover:border-purple-500 dark:hover:border-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40'
-                        : 'border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <p className="font-medium text-slate-900 dark:text-white truncate">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">
                             {transaction.description}
                           </p>
                           {isExactMatch && (
@@ -211,7 +211,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-6 border-t border-white/20 dark:border-slate-700/50">
+        <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-800">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"

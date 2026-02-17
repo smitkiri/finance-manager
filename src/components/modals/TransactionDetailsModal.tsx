@@ -85,10 +85,10 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center space-x-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
               transaction.type === 'expense' 
@@ -104,7 +104,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Transaction Details
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -156,7 +156,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     </p>
                     
                     {transferPair && (
-                      <div className="bg-white dark:bg-slate-700 rounded-lg p-3 mb-3">
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3">
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Transfer Pair:</p>
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center justify-between">
@@ -269,7 +269,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
             {/* Description */}
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Description
               </h3>
               <p className="text-gray-700 dark:text-gray-300">
@@ -352,7 +352,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                   {transaction.labels.map((label, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                     >
                       {label}
                     </span>
@@ -366,7 +366,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             {/* Metadata Details */}
             {transaction.metadata && (
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   Creation Details
                 </h3>
                 <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -381,7 +381,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-6 border-t border-white/20 dark:border-slate-700/50">
+        <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-800">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"

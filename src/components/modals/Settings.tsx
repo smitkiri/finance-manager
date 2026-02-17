@@ -240,11 +240,11 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const settingsContent = (
     <div className={asPage
-      ? "bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-3xl w-full min-h-[60vh] border border-white/20 dark:border-slate-700/50 flex"
-      : "bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50 flex"
+      ? "bg-white dark:bg-gray-900 rounded-lg shadow-sm max-w-3xl w-full min-h-[60vh] border border-gray-200 dark:border-gray-800 flex"
+      : "bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800 flex"
     }>
       {/* Sidebar */}
-      <div className="w-48 bg-gray-50 dark:bg-gray-900/80 border-r border-white/20 dark:border-slate-700/50 flex flex-col py-6">
+      <div className="w-48 bg-gray-50 dark:bg-gray-900/50 border-r border-gray-200 dark:border-gray-800 flex flex-col py-6">
           <button
             className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'general' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             onClick={() => setActiveSection('general')}
@@ -273,7 +273,7 @@ export const Settings: React.FC<SettingsProps> = ({
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
             <div className="flex items-center space-x-3">
               {asPage ? (
                 <button
@@ -285,7 +285,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </button>
               ) : null}
               <SettingsIcon size={20} className="text-blue-600 dark:text-blue-400" />
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Settings</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h2>
             </div>
             {!asPage && (
               <button
@@ -301,7 +301,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <>
                 {/* Categories Section */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Categories</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Categories</h3>
                   {/* Add New Category */}
                   <div className="mb-4">
                     <div className="flex space-x-2">
@@ -399,7 +399,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <>
                 {/* Sources Section */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Sources</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Sources</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Manage your CSV import sources. You can edit the name, column mappings, and import options for each source.
                   </p>
@@ -547,7 +547,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <>
                 {/* Users Section */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Users</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Users</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Manage your users. You can add, edit, and delete users.
                   </p>
@@ -663,7 +663,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <>
                 <BackupManager />
                 <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Export Data</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Export Data</h3>
                   <div className="space-y-4">
                     <button
                       onClick={onExportCSV}
@@ -678,7 +678,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Delete Data</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Delete Data</h3>
                   <div className="space-y-4">
                     <button
                       className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
@@ -696,8 +696,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 {/* Delete All Confirmation Dialog */}
                 {showDeleteAllConfirm && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-sm w-full">
                       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Delete All Data?</h3>
                       <p className="mb-6 text-gray-700 dark:text-gray-300">Are you sure you want to delete <b>all</b> transactions and sources? This action cannot be undone.</p>
                       <div className="flex justify-end space-x-3">
@@ -721,8 +721,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 )}
                 {/* Select Data to Delete Dialog */}
                 {showSelectDelete && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-                    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg ${deleteTransactions ? 'max-h-[95vh]' : 'max-h-[80vh]'} overflow-y-auto`}>
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className={`bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-lg ${deleteTransactions ? 'max-h-[95vh]' : 'max-h-[80vh]'} overflow-y-auto`}>
                       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Select Data to Delete</h3>
                       <div className="mb-4 space-y-2">
                                 <label className="flex items-center space-x-2">
@@ -784,8 +784,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 )}
                 {/* Delete Selected Confirmation Dialog */}
                 {showDeleteSelectedConfirm && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-sm w-full">
                       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Delete Selected Data?</h3>
                       <p className="mb-6 text-gray-700 dark:text-gray-300">
                         Are you sure you want to delete the selected data?
@@ -818,8 +818,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 )}
                 {/* Delete Success Dialog */}
                 {showDeleteSuccess && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-sm w-full">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
                           <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -854,7 +854,7 @@ export const Settings: React.FC<SettingsProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       {settingsContent}
     </div>
   );

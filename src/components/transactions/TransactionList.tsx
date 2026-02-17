@@ -200,8 +200,8 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
             key={expense.id}
             className={`rounded-lg border transition-shadow duration-200 p-3 cursor-pointer ${
               isTransactionExcluded(expense)
-                ? 'bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-600 opacity-50'
-                : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:shadow-sm'
+                ? 'opacity-60 bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800'
+                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
             }`}
             onClick={() => onViewDetails(expense)}
           >
@@ -244,7 +244,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                         </button>
                         
                         {openDropdowns.has(expense.id) && (
-                          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-10 min-w-32 max-h-48 overflow-y-auto">
+                          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg z-10 min-w-32 max-h-48 overflow-y-auto">
                             {sortedCategories.map((category) => (
                               <button
                                 key={category}
@@ -265,8 +265,8 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                         )}
                       </div>
                       {expense.transferInfo?.isTransfer && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                          expense.transferInfo.transferType === 'user' 
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium ${
+                          expense.transferInfo.transferType === 'user'
                             ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                             : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                         }`}>
@@ -278,7 +278,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                           {expense.labels.map((label, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                             >
                               {label}
                             </span>
@@ -337,7 +337,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
         <div className="flex justify-center pt-3">
           <button
             onClick={handleShowMore}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+            className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <span>Show More</span>
             <ChevronDown size={14} />

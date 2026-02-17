@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { Chart } from './charts/Chart';
 import { Expense, User, DashboardStats } from '../types';
@@ -19,6 +19,13 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categories, selectedUserId, users, onViewDetails, isLoading, statsFromApi }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
   const [topTransactionCount, setTopTransactionCount] = useState<number>(10);
+
+  // Sync selectedCategories when categories load asynchronously
+  useEffect(() => {
+    if (categories.length > 0 && selectedCategories.length === 0) {
+      setSelectedCategories(categories);
+    }
+  }, [categories]);
 
   const filteredExpenses = useMemo(() => 
     filterTransfersForCalculations(expenses, selectedUserId), [expenses, selectedUserId]
@@ -80,7 +87,12 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
     if (statsFromApi?.monthlyCategoryData && statsFromApi.monthlyCategoryData.length > 0) {
       return statsFromApi.monthlyCategoryData.map(row => {
         const { month, ...rest } = row;
-        return { month, ...rest };
+        const filtered: Record<string, any> = { month };
+        // Initialize all selected categories with 0 so they always get a line
+        for (const cat of categoriesToShow) {
+          filtered[cat] = rest[cat] ?? 0;
+        }
+        return filtered;
       });
     }
     return prepareCategoryLineData(filteredExpenses, categoriesToShow);
@@ -225,7 +237,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
           title="Savings"
         />
         
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Expense Category Trends
@@ -254,7 +266,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
           />
           
           {/* Category Selector */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Select Categories:
             </div>
@@ -265,10 +277,10 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                   <button
                     key={category}
                     onClick={() => handleCategoryToggle(category)}
-                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       isSelected
-                        ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                   >
                     {isSelected && <Check size={12} />}
@@ -291,14 +303,14 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expense Category Breakdown */}
         {expenseCategoryBreakdown.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Expense Breakdown
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-slate-700">
+                  <tr className="border-b border-gray-200 dark:border-gray-800">
                     <th className="text-left py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                       Category
                     </th>
@@ -312,7 +324,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                 </thead>
                 <tbody>
                   {expenseCategoryBreakdown.map((item) => (
-                    <tr key={item.category} className="border-b border-gray-100 dark:border-slate-700">
+                    <tr key={item.category} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">
                         {item.category}
                       </td>
@@ -332,14 +344,14 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
 
         {/* Income Category Breakdown */}
         {incomeCategoryBreakdown.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Income Breakdown
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-slate-700">
+                  <tr className="border-b border-gray-200 dark:border-gray-800">
                     <th className="text-left py-2 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                       Category
                     </th>
@@ -353,7 +365,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                 </thead>
                 <tbody>
                   {incomeCategoryBreakdown.map((item) => (
-                    <tr key={item.category} className="border-b border-gray-100 dark:border-slate-700">
+                    <tr key={item.category} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">
                         {item.category}
                       </td>
@@ -373,7 +385,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
       </div>
 
       {/* Top Transactions by Amount */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Top Transactions by Amount
@@ -407,7 +419,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                   <button
                     key={expense.id}
                     onClick={() => onViewDetails?.(expense as Expense)}
-                    className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all cursor-pointer"
+                    className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
@@ -452,7 +464,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ expenses, categ
                   <button
                     key={expense.id}
                     onClick={() => onViewDetails?.(expense as Expense)}
-                    className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all cursor-pointer"
+                    className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

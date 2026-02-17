@@ -143,22 +143,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200"
+        className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
-        <Calendar size={16} className="text-slate-600 dark:text-slate-400" />
-        <span className="text-slate-700 dark:text-slate-300 font-medium">
+        <Calendar size={16} className="text-gray-600 dark:text-gray-400" />
+        <span className="text-gray-700 dark:text-gray-300 font-medium">
           {formatDateRange(currentRange)}
         </span>
-        <ChevronDown size={16} className="text-slate-600 dark:text-slate-400" />
+        <ChevronDown size={16} className="text-gray-600 dark:text-gray-400" />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-600 p-6 min-w-80 z-20">
+        <div className="absolute top-full mt-2 left-0 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 p-6 min-w-80 z-20">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Date Range</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Date Range</h3>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X size={20} />
             </button>
@@ -166,13 +166,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
 
           {/* Quick Ranges */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Quick Ranges</h4>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Quick Ranges</h4>
             <div className="grid grid-cols-4 gap-2">
               {quickRanges.map((range) => (
                 <button
                   key={range.label}
                   onClick={() => handleQuickRange(range.months, range.years)}
-                  className="px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
                   {range.label}
                 </button>
@@ -182,10 +182,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
 
           {/* Month Selection */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Select Month</h4>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Select Month</h4>
             <select
               onChange={(e) => handleMonthSelect(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="">Choose a month...</option>
               {getCurrentMonthOptions().map((option) => (
@@ -198,28 +198,28 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
 
           {/* Custom Range */}
           <div>
-            <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Custom Range</h4>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Custom Range</h4>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Start Date
                 </label>
                 <input
                   type="date"
                   value={format(tempStartDate, 'yyyy-MM-dd')}
                   onChange={(e) => setTempStartDate(new Date(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   End Date
                 </label>
                 <input
                   type="date"
                   value={format(tempEndDate, 'yyyy-MM-dd')}
                   onChange={(e) => setTempEndDate(new Date(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
               <button

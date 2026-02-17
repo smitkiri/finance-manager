@@ -63,10 +63,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden animate-slide-up border border-white/20 dark:border-slate-700/50 flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50 flex-shrink-0">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800 flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             {editingExpense ? 'Edit Transaction' : 'Add New Transaction'}
           </h2>
           <button

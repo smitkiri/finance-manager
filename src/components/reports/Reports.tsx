@@ -182,7 +182,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
           {reports.map((report) => (
             <div
               key={report.id}
-              className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedReport(report)}
             >
               <div className="flex items-start justify-between">

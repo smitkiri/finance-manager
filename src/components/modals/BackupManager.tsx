@@ -110,14 +110,14 @@ export const BackupManager: React.FC = () => {
 
   return (
     <div className="mb-8">
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3 flex items-center">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
         <Server size={18} className="mr-2" />
         Backup & Restore
       </h3>
-      <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+      <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800">
         {/* Backup Section */}
         <div className="mb-6">
-          <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-2">Create Backup</h4>
+          <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Create Backup</h4>
           <div className="space-y-2 mb-4">
             <div className="flex items-center">
               <input
@@ -160,7 +160,7 @@ export const BackupManager: React.FC = () => {
                   : 'Select Date Range'}
               </button>
               {showDatePicker && (
-                <div className="absolute z-10 top-full mt-2 bg-white dark:bg-slate-800 border rounded-lg shadow-lg">
+                <div className="absolute z-10 top-full mt-2 bg-white dark:bg-gray-900 border rounded-lg shadow-lg">
                   <DayPicker
                     mode="range"
                     selected={dateRange}
@@ -188,7 +188,7 @@ export const BackupManager: React.FC = () => {
 
         {/* Restore Section */}
         <div>
-          <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-2">Restore from Backup</h4>
+          <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Restore from Backup</h4>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Restore data from a JSON backup file.
           </p>

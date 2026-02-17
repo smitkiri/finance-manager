@@ -177,8 +177,8 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-200 dark:border-gray-800">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -322,7 +322,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                   <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">or</span>
+                  <span className="px-2 bg-white dark:bg-gray-900 text-gray-500">or</span>
                 </div>
               </div>
             </div>
@@ -555,7 +555,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
       {/* Confirmation Dialog */}
       {confirmDeleteId && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-sm w-full">
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Delete Source?</h3>
             <p className="mb-6 text-gray-700 dark:text-gray-300">Are you sure you want to delete this source? This action cannot be undone.</p>
             <div className="flex justify-end space-x-3">
