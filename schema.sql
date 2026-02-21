@@ -79,3 +79,28 @@ CREATE TABLE IF NOT EXISTS migrations (
     migration_name VARCHAR(255) UNIQUE NOT NULL,
     executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Net worth accounts table
+CREATE TABLE IF NOT EXISTS accounts (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('asset', 'liability')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id);
+
+-- Account balance snapshots table
+CREATE TABLE IF NOT EXISTS account_balances (
+    id VARCHAR(255) PRIMARY KEY,
+    account_id VARCHAR(255) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    balance DECIMAL(15, 2) NOT NULL,
+    date DATE NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_balances_account ON account_balances(account_id);
+CREATE INDEX IF NOT EXISTS idx_account_balances_date ON account_balances(date DESC);

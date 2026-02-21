@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { User, Source, StandardizedColumn } from '../../types';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { User, Source, StandardizedColumn, Account } from '../../types';
+import { LocalStorage } from '../../utils/storage';
 import { BackupManager } from './BackupManager';
 
 interface SettingsProps {
@@ -51,7 +52,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources' | 'users'>('general');
+  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources' | 'users' | 'accounts'>('general');
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [showSelectDelete, setShowSelectDelete] = useState(false);
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
@@ -67,6 +68,85 @@ export const Settings: React.FC<SettingsProps> = ({
   const [newUser, setNewUser] = useState('');
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editUserName, setEditUserName] = useState('');
+
+  // Accounts state (self-managed)
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountType, setNewAccountType] = useState<'asset' | 'liability'>('asset');
+  const [newAccountUserId, setNewAccountUserId] = useState('');
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [editAccountName, setEditAccountName] = useState('');
+  const [editAccountType, setEditAccountType] = useState<'asset' | 'liability'>('asset');
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Read ?section= from URL to auto-navigate to that section
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section');
+    if (section === 'accounts') setActiveSection('accounts');
+  }, [location.search]);
+
+  // Load accounts when accounts section becomes active
+  useEffect(() => {
+    if (activeSection !== 'accounts') return;
+    setAccountsLoading(true);
+    LocalStorage.loadAccounts().then(data => {
+      setAccounts(data);
+      setAccountsLoading(false);
+    });
+  }, [activeSection]);
+
+  // Set default userId for new account when users load
+  useEffect(() => {
+    if (users.length > 0 && !newAccountUserId) {
+      setNewAccountUserId(users[0].id);
+    }
+  }, [users, newAccountUserId]);
+
+  const handleAddAccount = async () => {
+    if (!newAccountName.trim() || !newAccountUserId) return;
+    const account: Account = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      userId: newAccountUserId,
+      name: newAccountName.trim(),
+      type: newAccountType,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const created = await LocalStorage.createAccount(account);
+    setAccounts(prev => [...prev, created]);
+    setNewAccountName('');
+  };
+
+  const handleStartEditAccount = (account: Account) => {
+    setEditingAccountId(account.id);
+    setEditAccountName(account.name);
+    setEditAccountType(account.type);
+  };
+
+  const handleSaveEditAccount = async () => {
+    if (!editingAccountId || !editAccountName.trim()) return;
+    const original = accounts.find(a => a.id === editingAccountId);
+    if (!original) return;
+    const updated = await LocalStorage.updateAccount({ ...original, name: editAccountName.trim(), type: editAccountType });
+    setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
+    setEditingAccountId(null);
+    setEditAccountName('');
+  };
+
+  const handleCancelEditAccount = () => {
+    setEditingAccountId(null);
+    setEditAccountName('');
+  };
+
+  const handleDeleteAccount = async (account: Account) => {
+    if (!window.confirm(`Delete "${account.name}" and all its balance history?`)) return;
+    await LocalStorage.deleteAccount(account.id);
+    setAccounts(prev => prev.filter(a => a.id !== account.id));
+  };
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
@@ -234,8 +314,6 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const navigate = useNavigate();
-
   if (!asPage && !isOpen) return null;
 
   const settingsContent = (
@@ -268,6 +346,12 @@ export const Settings: React.FC<SettingsProps> = ({
             onClick={() => setActiveSection('users')}
           >
             Users
+          </button>
+          <button
+            className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'accounts' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            onClick={() => setActiveSection('accounts')}
+          >
+            Accounts
           </button>
         </div>
         {/* Main Content */}
@@ -658,6 +742,172 @@ export const Settings: React.FC<SettingsProps> = ({
                   )}
                 </div>
               </>
+            )}
+            {activeSection === 'accounts' && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Accounts</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Manage your asset and liability accounts for net worth tracking.
+                </p>
+
+                {/* Add New Account */}
+                <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Add New Account</h4>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newAccountName}
+                      onChange={e => setNewAccountName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddAccount(); }}
+                      placeholder="Account name (e.g. Chase Checking, Mortgage)"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    />
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setNewAccountType('asset')}
+                            className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                              newAccountType === 'asset'
+                                ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                            }`}
+                          >
+                            Asset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewAccountType('liability')}
+                            className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                              newAccountType === 'liability'
+                                ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                            }`}
+                          >
+                            Liability
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">User</label>
+                        <select
+                          value={newAccountUserId}
+                          onChange={e => setNewAccountUserId(e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleAddAccount}
+                      disabled={!newAccountName.trim() || !newAccountUserId}
+                      className="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                    >
+                      <Plus size={14} />
+                      <span>Add Account</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Accounts List */}
+                {accountsLoading ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Loading accounts...</p>
+                ) : accounts.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No accounts yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {accounts.map(account => {
+                      const userName = users.find(u => u.id === account.userId)?.name ?? account.userId;
+                      const typeColor = account.type === 'asset'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400';
+                      return (
+                        <div key={account.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          {editingAccountId === account.id ? (
+                            <div className="flex items-center gap-2 flex-1 flex-wrap">
+                              <input
+                                type="text"
+                                value={editAccountName}
+                                onChange={e => setEditAccountName(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveEditAccount();
+                                  if (e.key === 'Escape') handleCancelEditAccount();
+                                }}
+                                autoFocus
+                                className="flex-1 min-w-0 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              />
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditAccountType('asset')}
+                                  className={`px-2 py-1 rounded border text-xs font-medium transition-colors ${
+                                    editAccountType === 'asset'
+                                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                                      : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                  }`}
+                                >
+                                  Asset
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditAccountType('liability')}
+                                  className={`px-2 py-1 rounded border text-xs font-medium transition-colors ${
+                                    editAccountType === 'liability'
+                                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                                      : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                  }`}
+                                >
+                                  Liability
+                                </button>
+                              </div>
+                              <div className="flex gap-1">
+                                <button onClick={handleSaveEditAccount} className="p-1 text-green-600 hover:text-green-700 transition-colors" title="Save">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                </button>
+                                <button onClick={handleCancelEditAccount} className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors" title="Cancel">
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium text-gray-900 dark:text-white text-sm">{account.name}</span>
+                                <div className="text-xs mt-0.5 flex items-center gap-2">
+                                  <span className={`font-medium ${typeColor}`}>{account.type === 'asset' ? 'Asset' : 'Liability'}</span>
+                                  <span className="text-gray-400 dark:text-gray-500">•</span>
+                                  <span className="text-gray-500 dark:text-gray-400">{userName}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 ml-2">
+                                <button
+                                  onClick={() => handleStartEditAccount(account)}
+                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  title="Edit account"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAccount(account)}
+                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                  title="Delete account"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
             {activeSection === 'general' && (
               <>

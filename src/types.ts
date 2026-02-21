@@ -130,6 +130,39 @@ export interface Report {
   totalAmount?: number;
 }
 
+// Net Worth types
+export interface Account {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'asset' | 'liability';
+  createdAt: string;
+  updatedAt: string;
+  currentBalance?: number;
+}
+
+export interface AccountBalance {
+  id: string;
+  accountId: string;
+  balance: number;
+  date: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface NetWorthSummary {
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+}
+
+export interface NetWorthHistory {
+  date: string;
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+}
+
 export interface ReportData {
   report: Report;
   transactions: Expense[];

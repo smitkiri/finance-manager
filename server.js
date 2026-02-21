@@ -34,6 +34,7 @@ app.use('/api', require('./routes/dateRange'));
 app.use('/api', require('./routes/transfers'));
 app.use('/api', require('./routes/backup'));
 app.use('/api', require('./routes/data'));
+app.use('/api', require('./routes/netWorth'));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

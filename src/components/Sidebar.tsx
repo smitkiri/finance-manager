@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, BarChart3, Receipt, FileText, Settings } from 'lucide-react';
+import { Menu, X, BarChart3, Receipt, FileText, Settings, TrendingUp } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     { path: '/', label: 'Dashboard', icon: BarChart3 },
     { path: '/transactions', label: 'Transactions', icon: Receipt },
     { path: '/reports', label: 'Reports', icon: FileText },
+    { path: '/net-worth', label: 'Net Worth', icon: TrendingUp },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
 

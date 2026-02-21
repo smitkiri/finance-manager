@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User, DashboardStats } from './types';
+import { NetWorth } from './components/networth/NetWorth';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
@@ -946,6 +947,12 @@ function AppContent() {
 
       <main className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8`}>
         <Routes>
+          <Route path="/net-worth" element={
+            <NetWorth
+              selectedUserId={selectedUserId}
+              users={users}
+            />
+          } />
           <Route path="/settings" element={
             <Settings
               asPage

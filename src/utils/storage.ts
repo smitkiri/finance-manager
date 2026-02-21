@@ -1,4 +1,4 @@
-import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats } from '../types';
+import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -847,6 +847,97 @@ export class LocalStorage {
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;
+    }
+  }
+
+  // Net Worth Methods
+  static async loadAccounts(userId?: string | null): Promise<Account[]> {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const response = await fetch(`${this.API_BASE}/accounts?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to load accounts');
+      return await response.json();
+    } catch (error) {
+      console.error('Error loading accounts:', error);
+      return [];
+    }
+  }
+
+  static async createAccount(account: Account): Promise<Account> {
+    const response = await fetch(`${this.API_BASE}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(account),
+    });
+    if (!response.ok) throw new Error('Failed to create account');
+    return response.json();
+  }
+
+  static async updateAccount(account: Account): Promise<Account> {
+    const response = await fetch(`${this.API_BASE}/accounts/${account.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: account.name, type: account.type }),
+    });
+    if (!response.ok) throw new Error('Failed to update account');
+    return response.json();
+  }
+
+  static async deleteAccount(accountId: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/accounts/${accountId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete account');
+  }
+
+  static async addAccountBalance(accountId: string, balance: AccountBalance): Promise<AccountBalance> {
+    const response = await fetch(`${this.API_BASE}/accounts/${accountId}/balances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(balance),
+    });
+    if (!response.ok) throw new Error('Failed to add account balance');
+    return response.json();
+  }
+
+  static async loadAccountBalances(accountId: string): Promise<AccountBalance[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/accounts/${accountId}/balances`);
+      if (!response.ok) throw new Error('Failed to load account balances');
+      return response.json();
+    } catch (error) {
+      console.error('Error loading account balances:', error);
+      return [];
+    }
+  }
+
+  static async deleteAccountBalance(accountId: string, balanceId: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/accounts/${accountId}/balances/${balanceId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete balance entry');
+  }
+
+  static async loadNetWorthSummary(userId?: string | null): Promise<NetWorthSummary | null> {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const response = await fetch(`${this.API_BASE}/net-worth/summary?${params.toString()}`);
+      if (!response.ok) return null;
+      return response.json();
+    } catch (error) {
+      console.error('Error loading net worth summary:', error);
+      return null;
+    }
+  }
+
+  static async loadNetWorthHistory(userId?: string | null): Promise<NetWorthHistory[]> {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const response = await fetch(`${this.API_BASE}/net-worth/history?${params.toString()}`);
+      if (!response.ok) return [];
+      return response.json();
+    } catch (error) {
+      console.error('Error loading net worth history:', error);
+      return [];
     }
   }
 

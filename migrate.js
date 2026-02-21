@@ -360,6 +360,51 @@ const migrateDateRange = async () => {
 };
 
 /**
+ * Add net worth tables (accounts and account_balances)
+ */
+const addNetWorthTables = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_net_worth_tables']
+  );
+  if (alreadyRun.rows.length > 0) {
+    console.log('Net worth tables migration already completed, skipping...');
+    return;
+  }
+
+  console.log('Creating net worth tables...');
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS accounts (
+      id VARCHAR(255) PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      type VARCHAR(20) NOT NULL CHECK (type IN ('asset', 'liability')),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id)`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS account_balances (
+      id VARCHAR(255) PRIMARY KEY,
+      account_id VARCHAR(255) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      balance DECIMAL(15, 2) NOT NULL,
+      date DATE NOT NULL,
+      note TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_account_balances_account ON account_balances(account_id)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_account_balances_date ON account_balances(date DESC)`);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_net_worth_tables']
+  );
+  console.log('Net worth tables created successfully');
+};
+
+/**
  * Main migration function
  */
 const runMigration = async () => {
@@ -372,32 +417,36 @@ const runMigration = async () => {
     // Check if migration already completed
     const alreadyMigrated = await isMigrationComplete();
     if (alreadyMigrated) {
-      console.log('Migration already completed, skipping...');
-      return;
+      console.log('Migration already completed, skipping initial migration...');
+    } else {
+      // Create schema
+      await createSchema();
+
+      // Migrate data
+      const transactionCount = await migrateTransactions();
+      const categoryCount = await migrateCategories();
+      const userCount = await migrateUsers();
+      const sourceCount = await migrateSources();
+      const reportCount = await migrateReports();
+      const dateRangeCount = await migrateDateRange();
+
+      // Mark migration as complete
+      await markMigrationComplete();
+
+      console.log('\nInitial migration completed successfully!');
+      console.log(`Summary:`);
+      console.log(`  - Transactions: ${transactionCount}`);
+      console.log(`  - Categories: ${categoryCount}`);
+      console.log(`  - Users: ${userCount}`);
+      console.log(`  - Sources: ${sourceCount}`);
+      console.log(`  - Reports: ${reportCount}`);
+      console.log(`  - Date Ranges: ${dateRangeCount}`);
     }
-    
-    // Create schema
-    await createSchema();
-    
-    // Migrate data
-    const transactionCount = await migrateTransactions();
-    const categoryCount = await migrateCategories();
-    const userCount = await migrateUsers();
-    const sourceCount = await migrateSources();
-    const reportCount = await migrateReports();
-    const dateRangeCount = await migrateDateRange();
-    
-    // Mark migration as complete
-    await markMigrationComplete();
-    
-    console.log('\nMigration completed successfully!');
-    console.log(`Summary:`);
-    console.log(`  - Transactions: ${transactionCount}`);
-    console.log(`  - Categories: ${categoryCount}`);
-    console.log(`  - Users: ${userCount}`);
-    console.log(`  - Sources: ${sourceCount}`);
-    console.log(`  - Reports: ${reportCount}`);
-    console.log(`  - Date Ranges: ${dateRangeCount}`);
+
+    // Run incremental migrations (always run so they apply to existing installs too)
+    await addNetWorthTables();
+
+    console.log('\nAll migrations completed successfully!');
     
   } catch (error) {
     console.error('Migration failed:', error);
