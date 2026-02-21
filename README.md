@@ -118,6 +118,7 @@ npm run build
 - 📊 **Report Builder**: Create custom reports with advanced filtering and data analysis
 - 🔧 **Settings Management**: Comprehensive settings modal for categories, sources, users, and data management
 - 🧪 **Test Mode**: Safe testing environment with separate data storage
+- 💼 **Net Worth Tracking**: Track assets and liabilities per user with historical balance snapshots and a net worth over time chart
 
 ## 📝 Usage
 
@@ -139,6 +140,7 @@ The primary way to get data into the system is by importing CSV files from your 
 *   **Advanced Filtering & Search**: Quickly find specific transactions using full-text search, date ranges, amount filters, and custom labels. You can also save your favorite filter configurations.
 *   **Report Builder**: Generate custom reports based on your filtered data, allowing for deeper analysis and insights into your financial health.
 *   **Smart Transfer Detection**: The system intelligently identifies and handles internal transfers between your accounts, preventing them from skewing your income/expense reports.
+*   **Net Worth Tracking**: Create asset accounts (bank accounts, investments, etc.) and liability accounts (credit cards, loans, etc.) linked to each user. Record balance snapshots over time and view your total assets, liabilities, and net worth on a dedicated page with a historical line chart. When viewing all users, accounts are grouped and subtotalled per person. Account management lives in Settings → Accounts; balance updates are done directly from the Net Worth page.
 
 ### Further Usage Details:
 
