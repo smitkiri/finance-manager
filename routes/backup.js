@@ -18,6 +18,8 @@ router.get('/backup', async (req, res) => {
       'reports',
       'date_ranges',
       'metadata',
+      'accounts',
+      'account_balances',
     ];
 
     for (const table of tables) {
@@ -124,6 +126,25 @@ router.post('/restore', upload.single('backupFile'), async (req, res) => {
             [meta.key, JSON.stringify(meta.value), meta.updated_at]
           );
         }
+    }
+    // Restore accounts before account_balances (foreign key dependency)
+    if (backupData.accounts) {
+      for (const account of backupData.accounts) {
+        await client.query(
+          `INSERT INTO accounts (id, user_id, name, type, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+          [account.id, account.user_id, account.name, account.type, account.created_at, account.updated_at]
+        );
+      }
+    }
+    if (backupData.account_balances) {
+      for (const balance of backupData.account_balances) {
+        await client.query(
+          `INSERT INTO account_balances (id, account_id, balance, date, note, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+          [balance.id, balance.account_id, balance.balance, balance.date, balance.note, balance.created_at]
+        );
+      }
     }
 
     await db.commitTransaction(client);
