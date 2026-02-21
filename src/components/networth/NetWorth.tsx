@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, History, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, ChevronUp, History, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
@@ -25,80 +25,6 @@ function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
-
-// Modal for editing an existing account (name/type only)
-interface EditAccountModalProps {
-  account: Account;
-  onClose: () => void;
-  onSave: (name: string, type: 'asset' | 'liability') => void;
-}
-
-const EditAccountModal: React.FC<EditAccountModalProps> = ({ account, onClose, onSave }) => {
-  const [name, setName] = useState(account.name);
-  const [type, setType] = useState<'asset' | 'liability'>(account.type);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    onSave(name.trim(), type);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Account</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-            <X size={20} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account Type</label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setType('asset')}
-                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  type === 'asset'
-                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                    : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-green-400'
-                }`}
-              >
-                Asset
-              </button>
-              <button
-                type="button"
-                onClick={() => setType('liability')}
-                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  type === 'liability'
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                    : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-red-400'
-                }`}
-              >
-                Liability
-              </button>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
-            <button type="submit" disabled={!name.trim()} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
 // Modal for adding a balance entry
 interface BalanceModalProps {
@@ -207,11 +133,9 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
 interface AccountRowProps {
   account: Account;
   onUpdateBalance: (account: Account) => void;
-  onEdit: (account: Account) => void;
-  onDelete: (account: Account) => void;
 }
 
-const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance, onEdit, onDelete }) => {
+const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => {
   const [expanded, setExpanded] = useState(false);
   const [history, setHistory] = useState<AccountBalance[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -264,20 +188,6 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance, onEdi
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
           >
             <History size={16} />
-          </button>
-          <button
-            onClick={() => onEdit(account)}
-            title="Edit account"
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          >
-            <Edit2 size={16} />
-          </button>
-          <button
-            onClick={() => onDelete(account)}
-            title="Delete account"
-            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <Trash2 size={16} />
           </button>
           <button
             onClick={handleExpand}
@@ -352,7 +262,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [balanceAccount, setBalanceAccount] = useState<Account | null>(null);
 
   const loadData = useCallback(async () => {
@@ -383,36 +292,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const handleEditAccount = async (name: string, type: 'asset' | 'liability') => {
-    if (!editingAccount) return;
-    try {
-      const updated = await LocalStorage.updateAccount({ ...editingAccount, name, type });
-      setAccounts(prev => prev.map(a => a.id === updated.id ? { ...updated, currentBalance: a.currentBalance } : a));
-      setEditingAccount(null);
-      toast.success('Account updated', { position: 'bottom-right', autoClose: 3000 });
-    } catch {
-      toast.error('Failed to update account', { position: 'bottom-right', autoClose: 3000 });
-    }
-  };
-
-  const handleDeleteAccount = async (account: Account) => {
-    if (!window.confirm(`Delete "${account.name}" and all its balance history?`)) return;
-    try {
-      await LocalStorage.deleteAccount(account.id);
-      setAccounts(prev => prev.filter(a => a.id !== account.id));
-      // Refresh summary + history
-      const [sum, hist] = await Promise.all([
-        LocalStorage.loadNetWorthSummary(selectedUserId),
-        LocalStorage.loadNetWorthHistory(selectedUserId),
-      ]);
-      setSummary(sum);
-      setHistory(hist);
-      toast.success('Account deleted', { position: 'bottom-right', autoClose: 3000 });
-    } catch {
-      toast.error('Failed to delete account', { position: 'bottom-right', autoClose: 3000 });
-    }
-  };
 
   const handleAddBalance = async (amount: number, date: string, note?: string) => {
     if (!balanceAccount) return;
@@ -611,8 +490,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                               key={account.id}
                               account={account}
                               onUpdateBalance={setBalanceAccount}
-                              onEdit={setEditingAccount}
-                              onDelete={handleDeleteAccount}
                             />
                           ))}
                         </div>
@@ -638,8 +515,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                               key={account.id}
                               account={account}
                               onUpdateBalance={setBalanceAccount}
-                              onEdit={setEditingAccount}
-                              onDelete={handleDeleteAccount}
                             />
                           ))}
                         </div>
@@ -651,15 +526,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
             </div>
           )}
         </>
-      )}
-
-      {/* Edit Account Modal */}
-      {editingAccount && (
-        <EditAccountModal
-          account={editingAccount}
-          onClose={() => setEditingAccount(null)}
-          onSave={handleEditAccount}
-        />
       )}
 
       {/* Add Balance Modal */}
