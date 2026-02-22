@@ -116,8 +116,7 @@ npm run build
 - 🔄 **Smart Transfer Detection**: Automatically detect and handle internal transfers between accounts
 - 📋 **Transaction Details**: Detailed view of transactions with metadata and transfer information
 - 📊 **Report Builder**: Create custom reports with advanced filtering and data analysis
-- 🔧 **Settings Management**: Comprehensive settings modal for categories, sources, users, and data management
-- 🧪 **Test Mode**: Safe testing environment with separate data storage
+- 🔧 **Settings Management**: Comprehensive settings page for categories, sources, users, and data management
 - 💼 **Net Worth Tracking**: Track assets and liabilities per user with historical balance snapshots and a net worth over time chart
 
 ## 📝 Usage
@@ -155,7 +154,7 @@ For more in-depth information on managing users, categories, advanced filtering,
 -   **Charts**: Recharts
 -   **Icons**: Lucide React
 -   **Build Tool**: Create React App
--   **State Management**: React Context for theme and test mode
+-   **State Management**: React Context for theme
 -   **Notifications**: React Toastify for toast notifications
 -   **Date Handling**: date-fns for date manipulation
 
