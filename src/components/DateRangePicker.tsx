@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronDown, X } from 'lucide-react';
 import { format, subMonths, subYears, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 
@@ -23,6 +23,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
   const [isOpen, setIsOpen] = useState(false);
   const [tempStartDate, setTempStartDate] = useState(currentRange.start);
   const [tempEndDate, setTempEndDate] = useState(currentRange.end);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const areSameDay = (date1: Date, date2: Date): boolean => {
     return date1.getFullYear() === date2.getFullYear() &&
@@ -140,7 +151,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
