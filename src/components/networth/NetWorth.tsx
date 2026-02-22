@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, Trash2, X, ChevronDown, ChevronUp, History, ExternalLink } from 'lucide-react';
+import { Trash2, X, ChevronDown, ChevronUp, History, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
@@ -246,9 +246,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 shadow-lg text-sm">
       <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">{formatDate(label)}</p>
-      <p className="text-green-600 dark:text-green-400">Assets: {formatCurrency(data?.totalAssets ?? 0)}</p>
-      <p className="text-red-600 dark:text-red-400">Liabilities: {formatCurrency(data?.totalLiabilities ?? 0)}</p>
-      <p className={`font-semibold mt-1 ${(data?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+      <p className={`font-semibold ${(data?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
         Net Worth: {formatCurrency(data?.netWorth ?? 0)}
       </p>
     </div>
@@ -350,8 +348,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           title="Go to Settings to manage accounts"
         >
-          <Plus size={16} />
-          Add Account
+          Manage Accounts
           <ExternalLink size={14} className="opacity-70" />
         </button>
       </div>
@@ -403,25 +400,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                     className="text-gray-500 dark:text-gray-400"
                   />
                   <Tooltip content={<ChartTooltip />} />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="totalAssets"
-                    name="Assets"
-                    stroke="#16a34a"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="totalLiabilities"
-                    name="Liabilities"
-                    stroke="#dc2626"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
                   <Line
                     type="monotone"
                     dataKey="netWorth"
