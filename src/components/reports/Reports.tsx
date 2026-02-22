@@ -111,7 +111,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading reports...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading reports...</div>
       </div>
     );
   }

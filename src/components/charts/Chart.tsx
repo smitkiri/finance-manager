@@ -1,6 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { formatCurrency } from '../../utils';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ChartProps {
   data: any[];
@@ -13,6 +14,10 @@ interface ChartProps {
 const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, categoryMode = false }) => {
+  const { theme } = useTheme();
+  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';   // gray-700 : gray-200
+  const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280';   // gray-400 : gray-500
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -36,14 +41,14 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
       case 'line':
         return (
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="month" 
-              stroke="#6b7280"
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis
+              dataKey="month"
+              stroke={axisStroke}
               fontSize={12}
             />
-            <YAxis 
-              stroke="#6b7280"
+            <YAxis
+              stroke={axisStroke}
               fontSize={12}
               tickFormatter={(value) => `$${value}`}
             />
@@ -86,14 +91,14 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
       case 'savings-bar':
         return (
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="month" 
-              stroke="#6b7280"
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis
+              dataKey="month"
+              stroke={axisStroke}
               fontSize={12}
             />
-            <YAxis 
-              stroke="#6b7280"
+            <YAxis
+              stroke={axisStroke}
               fontSize={12}
               tickFormatter={(value) => `$${value}`}
             />

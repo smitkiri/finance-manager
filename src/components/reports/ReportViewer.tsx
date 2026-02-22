@@ -92,7 +92,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading report...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading report...</div>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   if (!reportData) {
     return (
       <div className="text-center py-12">
-        <div className="text-red-500 mb-4">Error loading report data</div>
+        <div className="text-red-500 dark:text-red-400 mb-4">Error loading report data</div>
         <button
           onClick={onBack}
           className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"

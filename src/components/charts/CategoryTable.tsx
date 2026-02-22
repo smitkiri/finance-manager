@@ -18,8 +18,8 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({ categoryBreakdown,
   if (categories.length === 0) {
     return (
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Expenses by Category</h3>
-        <div className="text-center py-8 text-gray-500">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Expenses by Category</h3>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No expense data available
         </div>
       </div>

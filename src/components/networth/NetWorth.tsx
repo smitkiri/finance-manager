@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { Trash2, X, ChevronDown, ChevronUp, History, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { LocalStorage } from '../../utils/storage';
@@ -255,6 +256,9 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 
 export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';  // gray-700 : gray-200
+  const tickFill = theme === 'dark' ? '#9ca3af' : '#6b7280';    // gray-400 : gray-500
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [summary, setSummary] = useState<NetWorthSummary | null>(null);
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
@@ -387,17 +391,17 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Net Worth Over Time</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-800" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                   <XAxis
                     dataKey="date"
                     tickFormatter={v => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })}
-                    tick={{ fontSize: 12 }}
-                    className="text-gray-500 dark:text-gray-400"
+                    tick={{ fontSize: 12, fill: tickFill }}
+                    stroke={gridStroke}
                   />
                   <YAxis
                     tickFormatter={v => `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
-                    tick={{ fontSize: 12 }}
-                    className="text-gray-500 dark:text-gray-400"
+                    tick={{ fontSize: 12, fill: tickFill }}
+                    stroke={gridStroke}
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Line
