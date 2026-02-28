@@ -7,7 +7,7 @@ const db = require('../database');
 function isTellerEnabled() {
   return !!(
     process.env.FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED === 'true' &&
-    process.env.FINANCE_MANAGER_TELLER_TOKEN &&
+    process.env.FINANCE_MANAGER_TELLER_APP_ID &&
     process.env.FINANCE_MANAGER_TELLER_PRIVATE_KEY &&
     process.env.FINANCE_MANAGER_TELLER_CERT
   );
@@ -101,7 +101,7 @@ router.get('/teller/config', async (req, res) => {
     const enrollments = await readEnrollments();
     res.json({
       enabled: true,
-      applicationId: process.env.FINANCE_MANAGER_TELLER_TOKEN,
+      applicationId: process.env.FINANCE_MANAGER_TELLER_APP_ID,
       enrollments: enrollments.map(e => ({
         enrollmentId: e.enrollmentId,
         institutionName: e.institutionName || null,

@@ -160,7 +160,7 @@ Set the following four environment variables before starting the server. All fou
 | Variable | Description |
 |---|---|
 | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | Set to `"true"` to enable the feature |
-| `FINANCE_MANAGER_TELLER_TOKEN` | Your Teller `applicationId` (from the Teller dashboard) |
+| `FINANCE_MANAGER_TELLER_APP_ID` | Your Teller `applicationId` (from the Teller dashboard) |
 | `FINANCE_MANAGER_TELLER_PRIVATE_KEY` | Path to your Teller mTLS private key PEM file |
 | `FINANCE_MANAGER_TELLER_CERT` | Path to your Teller mTLS certificate PEM file |
 
@@ -170,7 +170,7 @@ Create a `.env` file in the project root (it is gitignored):
 
 ```bash
 FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=true
-FINANCE_MANAGER_TELLER_TOKEN=your_application_id_here
+FINANCE_MANAGER_TELLER_APP_ID=your_application_id_here
 FINANCE_MANAGER_TELLER_PRIVATE_KEY=/path/to/teller/private_key.pem
 FINANCE_MANAGER_TELLER_CERT=/path/to/teller/certificate.pem
 ```
