@@ -145,6 +145,46 @@ The primary way to get data into the system is by importing CSV files from your 
 
 For more in-depth information on managing users, categories, advanced filtering, and other features, please refer to the detailed sections in the original `README.md` (if you are viewing this on GitHub, these details were available prior to this update and will be re-added below).
 
+## 🏦 Teller Integration (Live Bank Balances)
+
+The app supports connecting real bank accounts via [Teller](https://teller.io) to automatically pull live balances into the Net Worth page. This feature is optional and disabled by default.
+
+### Prerequisites
+
+You need a Teller account and application. Sign up at [teller.io](https://teller.io) to get your credentials.
+
+### Setup
+
+Set the following four environment variables before starting the server. All four must be present for the feature to activate — if any are missing, no Teller UI will appear.
+
+| Variable | Description |
+|---|---|
+| `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | Set to `"true"` to enable the feature |
+| `FINANCE_MANAGER_TELLER_TOKEN` | Your Teller `applicationId` (from the Teller dashboard) |
+| `FINANCE_MANAGER_TELLER_PRIVATE_KEY` | Path to your Teller mTLS private key PEM file |
+| `FINANCE_MANAGER_TELLER_CERT` | Path to your Teller mTLS certificate PEM file |
+
+The private key and certificate are issued by Teller when you create an application. You can find them in the Teller dashboard under your application's settings. Save them as files on disk and point the env vars at those paths.
+
+Create a `.env` file in the project root (it is gitignored):
+
+```bash
+FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=true
+FINANCE_MANAGER_TELLER_TOKEN=your_application_id_here
+FINANCE_MANAGER_TELLER_PRIVATE_KEY=/path/to/teller/private_key.pem
+FINANCE_MANAGER_TELLER_CERT=/path/to/teller/certificate.pem
+```
+
+### Usage
+
+1. **Connect your bank**: Go to **Settings → Accounts**. A "Bank Connection" banner will appear. Click **Connect Bank Account** to open the Teller widget and authenticate with your bank using Teller's sandbox or live credentials.
+
+2. **Refresh balances**: After connecting, navigate to the **Net Worth** page. A **Refresh Balances** button will appear in the top-right corner. Click it to fetch the latest balances from all connected accounts. New accounts discovered via Teller are created automatically.
+
+3. **Reconnect**: If your enrollment expires or you want to connect a different bank, go back to **Settings → Accounts** and click **Reconnect**.
+
+> **Note**: Teller sandbox credentials can be used for testing without a real bank account. See the [Teller documentation](https://teller.io/docs) for details.
+
 ## 🧑‍💻 Technology Stack
 
 -   **Frontend**: React 18 with TypeScript

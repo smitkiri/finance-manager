@@ -941,6 +941,59 @@ export class LocalStorage {
     }
   }
 
+  // Teller Integration Methods
+  static async getTellerConfig(): Promise<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string; connectedAt?: string }> }> {
+    try {
+      const response = await fetch(`${this.API_BASE}/teller/config`);
+      if (!response.ok) return { enabled: false, enrollments: [] };
+      return response.json();
+    } catch {
+      return { enabled: false, enrollments: [] };
+    }
+  }
+
+  static async tellerPreviewAccounts(accessToken: string): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
+    const response = await fetch(`${this.API_BASE}/teller/preview-accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken }),
+    });
+    if (!response.ok) throw new Error('Failed to fetch Teller accounts');
+    return response.json();
+  }
+
+  static async tellerEnroll(
+    accessToken: string,
+    userId: string,
+    enrollmentId: string,
+    institutionName?: string | null,
+    selectedAccounts?: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>
+  ): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/teller/enroll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken, userId, enrollmentId, institutionName, selectedAccounts }),
+    });
+    if (!response.ok) throw new Error('Failed to enroll with Teller');
+  }
+
+  static async tellerDisconnect(enrollmentId: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/teller/disconnect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollmentId }),
+    });
+    if (!response.ok) throw new Error('Failed to disconnect from Teller');
+  }
+
+  static async tellerRefreshBalances(): Promise<{ refreshed: number }> {
+    const response = await fetch(`${this.API_BASE}/teller/refresh-balances`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Failed to refresh Teller balances');
+    return response.json();
+  }
+
   private static getUsersFromStorage(): import('../types').User[] {
     try {
       const stored = localStorage.getItem('users');

@@ -13,7 +13,7 @@ router.get('/accounts', async (req, res) => {
       whereSql = 'WHERE user_id = $1';
     }
     const result = await db.query(
-      `SELECT id, user_id, name, type, created_at, updated_at
+      `SELECT id, user_id, name, type, teller_enrollment_id, created_at, updated_at
        FROM accounts ${whereSql} ORDER BY type, name`,
       params
     );
@@ -22,6 +22,7 @@ router.get('/accounts', async (req, res) => {
       userId: r.user_id,
       name: r.name,
       type: r.type,
+      tellerEnrollmentId: r.teller_enrollment_id ?? null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     })));

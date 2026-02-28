@@ -405,15 +405,63 @@ const addNetWorthTables = async () => {
 };
 
 /**
+ * Add teller_enrollment_id column to accounts table
+ */
+const addTellerEnrollmentId = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_teller_enrollment_id']
+  );
+  if (alreadyRun.rows.length > 0) {
+    console.log('Teller enrollment ID migration already completed, skipping...');
+    return;
+  }
+
+  console.log('Adding teller_enrollment_id column to accounts...');
+  await db.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS teller_enrollment_id VARCHAR(255)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_accounts_teller_enrollment_id ON accounts(teller_enrollment_id)`);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_teller_enrollment_id']
+  );
+  console.log('Teller enrollment ID column added successfully');
+};
+
+/**
+ * Add teller_account_id column to accounts table
+ */
+const addTellerAccountId = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_teller_account_id']
+  );
+  if (alreadyRun.rows.length > 0) {
+    console.log('Teller account ID migration already completed, skipping...');
+    return;
+  }
+
+  console.log('Adding teller_account_id column to accounts...');
+  await db.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS teller_account_id VARCHAR(255)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_accounts_teller_account_id ON accounts(teller_account_id)`);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_teller_account_id']
+  );
+  console.log('Teller account ID column added successfully');
+};
+
+/**
  * Main migration function
  */
 const runMigration = async () => {
   try {
     console.log('Starting database migration...');
-    
+
     // Wait for database to be ready
     await db.waitForDatabase();
-    
+
     // Check if migration already completed
     const alreadyMigrated = await isMigrationComplete();
     if (alreadyMigrated) {
@@ -445,6 +493,8 @@ const runMigration = async () => {
 
     // Run incremental migrations (always run so they apply to existing installs too)
     await addNetWorthTables();
+    await addTellerAccountId();
+    await addTellerEnrollmentId();
 
     console.log('\nAll migrations completed successfully!');
     

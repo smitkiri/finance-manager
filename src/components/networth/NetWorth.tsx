@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Trash2, X, ChevronDown, ChevronUp, History, ExternalLink } from 'lucide-react';
+import { Trash2, X, ChevronDown, ChevronUp, History, ExternalLink, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
@@ -263,6 +263,9 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const [summary, setSummary] = useState<NetWorthSummary | null>(null);
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tellerEnabled, setTellerEnabled] = useState(false);
+  const [tellerConnected, setTellerConnected] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [balanceAccount, setBalanceAccount] = useState<Account | null>(null);
 
@@ -294,6 +297,26 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    LocalStorage.getTellerConfig().then(config => {
+      setTellerEnabled(config.enabled);
+      setTellerConnected((config.enrollments?.length ?? 0) > 0);
+    });
+  }, []);
+
+  const handleRefreshBalances = async () => {
+    setRefreshing(true);
+    try {
+      const result = await LocalStorage.tellerRefreshBalances();
+      toast.success(`Refreshed ${result.refreshed} account balances`, { position: 'bottom-right', autoClose: 3000 });
+      await loadData();
+    } catch {
+      toast.error('Failed to refresh balances', { position: 'bottom-right', autoClose: 3000 });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleAddBalance = async (amount: number, date: string, note?: string) => {
     if (!balanceAccount) return;
@@ -347,14 +370,26 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       {/* Page header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Net Worth</h2>
-        <button
-          onClick={() => navigate('/settings?section=accounts')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          title="Go to Settings to manage accounts"
-        >
-          Manage Accounts
-          <ExternalLink size={14} className="opacity-70" />
-        </button>
+        <div className="flex items-center gap-2">
+          {tellerEnabled && tellerConnected && (
+            <button
+              onClick={handleRefreshBalances}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              Refresh Balances
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/settings?section=accounts')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            title="Go to Settings to manage accounts"
+          >
+            Manage Accounts
+            <ExternalLink size={14} className="opacity-70" />
+          </button>
+        </div>
       </div>
 
       {loading ? (

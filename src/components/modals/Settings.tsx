@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft, Link as LinkIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { User, Source, StandardizedColumn, Account } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { BackupManager } from './BackupManager';
@@ -69,6 +70,24 @@ export const Settings: React.FC<SettingsProps> = ({
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editUserName, setEditUserName] = useState('');
 
+  // Teller state
+  const [tellerConfig, setTellerConfig] = useState<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string | null; connectedAt?: string | null }> } | null>(null);
+  const [tellerConnecting, setTellerConnecting] = useState(false);
+  const [tellerDisconnecting, setTellerDisconnecting] = useState<string | null>(null);
+  // Account selection modal state (shown after Teller Connect succeeds)
+  const [pendingTellerEnrollment, setPendingTellerEnrollment] = useState<{
+    accessToken: string;
+    enrollmentId: string;
+    institutionName: string | null;
+  } | null>(null);
+  const [tellerAccountPreviews, setTellerAccountPreviews] = useState<Array<{ id: string; name: string; type: string; subtype?: string }>>([]);
+  const [tellerAccountSelections, setTellerAccountSelections] = useState<{
+    [id: string]: { selected: boolean; alias: string; accountType: 'asset' | 'liability' };
+  }>({});
+  const [tellerPreviewLoading, setTellerPreviewLoading] = useState(false);
+  const [tellerEnrolling, setTellerEnrolling] = useState(false);
+  const [pendingTellerUserId, setPendingTellerUserId] = useState('');
+
   // Accounts state (self-managed)
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -89,13 +108,16 @@ export const Settings: React.FC<SettingsProps> = ({
     if (section === 'accounts') setActiveSection('accounts');
   }, [location.search]);
 
-  // Load accounts when accounts section becomes active
+  // Load accounts and Teller config when accounts section becomes active
   useEffect(() => {
     if (activeSection !== 'accounts') return;
     setAccountsLoading(true);
     LocalStorage.loadAccounts().then(data => {
       setAccounts(data);
       setAccountsLoading(false);
+    });
+    LocalStorage.getTellerConfig().then(config => {
+      setTellerConfig(config);
     });
   }, [activeSection]);
 
@@ -105,6 +127,102 @@ export const Settings: React.FC<SettingsProps> = ({
       setNewAccountUserId(users[0].id);
     }
   }, [users, newAccountUserId]);
+
+  const connectWithTeller = () => {
+    if (!tellerConfig?.applicationId) return;
+    setTellerConnecting(true);
+
+    const setupConnect = () => {
+      const tc = (window as any).TellerConnect;
+      if (!tc) {
+        setTimeout(setupConnect, 100);
+        return;
+      }
+      const connect = tc.setup({
+        applicationId: tellerConfig.applicationId,
+        products: ['balance'],
+        onSuccess: async ({ accessToken, enrollment }: any) => {
+          setTellerConnecting(false);
+          const institutionName = enrollment?.institution?.name ?? null;
+          setTellerPreviewLoading(true);
+          try {
+            const accounts = await LocalStorage.tellerPreviewAccounts(accessToken);
+            const selections: typeof tellerAccountSelections = {};
+            for (const acct of accounts) {
+              selections[acct.id] = {
+                selected: true,
+                alias: acct.name,
+                accountType: acct.type === 'credit' ? 'liability' : 'asset',
+              };
+            }
+            setPendingTellerEnrollment({ accessToken, enrollmentId: enrollment.id, institutionName });
+            setPendingTellerUserId(newAccountUserId);
+            setTellerAccountPreviews(accounts);
+            setTellerAccountSelections(selections);
+          } catch {
+            toast.error('Failed to fetch bank accounts', { position: 'bottom-right', autoClose: 3000 });
+          } finally {
+            setTellerPreviewLoading(false);
+          }
+        },
+        onExit: () => {
+          setTellerConnecting(false);
+        },
+      });
+      connect.open();
+    };
+
+    if (!(window as any).TellerConnect) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.teller.io/connect/connect.js';
+      script.onload = setupConnect;
+      document.head.appendChild(script);
+    } else {
+      setupConnect();
+    }
+  };
+
+  const handleConfirmTellerAccounts = async () => {
+    if (!pendingTellerEnrollment) return;
+    const selected = Object.entries(tellerAccountSelections)
+      .filter(([, v]) => v.selected)
+      .map(([tellerAccountId, v]) => ({
+        tellerAccountId,
+        alias: v.alias.trim() || (tellerAccountPreviews.find(a => a.id === tellerAccountId)?.name ?? tellerAccountId),
+        accountType: v.accountType,
+      }));
+
+    setTellerEnrolling(true);
+    try {
+      await LocalStorage.tellerEnroll(
+        pendingTellerEnrollment.accessToken,
+        pendingTellerUserId,
+        pendingTellerEnrollment.enrollmentId,
+        pendingTellerEnrollment.institutionName,
+        selected
+      );
+      const [updatedConfig, updatedAccounts] = await Promise.all([
+        LocalStorage.getTellerConfig(),
+        LocalStorage.loadAccounts(),
+      ]);
+      setTellerConfig(updatedConfig);
+      setAccounts(updatedAccounts);
+      toast.success(
+        selected.length > 0
+          ? `Connected ${selected.length} account${selected.length === 1 ? '' : 's'}`
+          : 'Bank connected',
+        { position: 'bottom-right', autoClose: 3000 }
+      );
+    } catch {
+      toast.error('Failed to connect bank accounts', { position: 'bottom-right', autoClose: 3000 });
+    } finally {
+      setTellerEnrolling(false);
+      setPendingTellerEnrollment(null);
+      setPendingTellerUserId('');
+      setTellerAccountPreviews([]);
+      setTellerAccountSelections({});
+    }
+  };
 
   const handleAddAccount = async () => {
     if (!newAccountName.trim() || !newAccountUserId) return;
@@ -750,6 +868,71 @@ export const Settings: React.FC<SettingsProps> = ({
                   Manage your asset and liability accounts for net worth tracking.
                 </p>
 
+                {/* Teller Connect Section */}
+                {tellerConfig?.enabled && (
+                  <div className="mb-4 border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/20 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2">
+                        <LinkIcon size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">Connected Banks</p>
+                        {(tellerConfig.enrollments?.length ?? 0) > 0 && (
+                          <span className="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full font-medium">
+                            {tellerConfig.enrollments.length}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={connectWithTeller}
+                        disabled={tellerConnecting}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        <LinkIcon size={12} />
+                        {tellerConnecting ? 'Connecting...' : (tellerConfig.enrollments?.length ?? 0) > 0 ? 'Connect Another' : 'Connect Bank'}
+                      </button>
+                    </div>
+                    {(tellerConfig.enrollments?.length ?? 0) === 0 ? (
+                      <p className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">No banks connected yet. Connect your bank to auto-sync balances.</p>
+                    ) : (
+                      <div className="divide-y divide-blue-100 dark:divide-blue-900/40">
+                        {tellerConfig.enrollments.map(enrollment => (
+                          <div key={enrollment.enrollmentId} className="flex items-center justify-between px-4 py-2.5">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {enrollment.institutionName ?? 'Bank Account'}
+                              </p>
+                              {enrollment.connectedAt && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  Connected {new Date(enrollment.connectedAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm(`Disconnect ${enrollment.institutionName ?? 'this bank'}?`)) return;
+                                setTellerDisconnecting(enrollment.enrollmentId);
+                                try {
+                                  await LocalStorage.tellerDisconnect(enrollment.enrollmentId);
+                                  const updatedConfig = await LocalStorage.getTellerConfig();
+                                  setTellerConfig(updatedConfig);
+                                  toast.success('Bank disconnected', { position: 'bottom-right', autoClose: 3000 });
+                                } catch {
+                                  toast.error('Failed to disconnect bank', { position: 'bottom-right', autoClose: 3000 });
+                                } finally {
+                                  setTellerDisconnecting(null);
+                                }
+                              }}
+                              disabled={tellerDisconnecting === enrollment.enrollmentId}
+                              className="text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
+                            >
+                              {tellerDisconnecting === enrollment.enrollmentId ? 'Disconnecting...' : 'Disconnect'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Add New Account */}
                 <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Add New Account</h4>
@@ -826,6 +1009,9 @@ export const Settings: React.FC<SettingsProps> = ({
                       const typeColor = account.type === 'asset'
                         ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400';
+                      const linkedEnrollment = account.tellerEnrollmentId
+                        ? tellerConfig?.enrollments?.find(e => e.enrollmentId === account.tellerEnrollmentId)
+                        : null;
                       return (
                         <div key={account.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           {editingAccountId === account.id ? (
@@ -878,10 +1064,21 @@ export const Settings: React.FC<SettingsProps> = ({
                             <>
                               <div className="flex-1 min-w-0">
                                 <span className="font-medium text-gray-900 dark:text-white text-sm">{account.name}</span>
-                                <div className="text-xs mt-0.5 flex items-center gap-2">
+                                <div className="text-xs mt-0.5 flex items-center gap-2 flex-wrap">
                                   <span className={`font-medium ${typeColor}`}>{account.type === 'asset' ? 'Asset' : 'Liability'}</span>
                                   <span className="text-gray-400 dark:text-gray-500">•</span>
                                   <span className="text-gray-500 dark:text-gray-400">{userName}</span>
+                                  <span className="text-gray-400 dark:text-gray-500">•</span>
+                                  {linkedEnrollment ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-medium">
+                                      <LinkIcon size={10} />
+                                      {linkedEnrollment.institutionName ?? 'Teller'}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium">
+                                      Manual
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 ml-2">
@@ -1099,13 +1296,183 @@ export const Settings: React.FC<SettingsProps> = ({
       </div>
   );
 
+  // Teller account selection modal — shown after Teller Connect succeeds and accounts are loaded
+  const tellerAccountModal = (pendingTellerEnrollment || tellerPreviewLoading) && (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-800 flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              {pendingTellerEnrollment?.institutionName
+                ? `Accounts from ${pendingTellerEnrollment.institutionName}`
+                : 'Select Accounts'}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Choose which accounts to add and set an alias for each.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setPendingTellerEnrollment(null);
+              setPendingTellerUserId('');
+              setTellerAccountPreviews([]);
+              setTellerAccountSelections({});
+            }}
+            disabled={tellerEnrolling}
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-40"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* User selector */}
+        {!tellerPreviewLoading && users.length > 1 && (
+          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Assign to</label>
+            <select
+              value={pendingTellerUserId}
+              onChange={e => setPendingTellerUserId(e.target.value)}
+              className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Account list */}
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+          {tellerPreviewLoading ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">Loading accounts...</p>
+          ) : tellerAccountPreviews.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No accounts found.</p>
+          ) : (
+            tellerAccountPreviews.map(acct => {
+              const sel = tellerAccountSelections[acct.id];
+              if (!sel) return null;
+              const subtypeLabel = acct.subtype ? acct.subtype.replace(/_/g, ' ') : acct.type;
+              return (
+                <div
+                  key={acct.id}
+                  className={`rounded-lg border p-3 transition-colors ${
+                    sel.selected
+                      ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <input
+                      type="checkbox"
+                      id={`teller-acct-${acct.id}`}
+                      checked={sel.selected}
+                      onChange={e => setTellerAccountSelections(prev => ({
+                        ...prev,
+                        [acct.id]: { ...prev[acct.id], selected: e.target.checked },
+                      }))}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor={`teller-acct-${acct.id}`} className="flex-1 cursor-pointer">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{acct.name}</span>
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 capitalize">{subtypeLabel}</span>
+                    </label>
+                  </div>
+                  {sel.selected && (
+                    <div className="ml-7 space-y-2">
+                      <input
+                        type="text"
+                        value={sel.alias}
+                        onChange={e => setTellerAccountSelections(prev => ({
+                          ...prev,
+                          [acct.id]: { ...prev[acct.id], alias: e.target.value },
+                        }))}
+                        placeholder="Alias (display name)"
+                        className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTellerAccountSelections(prev => ({
+                            ...prev,
+                            [acct.id]: { ...prev[acct.id], accountType: 'asset' },
+                          }))}
+                          className={`flex-1 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                            sel.accountType === 'asset'
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          Asset
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTellerAccountSelections(prev => ({
+                            ...prev,
+                            [acct.id]: { ...prev[acct.id], accountType: 'liability' },
+                          }))}
+                          className={`flex-1 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                            sel.accountType === 'liability'
+                              ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          Liability
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        {!tellerPreviewLoading && (
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setPendingTellerEnrollment(null);
+                setPendingTellerUserId('');
+                setTellerAccountPreviews([]);
+                setTellerAccountSelections({});
+              }}
+              disabled={tellerEnrolling}
+              className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmTellerAccounts}
+              disabled={tellerEnrolling || Object.values(tellerAccountSelections).every(s => !s.selected)}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              {tellerEnrolling
+                ? 'Adding...'
+                : `Add ${Object.values(tellerAccountSelections).filter(s => s.selected).length} Account${Object.values(tellerAccountSelections).filter(s => s.selected).length === 1 ? '' : 's'}`}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (asPage) {
-    return settingsContent;
+    return (
+      <>
+        {settingsContent}
+        {tellerAccountModal}
+      </>
+    );
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      {settingsContent}
-    </div>
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        {settingsContent}
+      </div>
+      {tellerAccountModal}
+    </>
   );
 }; 
