@@ -340,6 +340,24 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
 
   const netWorthColor = (summary?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
 
+  // Find the history entry closest to 1 month ago
+  const oneMonthAgoNetWorth = (() => {
+    if (history.length === 0) return null;
+    const target = new Date();
+    target.setMonth(target.getMonth() - 1);
+    const targetMs = target.getTime();
+    const closest = history.reduce((best, h) => {
+      const hMs = new Date(h.date).getTime();
+      const bestMs = new Date(best.date).getTime();
+      return Math.abs(hMs - targetMs) < Math.abs(bestMs - targetMs) ? h : best;
+    });
+    // Only use it if it's within 2 weeks of the target (avoid showing stale data)
+    const diffDays = Math.abs(new Date(closest.date).getTime() - targetMs) / (1000 * 60 * 60 * 24);
+    return diffDays <= 14 ? closest.netWorth : null;
+  })();
+
+  const netWorthChange = oneMonthAgoNetWorth !== null ? (summary?.netWorth ?? 0) - oneMonthAgoNetWorth : null;
+
   // Format chart dates for x-axis
   const chartData = history.map(h => ({
     ...h,
@@ -401,6 +419,17 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
           {/* Summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Net Worth</p>
+              <p className={`text-2xl font-bold ${netWorthColor}`}>
+                {formatCurrency(summary?.netWorth ?? 0)}
+              </p>
+              {netWorthChange !== null && (
+                <p className={`text-sm mt-1 font-medium ${netWorthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {netWorthChange >= 0 ? '+' : ''}{formatCurrency(netWorthChange)} vs 1mo ago
+                </p>
+              )}
+            </div>
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Assets</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {formatCurrency(summary?.totalAssets ?? 0)}
@@ -410,12 +439,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Liabilities</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {formatCurrency(summary?.totalLiabilities ?? 0)}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Net Worth</p>
-              <p className={`text-2xl font-bold ${netWorthColor}`}>
-                {formatCurrency(summary?.netWorth ?? 0)}
               </p>
             </div>
           </div>
