@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Trash2, X, ChevronDown, ChevronUp, History, ExternalLink, RefreshCw } from 'lucide-react';
+import { Trash2, X, ChevronDown, ChevronUp, History, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
@@ -122,6 +122,146 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
               className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Modal for bulk-updating balances across all manual accounts
+interface BulkBalanceModalProps {
+  accounts: Account[];
+  users: User[];
+  onClose: () => void;
+  onSave: (entries: { accountId: string; balance: number }[], date: string, note?: string) => void;
+}
+
+const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, onClose, onSave }) => {
+  const today = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState(today);
+  const [note, setNote] = useState('');
+  const [balances, setBalances] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      accounts.map(a => [
+        a.id,
+        a.currentBalance !== undefined && a.currentBalance !== 0
+          ? formatBalanceInput(a.currentBalance.toFixed(2))
+          : '',
+      ])
+    )
+  );
+
+  const handleBalanceChange = (accountId: string, value: string) => {
+    setBalances(prev => ({ ...prev, [accountId]: formatBalanceInput(value) }));
+  };
+
+  const entries = accounts
+    .map(a => ({ accountId: a.id, raw: balances[a.id] ?? '' }))
+    .filter(e => e.raw.trim() !== '')
+    .map(e => ({ accountId: e.accountId, balance: parseFloat(e.raw.replace(/,/g, '')) }))
+    .filter(e => !isNaN(e.balance));
+
+  const anyInvalid = accounts.some(a => {
+    const raw = (balances[a.id] ?? '').trim();
+    if (raw === '') return false;
+    return isNaN(parseFloat(raw.replace(/,/g, '')));
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (entries.length === 0 || anyInvalid || !date) return;
+    onSave(entries, date, note.trim() || undefined);
+  };
+
+  // Group accounts by user, preserving user order
+  const userGroups = users
+    .map(u => ({ user: u, accounts: accounts.filter(a => a.userId === u.id) }))
+    .filter(g => g.accounts.length > 0);
+  const showUserHeaders = userGroups.length > 1;
+
+  const AccountRow = ({ account }: { account: Account }) => (
+    <div className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{account.name}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">{account.type === 'asset' ? 'Asset' : 'Liability'}</span>
+      </div>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={balances[account.id] ?? ''}
+        onChange={e => handleBalanceChange(account.id, e.target.value)}
+        placeholder="skip"
+        className="w-36 px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Update All Balances</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          {/* Date + Note */}
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Note</label>
+              <input
+                type="text"
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="optional"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Account rows, scrollable */}
+          <div className="flex-1 overflow-y-auto px-6 py-2">
+            {showUserHeaders ? (
+              userGroups.map(({ user, accounts: groupAccounts }) => (
+                <div key={user.id} className="mb-4 last:mb-0">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">{user.name}</p>
+                  {groupAccounts.map(account => <AccountRow key={account.id} account={account} />)}
+                </div>
+              ))
+            ) : (
+              accounts.map(account => <AccountRow key={account.id} account={account} />)
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={entries.length === 0 || anyInvalid || !date}
+              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {entries.length > 0 ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}` : 'Save'}
             </button>
           </div>
         </form>
@@ -268,6 +408,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const [refreshing, setRefreshing] = useState(false);
 
   const [balanceAccount, setBalanceAccount] = useState<Account | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -338,6 +479,33 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     }
   };
 
+  const handleBulkSave = async (
+    entries: { accountId: string; balance: number }[],
+    date: string,
+    note?: string
+  ) => {
+    await Promise.all(
+      entries.map(({ accountId, balance }) =>
+        LocalStorage.addAccountBalance(accountId, {
+          id: generateId(),
+          accountId,
+          balance,
+          date,
+          note,
+          createdAt: new Date().toISOString(),
+        })
+      )
+    );
+    setShowBulkModal(false);
+    await loadData();
+    toast.success(`Updated ${entries.length} account balance${entries.length !== 1 ? 's' : ''}`, {
+      position: 'bottom-right',
+      autoClose: 3000,
+    });
+  };
+
+  const manualAccounts = accounts.filter(a => !a.tellerAccountId);
+
   const netWorthColor = (summary?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
 
   // Find the history entry closest to 1 month ago
@@ -402,20 +570,20 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
             <button
               onClick={handleRefreshBalances}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
             >
               <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               Refresh Balances
             </button>
           )}
-          <button
-            onClick={() => navigate('/settings?section=accounts')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            title="Go to Settings to manage accounts"
-          >
-            Manage Accounts
-            <ExternalLink size={14} className="opacity-70" />
-          </button>
+          {manualAccounts.length >= 2 && (
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+            >
+              Update All
+            </button>
+          )}
         </div>
       </div>
 
@@ -584,6 +752,16 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
           account={balanceAccount}
           onClose={() => setBalanceAccount(null)}
           onSave={handleAddBalance}
+        />
+      )}
+
+      {/* Bulk Balance Modal */}
+      {showBulkModal && (
+        <BulkBalanceModal
+          accounts={manualAccounts}
+          users={users}
+          onClose={() => setShowBulkModal(false)}
+          onSave={handleBulkSave}
         />
       )}
     </div>
