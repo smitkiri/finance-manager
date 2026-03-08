@@ -3,51 +3,45 @@ const router = express.Router();
 const db = require('../database');
 const { detectTransfers } = require('../helpers/transferDetection');
 
-router.delete('/delete-all', async (req, res) => {
+router.get('/import-sessions', async (req, res) => {
   try {
-    await db.query('DELETE FROM transactions');
-    await db.query('DELETE FROM sources');
-    res.json({ success: true });
+    // Clean up sessions older than 6 months (FK ON DELETE SET NULL handles orphan transactions)
+    await db.query(`DELETE FROM import_sessions WHERE created_at < NOW() - INTERVAL '6 months'`);
+
+    const result = await db.query(
+      `SELECT id, created_at, user_id, source_id, source_name, file_name, transaction_count
+       FROM import_sessions
+       ORDER BY created_at DESC`
+    );
+
+    const sessions = result.rows.map(row => ({
+      id: row.id,
+      createdAt: row.created_at,
+      userId: row.user_id,
+      sourceId: row.source_id,
+      sourceName: row.source_name,
+      fileName: row.file_name,
+      transactionCount: row.transaction_count
+    }));
+
+    res.json(sessions);
   } catch (error) {
-    console.error('Error deleting all data:', error);
-    res.status(500).json({ error: 'Failed to delete all data' });
+    console.error('Error loading import sessions:', error);
+    res.status(500).json({ error: 'Failed to load import sessions' });
   }
 });
 
-router.post('/delete-selected', async (req, res) => {
+router.delete('/import-sessions/:id', async (req, res) => {
   try {
-    const { deleteTransactions, deleteSources, sourceIds } = req.body;
-
-    if (deleteTransactions) {
-      await db.query('DELETE FROM transactions');
-    }
-
-    if (deleteSources && Array.isArray(sourceIds) && sourceIds.length > 0) {
-      await db.query('DELETE FROM sources WHERE id = ANY($1)', [sourceIds]);
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting selected data:', error);
-    res.status(500).json({ error: 'Failed to delete selected data' });
-  }
-});
-
-router.post('/undo-import', async (req, res) => {
-  try {
-    const { sessionId } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId is required' });
-    }
+    const { id } = req.params;
 
     const deletedResult = await db.query(
       'DELETE FROM transactions WHERE import_id = $1 RETURNING id',
-      [sessionId]
+      [id]
     );
     const removed = deletedResult.rows.length;
 
-    await db.query('DELETE FROM import_sessions WHERE id = $1', [sessionId]);
+    await db.query('DELETE FROM import_sessions WHERE id = $1', [id]);
 
     // Re-run transfer detection on remaining transactions
     const remaining = await db.query('SELECT * FROM transactions');
@@ -83,8 +77,8 @@ router.post('/undo-import', async (req, res) => {
 
     res.json({ success: true, removed });
   } catch (error) {
-    console.error('Error undoing import:', error);
-    res.status(500).json({ error: 'Failed to undo import' });
+    console.error('Error undoing import session:', error);
+    res.status(500).json({ error: 'Failed to undo import session' });
   }
 });
 

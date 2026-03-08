@@ -8,7 +8,7 @@ const { getFilePath, ensureArtifactsDir } = require('../helpers/fileUtils');
 
 router.post('/import-csv', async (req, res) => {
   try {
-    const { csvText } = req.body;
+    const { csvText, fileName, userId } = req.body;
 
     const expenses = parseCSV(csvText);
 
@@ -24,23 +24,33 @@ router.post('/import-csv', async (req, res) => {
       labels: row.labels || [],
       metadata: row.metadata || {},
       transferInfo: row.transfer_info,
-      excludedFromCalculations: row.excluded_from_calculations
+      excludedFromCalculations: row.excluded_from_calculations,
+      importId: row.import_id || null
     }));
 
-    const mergedExpenses = mergeExpenses(existingExpenses, expenses);
+    const { merged: mergedExpenses, added: addedExpenses } = mergeExpenses(existingExpenses, expenses);
+
+    const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const addedIds = new Set(addedExpenses.map(e => e.id));
 
     const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
 
     const client = await db.beginTransaction();
     try {
+      await client.query(
+        `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [sessionId, userId || null, null, 'Manual Import', fileName || null, addedExpenses.length]
+      );
+
       await client.query('DELETE FROM transactions');
 
       for (const expense of updatedTransactions) {
         await client.query(
           `INSERT INTO transactions (
             id, date, description, category, amount, type, user_id,
-            labels, metadata, transfer_info, excluded_from_calculations
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            labels, metadata, transfer_info, excluded_from_calculations, import_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             expense.id,
             expense.date,
@@ -52,7 +62,8 @@ router.post('/import-csv', async (req, res) => {
             JSON.stringify(expense.labels || []),
             JSON.stringify(expense.metadata || {}),
             expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
-            expense.excludedFromCalculations || false
+            expense.excludedFromCalculations || false,
+            addedIds.has(expense.id) ? sessionId : (expense.importId || null)
           ]
         );
       }
@@ -66,8 +77,10 @@ router.post('/import-csv', async (req, res) => {
     res.json({
       success: true,
       imported: expenses.length,
+      added: addedExpenses.length,
       total: updatedTransactions.length,
-      transfersDetected: transfers.length
+      transfersDetected: transfers.length,
+      sessionId
     });
   } catch (error) {
     console.error('Error importing CSV:', error);
@@ -153,7 +166,7 @@ router.post('/column-mappings', (req, res) => {
 
 router.post('/import-with-mapping', async (req, res) => {
   try {
-    const { csvText, mapping, userId } = req.body;
+    const { csvText, mapping, userId, fileName } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -171,25 +184,35 @@ router.post('/import-with-mapping', async (req, res) => {
       labels: row.labels || [],
       metadata: row.metadata || {},
       transferInfo: row.transfer_info,
-      excludedFromCalculations: row.excluded_from_calculations
+      excludedFromCalculations: row.excluded_from_calculations,
+      importId: row.import_id || null
     }));
 
     const { expenses, autoFilledCategories } = parseCSVWithMapping(csvText, mapping, userId, existingExpenses);
 
-    const mergedExpenses = mergeExpenses(existingExpenses, expenses);
+    const { merged: mergedExpenses, added: addedExpenses } = mergeExpenses(existingExpenses, expenses);
+
+    const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const addedIds = new Set(addedExpenses.map(e => e.id));
 
     const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
 
     const client = await db.beginTransaction();
     try {
+      await client.query(
+        `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [sessionId, userId || null, mapping?.id || null, mapping?.name || 'Manual Import', fileName || null, addedExpenses.length]
+      );
+
       await client.query('DELETE FROM transactions');
 
       for (const expense of updatedTransactions) {
         await client.query(
           `INSERT INTO transactions (
             id, date, description, category, amount, type, user_id,
-            labels, metadata, transfer_info, excluded_from_calculations
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            labels, metadata, transfer_info, excluded_from_calculations, import_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             expense.id,
             expense.date,
@@ -201,7 +224,8 @@ router.post('/import-with-mapping', async (req, res) => {
             JSON.stringify(expense.labels || []),
             JSON.stringify(expense.metadata || {}),
             expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
-            expense.excludedFromCalculations || false
+            expense.excludedFromCalculations || false,
+            addedIds.has(expense.id) ? sessionId : (expense.importId || null)
           ]
         );
       }
@@ -215,9 +239,11 @@ router.post('/import-with-mapping', async (req, res) => {
     res.json({
       success: true,
       imported: expenses.length,
+      added: addedExpenses.length,
       total: updatedTransactions.length,
       transfersDetected: transfers.length,
-      autoFilledCategories
+      autoFilledCategories,
+      sessionId
     });
   } catch (error) {
     console.error('Error importing CSV with mapping:', error);

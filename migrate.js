@@ -429,6 +429,42 @@ const addTellerEnrollmentId = async () => {
 };
 
 /**
+ * Add import_sessions table and import_id column to transactions
+ */
+const addImportSessionsTable = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_import_sessions']
+  );
+  if (alreadyRun.rows.length > 0) {
+    console.log('Import sessions migration already completed, skipping...');
+    return;
+  }
+
+  console.log('Creating import_sessions table...');
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS import_sessions (
+      id          VARCHAR(255) PRIMARY KEY,
+      created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      user_id     VARCHAR(255),
+      source_id   VARCHAR(255),
+      source_name VARCHAR(255) NOT NULL,
+      file_name   VARCHAR(255),
+      transaction_count INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_import_sessions_created_at ON import_sessions(created_at DESC)`);
+  await db.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS import_id VARCHAR(255) REFERENCES import_sessions(id) ON DELETE SET NULL`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_transactions_import_id ON transactions(import_id)`);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_import_sessions']
+  );
+  console.log('Import sessions table created successfully');
+};
+
+/**
  * Add teller_account_id column to accounts table
  */
 const addTellerAccountId = async () => {
@@ -495,6 +531,7 @@ const runMigration = async () => {
     await addNetWorthTables();
     await addTellerAccountId();
     await addTellerEnrollmentId();
+    await addImportSessionsTable();
 
     console.log('\nAll migrations completed successfully!');
     

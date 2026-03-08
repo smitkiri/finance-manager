@@ -20,6 +20,7 @@ export interface Expense {
     userOverride?: boolean;
   };
   excludedFromCalculations?: boolean;
+  importId?: string | null;
 }
 
 export interface User {
@@ -163,6 +164,16 @@ export interface NetWorthHistory {
   totalAssets: number;
   totalLiabilities: number;
   netWorth: number;
+}
+
+export interface ImportSession {
+  id: string;
+  createdAt: string;
+  userId: string | null;
+  sourceId: string | null;
+  sourceName: string;
+  fileName: string | null;
+  transactionCount: number;
 }
 
 export interface ReportData {

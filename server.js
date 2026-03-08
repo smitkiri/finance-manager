@@ -35,6 +35,7 @@ app.use('/api', require('./routes/dateRange'));
 app.use('/api', require('./routes/transfers'));
 app.use('/api', require('./routes/backup'));
 app.use('/api', require('./routes/data'));
+app.use('/api', require('./routes/importSessions'));
 app.use('/api', require('./routes/netWorth'));
 app.use('/api', require('./routes/teller'));
 

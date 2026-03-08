@@ -1,4 +1,4 @@
-import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory } from '../types';
+import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory, ImportSession } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -153,14 +153,14 @@ export class LocalStorage {
     }
   }
 
-  static async importCSVData(csvText: string): Promise<Expense[]> {
+  static async importCSVData(csvText: string, fileName?: string): Promise<{ expenses: Expense[]; sessionId?: string }> {
     try {
       const response = await fetch(`${this.API_BASE}/import-csv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ csvText }),
+        body: JSON.stringify({ csvText, fileName }),
       });
 
       if (!response.ok) {
@@ -169,13 +169,33 @@ export class LocalStorage {
 
       const result = await response.json();
       console.log(`Imported ${result.imported} new expenses, total: ${result.total}`);
-      
+
       // Reload all expenses after import
-      return await this.loadExpenses();
+      const expenses = await this.loadExpenses();
+      return { expenses, sessionId: result.sessionId };
     } catch (error) {
       console.error('Error importing CSV data:', error);
       throw error;
     }
+  }
+
+  static async loadImportSessions(): Promise<ImportSession[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/import-sessions`);
+      if (!response.ok) throw new Error('Failed to load import sessions');
+      return response.json();
+    } catch (error) {
+      console.error('Error loading import sessions:', error);
+      return [];
+    }
+  }
+
+  static async undoImportSession(sessionId: string): Promise<{ removed: number }> {
+    const response = await fetch(`${this.API_BASE}/import-sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Failed to undo import session');
+    return response.json();
   }
 
   static async addExpense(expense: Expense): Promise<Expense[]> {

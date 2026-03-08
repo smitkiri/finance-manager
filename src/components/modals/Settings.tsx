@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft, Link as LinkIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { User, Source, StandardizedColumn, Account } from '../../types';
+import { User, Source, StandardizedColumn, Account, ImportSession } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { BackupManager } from './BackupManager';
 
@@ -53,7 +53,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources' | 'users' | 'accounts'>('general');
+  const [activeSection, setActiveSection] = useState<'categories' | 'general' | 'sources' | 'users' | 'accounts' | 'imports'>('general');
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [showSelectDelete, setShowSelectDelete] = useState(false);
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
@@ -100,6 +100,12 @@ export const Settings: React.FC<SettingsProps> = ({
   const [editAccountName, setEditAccountName] = useState('');
   const [editAccountType, setEditAccountType] = useState<'asset' | 'liability'>('asset');
 
+  // Import sessions state
+  const [importSessions, setImportSessions] = useState<ImportSession[]>([]);
+  const [importSessionsLoading, setImportSessionsLoading] = useState(false);
+  const [undoingSessionId, setUndoingSessionId] = useState<string | null>(null);
+  const [confirmUndoSessionId, setConfirmUndoSessionId] = useState<string | null>(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -109,6 +115,16 @@ export const Settings: React.FC<SettingsProps> = ({
     const section = params.get('section');
     if (section === 'accounts') setActiveSection('accounts');
   }, [location.search]);
+
+  // Load import sessions when imports section becomes active
+  useEffect(() => {
+    if (activeSection !== 'imports') return;
+    setImportSessionsLoading(true);
+    LocalStorage.loadImportSessions().then(data => {
+      setImportSessions(data);
+      setImportSessionsLoading(false);
+    });
+  }, [activeSection]);
 
   // Load accounts and Teller config when accounts section becomes active
   useEffect(() => {
@@ -129,6 +145,21 @@ export const Settings: React.FC<SettingsProps> = ({
       setNewAccountUserId(users[0].id);
     }
   }, [users, newAccountUserId]);
+
+  const handleUndoImportSession = async (sessionId: string) => {
+    setUndoingSessionId(sessionId);
+    try {
+      const result = await LocalStorage.undoImportSession(sessionId);
+      setImportSessions(prev => prev.filter(s => s.id !== sessionId));
+      setConfirmUndoSessionId(null);
+      toast.success(`Removed ${result.removed} transactions`, { position: 'bottom-right', autoClose: 3000 });
+      onRefreshData();
+    } catch {
+      toast.error('Failed to undo import', { position: 'bottom-right', autoClose: 3000 });
+    } finally {
+      setUndoingSessionId(null);
+    }
+  };
 
   const connectWithTeller = () => {
     if (!tellerConfig?.applicationId) return;
@@ -522,6 +553,12 @@ export const Settings: React.FC<SettingsProps> = ({
             onClick={() => setActiveSection('accounts')}
           >
             Accounts
+          </button>
+          <button
+            className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'imports' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            onClick={() => setActiveSection('imports')}
+          >
+            Import History
           </button>
         </div>
         {/* Main Content */}
@@ -1351,6 +1388,66 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
                 )}
               </>
+            )}
+
+            {/* Import History Section */}
+            {activeSection === 'imports' && (
+              <div className="p-6 overflow-y-auto flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Import History</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                  View and undo past CSV imports. Sessions older than 6 months are automatically removed.
+                </p>
+                {importSessionsLoading ? (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading...</div>
+                ) : importSessions.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400 dark:text-gray-500">No import history found.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {importSessions.map(session => (
+                      <div key={session.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-white truncate">{session.sourceName}</p>
+                            {session.fileName && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{session.fileName}</p>
+                            )}
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              {new Date(session.createdAt).toLocaleString()} &middot; {session.transactionCount} transaction{session.transactionCount !== 1 ? 's' : ''} added
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0">
+                            {confirmUndoSessionId === session.id ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Confirm?</span>
+                                <button
+                                  onClick={() => handleUndoImportSession(session.id)}
+                                  disabled={undoingSessionId === session.id}
+                                  className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                                >
+                                  {undoingSessionId === session.id ? 'Undoing...' : 'Yes, Undo'}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmUndoSessionId(null)}
+                                  className="px-3 py-1.5 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmUndoSessionId(session.id)}
+                                className="px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                              >
+                                Undo
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

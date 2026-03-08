@@ -59,6 +59,7 @@ function parseCSVLine(line) {
 
 function mergeExpenses(existing, newExpenses) {
   const merged = [...existing];
+  const added = [];
 
   for (const newExpense of newExpenses) {
     const exists = merged.some(exp =>
@@ -70,10 +71,12 @@ function mergeExpenses(existing, newExpenses) {
 
     if (!exists) {
       merged.push(newExpense);
+      added.push(newExpense);
     }
   }
 
-  return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sorted = merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return { merged: sorted, added };
 }
 
 function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []) {

@@ -102,7 +102,8 @@ function rowToExpense(row) {
     labels: row.labels || [],
     metadata: row.metadata || {},
     transferInfo: row.transfer_info ? row.transfer_info : undefined,
-    excludedFromCalculations: row.excluded_from_calculations || false
+    excludedFromCalculations: row.excluded_from_calculations || false,
+    importId: row.import_id || null
   };
 }
 

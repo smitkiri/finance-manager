@@ -404,6 +404,7 @@ function AppContent() {
         const csvText = await getCSVTextFromFile();
         
         // Call backend API to import with source (which adds metadata and detects transfers)
+        const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
         const response = await fetch('http://localhost:3001/api/import-with-mapping', {
           method: 'POST',
           headers: {
@@ -412,7 +413,8 @@ function AppContent() {
           body: JSON.stringify({
             csvText,
             mapping: source,
-            userId
+            userId,
+            fileName: csvFile?.name
           }),
         });
 
@@ -421,14 +423,14 @@ function AppContent() {
         }
 
         const result = await response.json();
-        
+
         // Show toast notification for auto-filled categories
         if (result.autoFilledCategories && result.autoFilledCategories.length > 0) {
           const count = result.autoFilledCategories.length;
-          const message = count === 1 
+          const message = count === 1
             ? `1 category was auto-filled: ${result.autoFilledCategories[0].suggestedCategory}`
             : `${count} categories were auto-filled based on similar transactions`;
-          
+
           toast.success(message, {
             position: "bottom-right",
             autoClose: 5000,
@@ -438,14 +440,14 @@ function AppContent() {
             draggable: true,
           });
         }
-        
+
         // Show import success toast with undo button
-        const importTime = new Date().toISOString();
+        const sessionId = result.sessionId;
         toast.success(
           <div>
             <div>Successfully imported {result.imported} transactions</div>
-            <button 
-              onClick={() => handleUndoImport(source.name, importTime)}
+            <button
+              onClick={() => handleUndoImport(sessionId)}
               className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
             >
               Undo Import
@@ -484,6 +486,7 @@ function AppContent() {
   const handleImportWithSource = async (source: Source, userId: string) => {
     try {
       const csvText = await getCSVTextFromFile();
+      const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0];
       // Call backend API to import with source (which adds metadata)
       const response = await fetch('http://localhost:3001/api/import-with-mapping', {
         method: 'POST',
@@ -493,22 +496,23 @@ function AppContent() {
         body: JSON.stringify({
           csvText,
           mapping: source,
-          userId
+          userId,
+          fileName: csvFile?.name
         }),
       });
       if (!response.ok) {
         throw new Error('Failed to import CSV with source');
       }
-      
+
       const result = await response.json();
-      
+
       // Show toast notification for auto-filled categories
       if (result.autoFilledCategories && result.autoFilledCategories.length > 0) {
         const count = result.autoFilledCategories.length;
-        const message = count === 1 
+        const message = count === 1
           ? `1 category was auto-filled: ${result.autoFilledCategories[0].suggestedCategory}`
           : `${count} categories were auto-filled based on similar transactions`;
-        
+
         toast.success(message, {
           position: "bottom-right",
           autoClose: 5000,
@@ -518,14 +522,14 @@ function AppContent() {
           draggable: true,
         });
       }
-      
+
       // Show import success toast with undo button
-      const importTime = new Date().toISOString();
+      const sessionId = result.sessionId;
       toast.success(
         <div>
           <div>Successfully imported {result.imported} transactions</div>
-          <button 
-            onClick={() => handleUndoImport(source.name, importTime)}
+          <button
+            onClick={() => handleUndoImport(sessionId)}
             className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
           >
             Undo Import
@@ -560,17 +564,14 @@ function AppContent() {
     }
   };
 
-  const handleUndoImport = async (sourceName: string, importedAt: string) => {
+  const handleUndoImport = async (sessionId: string) => {
     try {
       const response = await fetch('http://localhost:3001/api/undo-import', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sourceName,
-          importedAt
-        }),
+        body: JSON.stringify({ sessionId }),
       });
 
       if (!response.ok) {

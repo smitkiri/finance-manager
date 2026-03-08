@@ -374,6 +374,9 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     <p><span className="font-medium">Source ID:</span> {transaction.metadata.sourceId}</p>
                   )}
                   <p><span className="font-medium">Created at:</span> {formatDateTime(transaction.metadata.importedAt)}</p>
+                  {transaction.importId && (
+                    <p><span className="font-medium">Import ID:</span> {transaction.importId}</p>
+                  )}
                 </div>
               </div>
             )}
