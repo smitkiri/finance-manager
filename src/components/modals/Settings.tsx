@@ -87,6 +87,8 @@ export const Settings: React.FC<SettingsProps> = ({
   const [tellerPreviewLoading, setTellerPreviewLoading] = useState(false);
   const [tellerEnrolling, setTellerEnrolling] = useState(false);
   const [pendingTellerUserId, setPendingTellerUserId] = useState('');
+  const [managingEnrollmentId, setManagingEnrollmentId] = useState<string | null>(null);
+  const [alreadyAddedTellerAccountIds, setAlreadyAddedTellerAccountIds] = useState<Set<string>>(new Set());
 
   // Accounts state (self-managed)
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -182,45 +184,95 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
+  const closeTellerModal = () => {
+    setPendingTellerEnrollment(null);
+    setPendingTellerUserId('');
+    setTellerAccountPreviews([]);
+    setTellerAccountSelections({});
+    setManagingEnrollmentId(null);
+    setAlreadyAddedTellerAccountIds(new Set());
+  };
+
   const handleConfirmTellerAccounts = async () => {
     if (!pendingTellerEnrollment) return;
-    const selected = Object.entries(tellerAccountSelections)
-      .filter(([, v]) => v.selected)
+    const toAdd = Object.entries(tellerAccountSelections)
+      .filter(([id, v]) => v.selected && !alreadyAddedTellerAccountIds.has(id))
       .map(([tellerAccountId, v]) => ({
         tellerAccountId,
         alias: v.alias.trim() || (tellerAccountPreviews.find(a => a.id === tellerAccountId)?.name ?? tellerAccountId),
         accountType: v.accountType,
       }));
+    const toRemove = Array.from(alreadyAddedTellerAccountIds)
+      .filter(id => !tellerAccountSelections[id]?.selected);
 
     setTellerEnrolling(true);
     try {
-      await LocalStorage.tellerEnroll(
-        pendingTellerEnrollment.accessToken,
-        pendingTellerUserId,
-        pendingTellerEnrollment.enrollmentId,
-        pendingTellerEnrollment.institutionName,
-        selected
-      );
-      const [updatedConfig, updatedAccounts] = await Promise.all([
-        LocalStorage.getTellerConfig(),
-        LocalStorage.loadAccounts(),
-      ]);
-      setTellerConfig(updatedConfig);
-      setAccounts(updatedAccounts);
-      toast.success(
-        selected.length > 0
-          ? `Connected ${selected.length} account${selected.length === 1 ? '' : 's'}`
-          : 'Bank connected',
-        { position: 'bottom-right', autoClose: 3000 }
-      );
+      if (managingEnrollmentId) {
+        const result = await LocalStorage.tellerManageAccounts(managingEnrollmentId, pendingTellerUserId, toAdd, toRemove);
+        const updatedAccounts = await LocalStorage.loadAccounts();
+        setAccounts(updatedAccounts);
+        const parts = [];
+        if (result.added > 0) parts.push(`Added ${result.added} account${result.added === 1 ? '' : 's'}`);
+        if (result.removed > 0) parts.push(`Removed ${result.removed} account${result.removed === 1 ? '' : 's'}`);
+        toast.success(parts.join(', ') || 'No changes', { position: 'bottom-right', autoClose: 3000 });
+      } else {
+        await LocalStorage.tellerEnroll(
+          pendingTellerEnrollment.accessToken,
+          pendingTellerUserId,
+          pendingTellerEnrollment.enrollmentId,
+          pendingTellerEnrollment.institutionName,
+          toAdd
+        );
+        const [updatedConfig, updatedAccounts] = await Promise.all([
+          LocalStorage.getTellerConfig(),
+          LocalStorage.loadAccounts(),
+        ]);
+        setTellerConfig(updatedConfig);
+        setAccounts(updatedAccounts);
+        toast.success(
+          toAdd.length > 0
+            ? `Connected ${toAdd.length} account${toAdd.length === 1 ? '' : 's'}`
+            : 'Bank connected',
+          { position: 'bottom-right', autoClose: 3000 }
+        );
+      }
     } catch {
       toast.error('Failed to connect bank accounts', { position: 'bottom-right', autoClose: 3000 });
     } finally {
       setTellerEnrolling(false);
-      setPendingTellerEnrollment(null);
-      setPendingTellerUserId('');
-      setTellerAccountPreviews([]);
-      setTellerAccountSelections({});
+      closeTellerModal();
+    }
+  };
+
+  const handleAddAccountsToEnrollment = async (enrollment: { enrollmentId: string; institutionName?: string | null }) => {
+    setTellerPreviewLoading(true);
+    setManagingEnrollmentId(enrollment.enrollmentId);
+    try {
+      const accts = await LocalStorage.tellerPreviewEnrollmentAccounts(enrollment.enrollmentId);
+      const alreadyAdded = new Set(
+        accounts
+          .filter(a => a.tellerEnrollmentId === enrollment.enrollmentId && a.tellerAccountId)
+          .map(a => a.tellerAccountId!)
+      );
+      setAlreadyAddedTellerAccountIds(alreadyAdded);
+      const selections: typeof tellerAccountSelections = {};
+      for (const acct of accts) {
+        selections[acct.id] = {
+          selected: alreadyAdded.has(acct.id),
+          alias: acct.name,
+          accountType: acct.type === 'credit' ? 'liability' : 'asset',
+        };
+      }
+      const enrollmentAccount = accounts.find(a => a.tellerEnrollmentId === enrollment.enrollmentId);
+      setPendingTellerEnrollment({ accessToken: '', enrollmentId: enrollment.enrollmentId, institutionName: enrollment.institutionName ?? null });
+      setPendingTellerUserId(enrollmentAccount?.userId ?? newAccountUserId);
+      setTellerAccountPreviews(accts);
+      setTellerAccountSelections(selections);
+    } catch {
+      toast.error('Failed to fetch bank accounts', { position: 'bottom-right', autoClose: 3000 });
+      setManagingEnrollmentId(null);
+    } finally {
+      setTellerPreviewLoading(false);
     }
   };
 
@@ -906,26 +958,35 @@ export const Settings: React.FC<SettingsProps> = ({
                                 </p>
                               )}
                             </div>
-                            <button
-                              onClick={async () => {
-                                if (!window.confirm(`Disconnect ${enrollment.institutionName ?? 'this bank'}?`)) return;
-                                setTellerDisconnecting(enrollment.enrollmentId);
-                                try {
-                                  await LocalStorage.tellerDisconnect(enrollment.enrollmentId);
-                                  const updatedConfig = await LocalStorage.getTellerConfig();
-                                  setTellerConfig(updatedConfig);
-                                  toast.success('Bank disconnected', { position: 'bottom-right', autoClose: 3000 });
-                                } catch {
-                                  toast.error('Failed to disconnect bank', { position: 'bottom-right', autoClose: 3000 });
-                                } finally {
-                                  setTellerDisconnecting(null);
-                                }
-                              }}
-                              disabled={tellerDisconnecting === enrollment.enrollmentId}
-                              className="text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
-                            >
-                              {tellerDisconnecting === enrollment.enrollmentId ? 'Disconnecting...' : 'Disconnect'}
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => handleAddAccountsToEnrollment(enrollment)}
+                                disabled={!!tellerDisconnecting}
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                              >
+                                Manage Accounts
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm(`Disconnect ${enrollment.institutionName ?? 'this bank'}?`)) return;
+                                  setTellerDisconnecting(enrollment.enrollmentId);
+                                  try {
+                                    await LocalStorage.tellerDisconnect(enrollment.enrollmentId);
+                                    const updatedConfig = await LocalStorage.getTellerConfig();
+                                    setTellerConfig(updatedConfig);
+                                    toast.success('Bank disconnected', { position: 'bottom-right', autoClose: 3000 });
+                                  } catch {
+                                    toast.error('Failed to disconnect bank', { position: 'bottom-right', autoClose: 3000 });
+                                  } finally {
+                                    setTellerDisconnecting(null);
+                                  }
+                                }}
+                                disabled={tellerDisconnecting === enrollment.enrollmentId}
+                                className="text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
+                              >
+                                {tellerDisconnecting === enrollment.enrollmentId ? 'Disconnecting...' : 'Disconnect'}
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1304,21 +1365,20 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-              {pendingTellerEnrollment?.institutionName
-                ? `Accounts from ${pendingTellerEnrollment.institutionName}`
-                : 'Select Accounts'}
+              {managingEnrollmentId
+                ? `Manage accounts from ${pendingTellerEnrollment?.institutionName ?? 'Bank'}`
+                : pendingTellerEnrollment?.institutionName
+                  ? `Accounts from ${pendingTellerEnrollment.institutionName}`
+                  : 'Select Accounts'}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Choose which accounts to add and set an alias for each.
+              {managingEnrollmentId
+                ? 'Check to add accounts, uncheck to remove them and all their data.'
+                : 'Choose which accounts to add and set an alias for each.'}
             </p>
           </div>
           <button
-            onClick={() => {
-              setPendingTellerEnrollment(null);
-              setPendingTellerUserId('');
-              setTellerAccountPreviews([]);
-              setTellerAccountSelections({});
-            }}
+            onClick={closeTellerModal}
             disabled={tellerEnrolling}
             className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-40"
           >
@@ -1353,13 +1413,17 @@ export const Settings: React.FC<SettingsProps> = ({
               const sel = tellerAccountSelections[acct.id];
               if (!sel) return null;
               const subtypeLabel = acct.subtype ? acct.subtype.replace(/_/g, ' ') : acct.type;
+              const isAlreadyAdded = alreadyAddedTellerAccountIds.has(acct.id);
+              const markedForRemoval = isAlreadyAdded && !sel.selected;
               return (
                 <div
                   key={acct.id}
                   className={`rounded-lg border p-3 transition-colors ${
-                    sel.selected
-                      ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                    markedForRemoval
+                      ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/10'
+                      : sel.selected
+                        ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-2">
@@ -1376,6 +1440,8 @@ export const Settings: React.FC<SettingsProps> = ({
                     <label htmlFor={`teller-acct-${acct.id}`} className="flex-1 cursor-pointer">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">{acct.name}</span>
                       <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 capitalize">{subtypeLabel}</span>
+                      {isAlreadyAdded && sel.selected && <span className="ml-2 text-xs text-green-600 dark:text-green-400 font-medium">Added</span>}
+                      {markedForRemoval && <span className="ml-2 text-xs text-red-600 dark:text-red-400 font-medium">Will be removed</span>}
                     </label>
                   </div>
                   {sel.selected && (
@@ -1432,26 +1498,31 @@ export const Settings: React.FC<SettingsProps> = ({
         {!tellerPreviewLoading && (
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-3">
             <button
-              onClick={() => {
-                setPendingTellerEnrollment(null);
-                setPendingTellerUserId('');
-                setTellerAccountPreviews([]);
-                setTellerAccountSelections({});
-              }}
+              onClick={closeTellerModal}
               disabled={tellerEnrolling}
               className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
-            <button
-              onClick={handleConfirmTellerAccounts}
-              disabled={tellerEnrolling || Object.values(tellerAccountSelections).every(s => !s.selected)}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              {tellerEnrolling
-                ? 'Adding...'
-                : `Add ${Object.values(tellerAccountSelections).filter(s => s.selected).length} Account${Object.values(tellerAccountSelections).filter(s => s.selected).length === 1 ? '' : 's'}`}
-            </button>
+            {(() => {
+              const numToAdd = Object.entries(tellerAccountSelections)
+                .filter(([id, s]) => s.selected && !alreadyAddedTellerAccountIds.has(id)).length;
+              const numToRemove = Array.from(alreadyAddedTellerAccountIds)
+                .filter(id => !tellerAccountSelections[id]?.selected).length;
+              const hasChanges = numToAdd > 0 || numToRemove > 0;
+              const label = managingEnrollmentId
+                ? 'Apply Changes'
+                : `Add ${numToAdd} Account${numToAdd === 1 ? '' : 's'}`;
+              return (
+                <button
+                  onClick={handleConfirmTellerAccounts}
+                  disabled={tellerEnrolling || !hasChanges}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {tellerEnrolling ? 'Saving...' : label}
+                </button>
+              );
+            })()}
           </div>
         )}
       </div>

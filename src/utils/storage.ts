@@ -977,6 +977,27 @@ export class LocalStorage {
     if (!response.ok) throw new Error('Failed to enroll with Teller');
   }
 
+  static async tellerPreviewEnrollmentAccounts(enrollmentId: string): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
+    const response = await fetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/preview-accounts`);
+    if (!response.ok) throw new Error('Failed to fetch Teller accounts');
+    return response.json();
+  }
+
+  static async tellerManageAccounts(
+    enrollmentId: string,
+    userId: string,
+    toAdd: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>,
+    toRemove: string[]
+  ): Promise<{ added: number; removed: number }> {
+    const response = await fetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/manage-accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, toAdd, toRemove }),
+    });
+    if (!response.ok) throw new Error('Failed to manage accounts');
+    return response.json();
+  }
+
   static async tellerDisconnect(enrollmentId: string): Promise<void> {
     const response = await fetch(`${this.API_BASE}/teller/disconnect`, {
       method: 'POST',

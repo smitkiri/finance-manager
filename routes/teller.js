@@ -239,6 +239,94 @@ router.post('/teller/disconnect', async (req, res) => {
   }
 });
 
+// GET /api/teller/enrollments/:enrollmentId/preview-accounts
+// Fetches accounts from Teller for an already-enrolled institution using the stored access token.
+router.get('/teller/enrollments/:enrollmentId/preview-accounts', async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const enrollments = await readEnrollments();
+    const enrollment = enrollments.find(e => e.enrollmentId === enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+    const accountsResponse = await tellerRequest('/accounts', enrollment.accessToken);
+    if (accountsResponse.status !== 200) {
+      return res.status(502).json({ error: 'Failed to fetch accounts from Teller' });
+    }
+    const accounts = Array.isArray(accountsResponse.data) ? accountsResponse.data : [];
+    res.json(accounts.map(a => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      subtype: a.subtype,
+    })));
+  } catch (error) {
+    console.error('Error previewing accounts for enrollment:', error);
+    res.status(500).json({ error: 'Failed to preview accounts' });
+  }
+});
+
+// POST /api/teller/enrollments/:enrollmentId/manage-accounts
+// Adds new accounts and/or removes existing accounts for an enrollment.
+// toAdd: [{ tellerAccountId, alias, accountType }]
+// toRemove: [tellerAccountId, ...]  — deletes the account and all associated balances
+router.post('/teller/enrollments/:enrollmentId/manage-accounts', async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const { toAdd = [], toRemove = [], userId } = req.body;
+
+    const enrollments = await readEnrollments();
+    const enrollment = enrollments.find(e => e.enrollmentId === enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    // Resolve user for new accounts
+    let accountUserId = userId || null;
+    if (accountUserId) {
+      const userCheck = await db.query('SELECT id FROM users WHERE id = $1', [accountUserId]);
+      if (userCheck.rows.length === 0) accountUserId = null;
+    }
+    if (!accountUserId) {
+      const usersResult = await db.query('SELECT id FROM users ORDER BY created_at LIMIT 1');
+      accountUserId = usersResult.rows[0]?.id ?? 'default-user';
+    }
+
+    // Remove accounts (account_balances cascade via FK)
+    let removed = 0;
+    for (const tellerAccountId of toRemove) {
+      const result = await db.query(
+        'DELETE FROM accounts WHERE teller_account_id = $1 AND teller_enrollment_id = $2 RETURNING id',
+        [tellerAccountId, enrollmentId]
+      );
+      removed += result.rowCount;
+    }
+
+    // Add new accounts
+    let added = 0;
+    for (const acct of toAdd) {
+      const existing = await db.query(
+        'SELECT id FROM accounts WHERE teller_account_id = $1',
+        [acct.tellerAccountId]
+      );
+      if (existing.rows.length === 0) {
+        const accountId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        await db.query(
+          `INSERT INTO accounts (id, user_id, name, type, teller_account_id, teller_enrollment_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [accountId, accountUserId, acct.alias, acct.accountType, acct.tellerAccountId, enrollmentId]
+        );
+        added++;
+      }
+    }
+
+    res.json({ success: true, added, removed });
+  } catch (error) {
+    console.error('Error managing accounts for enrollment:', error);
+    res.status(500).json({ error: 'Failed to manage accounts' });
+  }
+});
+
 // POST /api/teller/refresh-balances
 // Only updates balances for accounts already linked via teller_account_id.
 // Does not auto-create new accounts — account selection happens at enrollment time.

@@ -136,6 +136,7 @@ export interface Account {
   userId: string;
   name: string;
   type: 'asset' | 'liability';
+  tellerAccountId?: string | null;
   tellerEnrollmentId?: string | null;
   createdAt: string;
   updatedAt: string;
