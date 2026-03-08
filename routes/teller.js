@@ -275,7 +275,12 @@ router.post('/teller/refresh-balances', async (req, res) => {
         if (balancesResponse.status !== 200) continue;
 
         const balanceData = balancesResponse.data;
-        const balance = parseFloat(balanceData.available ?? balanceData.ledger ?? 0);
+        // For credit accounts, `available` is remaining credit, not the amount owed.
+        // Use `ledger` (amount owed) for credit; `available` for everything else.
+        const isCreditAccount = tellerAccount.type === 'credit';
+        const balance = isCreditAccount
+          ? parseFloat(balanceData.ledger ?? balanceData.available ?? 0)
+          : parseFloat(balanceData.available ?? balanceData.ledger ?? 0);
 
         const balanceId = Date.now().toString(36) + Math.random().toString(36).slice(2);
         await db.query(
