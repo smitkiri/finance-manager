@@ -364,6 +364,15 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     dateLabel: new Date(h.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
   }));
 
+  // Only show one tick per unique month/year to avoid duplicate X axis labels
+  const chartTicks = chartData.reduce<string[]>((acc, d) => {
+    const lastLabel = acc.length > 0
+      ? new Date(acc[acc.length - 1]).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+      : null;
+    if (d.dateLabel !== lastLabel) acc.push(d.date);
+    return acc;
+  }, []);
+
   // When a single user is selected, show flat assets/liabilities lists.
   // When "All Users" is selected, group accounts per user.
   const userGroups: { user: User | null; assets: Account[]; liabilities: Account[] }[] =
@@ -452,6 +461,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                   <XAxis
                     dataKey="date"
+                    ticks={chartTicks}
                     tickFormatter={v => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })}
                     tick={{ fontSize: 12, fill: tickFill }}
                     stroke={gridStroke}
