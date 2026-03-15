@@ -188,7 +188,7 @@ export const Settings: React.FC<SettingsProps> = ({
       }
       const connect = tc.setup({
         applicationId: tellerConfig.applicationId,
-        products: ['balance'],
+        products: ['transactions', 'balance'],
         onSuccess: async ({ accessToken, enrollment }: any) => {
           setTellerConnecting(false);
           const institutionName = enrollment?.institution?.name ?? null;
@@ -245,6 +245,7 @@ export const Settings: React.FC<SettingsProps> = ({
         }
         const connect = tc.setup({
           applicationId: tellerConfig.applicationId,
+          products: ['transactions', 'balance'],
           token: currentToken,
           onSuccess: async ({ accessToken: newToken }: any) => {
             try {
