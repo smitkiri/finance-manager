@@ -286,6 +286,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                             className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           >
                             <option value="">Keep as new category</option>
+                            <option value="Uncategorized">Uncategorized</option>
                             {categories.filter(c => c !== 'Uncategorized').map(c => (
                               <option key={c} value={c}>{c}</option>
                             ))}
