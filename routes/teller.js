@@ -628,6 +628,7 @@ router.post('/teller/preview-import', async (req, res) => {
       return {
         accountId,
         accountName: account.name,
+        accountType: account.type, // 'asset' | 'liability'
         userId: account.user_id,
         tellerAccountId: account.teller_account_id,
         newTransactions: newTxs,
@@ -742,7 +743,11 @@ router.post('/teller/import-transactions', async (req, res) => {
             description,
             category,
             amount: Math.abs(parseFloat(tx.amount)),
-            type: tx.type === 'debit' ? 'expense' : 'income',
+            // Credit card (liability): Teller 'credit' = purchase (expense), 'debit' = payment (income)
+            // Depository/asset: Teller 'debit' = money out (expense), 'credit' = money in (income)
+            type: account.accountType === 'liability'
+              ? (tx.type === 'credit' ? 'expense' : 'income')
+              : (tx.type === 'debit' ? 'expense' : 'income'),
             user: account.userId,
             metadata: {
               tellerTransactionId: tx.id,
