@@ -1299,11 +1299,12 @@ export const Settings: React.FC<SettingsProps> = ({
                               onChange={e => setCategoryMappingEdits(prev => ({ ...prev, [m.tellerCategory]: e.target.value }))}
                               className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                             >
+                              <option value="Uncategorized">Uncategorized</option>
                               {categories.filter(c => c !== 'Uncategorized').map(c => (
                                 <option key={c} value={c}>{c}</option>
                               ))}
                               {/* Include the current mapped value even if it's no longer in categories */}
-                              {!categories.includes(m.userCategory) && (
+                              {!categories.includes(m.userCategory) && m.userCategory !== 'Uncategorized' && (
                                 <option value={m.userCategory}>{m.userCategory}</option>
                               )}
                             </select>
