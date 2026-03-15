@@ -1077,7 +1077,15 @@ export class LocalStorage {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accountIds, startDate, endDate }),
     });
-    if (!response.ok) throw new Error('Failed to preview Teller import');
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      if (body.error === 'reconnect_required' && Array.isArray(body.accounts)) {
+        const err = new Error('reconnect_required') as Error & { accounts: string[] };
+        err.accounts = body.accounts;
+        throw err;
+      }
+      throw new Error('Failed to preview Teller import');
+    }
     return response.json();
   }
 

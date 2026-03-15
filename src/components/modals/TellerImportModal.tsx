@@ -56,6 +56,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
   // Maps a new category name to '' (keep as-is) or an existing category name (remap)
   const [categoryChoices, setCategoryChoices] = useState<Record<string, string>>({});
   const [importSessions, setImportSessions] = useState<TellerImportResult[]>([]);
+  const [reconnectAccounts, setReconnectAccounts] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   function toggleAccount(id: string) {
@@ -94,8 +95,14 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
       for (const cat of incoming) choices[cat] = '';
       setCategoryChoices(choices);
       setStep(incoming.length > 0 ? 'category-review' : 'preview');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to preview import');
+    } catch (e: any) {
+      if (e?.message === 'reconnect_required' && Array.isArray(e.accounts)) {
+        setReconnectAccounts(e.accounts);
+        setError('');
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to preview import');
+        setReconnectAccounts([]);
+      }
       setStep('configure');
     }
   }
@@ -145,6 +152,14 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
 
         {/* Body */}
         <div className="p-6">
+          {reconnectAccounts.length > 0 && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
+              <p className="font-medium mb-1">The following account{reconnectAccounts.length !== 1 ? 's need' : ' needs'} to be reconnected in Settings before importing:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {reconnectAccounts.map(name => <li key={name}>{name}</li>)}
+              </ul>
+            </div>
+          )}
           {error && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
               {error}

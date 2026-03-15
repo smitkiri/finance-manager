@@ -579,7 +579,8 @@ router.post('/teller/preview-import', async (req, res) => {
       id: row.id, date: row.date, description: row.description, category: row.category,
     }));
 
-    // Fetch all accounts in parallel
+    // Fetch all accounts in parallel; collect reconnect-required accounts separately
+    const reconnectRequired = [];
     const previewAccounts = (await Promise.all(accountIds.map(async (accountId) => {
       const accountResult = await db.query(
         'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
@@ -591,12 +592,21 @@ router.post('/teller/preview-import', async (req, res) => {
       const enrollment = enrollments.find(e => e.enrollmentId === account.teller_enrollment_id);
       if (!enrollment) return null;
 
-      const transactions = await fetchTellerTransactionsInRange(
-        enrollment.accessToken,
-        account.teller_account_id,
-        startDate,
-        endDate
-      );
+      let transactions;
+      try {
+        transactions = await fetchTellerTransactionsInRange(
+          enrollment.accessToken,
+          account.teller_account_id,
+          startDate,
+          endDate
+        );
+      } catch (err) {
+        if (err.message.includes('404')) {
+          reconnectRequired.push(account.name);
+          return null;
+        }
+        throw err;
+      }
 
       const tellerIds = transactions.map(tx => tx.id);
       let existingIds = new Set();
@@ -621,6 +631,10 @@ router.post('/teller/preview-import', async (req, res) => {
         duplicateCount: dupTxs.length,
       };
     }))).filter(Boolean);
+
+    if (reconnectRequired.length > 0) {
+      return res.status(400).json({ error: 'reconnect_required', accounts: reconnectRequired });
+    }
 
     // Compute category for each new transaction and detect which categories are new to the user
     const categoryMap = {}; // txId -> computed category (after saved mappings)
