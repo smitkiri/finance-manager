@@ -542,6 +542,7 @@ router.post('/teller/preview-import', async (req, res) => {
     }));
 
     // Fetch all accounts in parallel
+    const accountErrors = [];
     const previewAccounts = (await Promise.all(accountIds.map(async (accountId) => {
       const accountResult = await db.query(
         'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
@@ -553,12 +554,19 @@ router.post('/teller/preview-import', async (req, res) => {
       const enrollment = enrollments.find(e => e.enrollmentId === account.teller_enrollment_id);
       if (!enrollment) return null;
 
-      const transactions = await fetchTellerTransactionsInRange(
-        enrollment.accessToken,
-        account.teller_account_id,
-        startDate,
-        endDate
-      );
+      let transactions;
+      try {
+        transactions = await fetchTellerTransactionsInRange(
+          enrollment.accessToken,
+          account.teller_account_id,
+          startDate,
+          endDate
+        );
+      } catch (err) {
+        console.error(`Skipping account ${account.name} (${account.teller_account_id}): ${err.message}`);
+        accountErrors.push({ accountName: account.name, error: err.message });
+        return null;
+      }
 
       const tellerIds = transactions.map(tx => tx.id);
       let existingIds = new Set();
@@ -622,6 +630,7 @@ router.post('/teller/preview-import', async (req, res) => {
         duplicateCount: a.duplicateCount,
       })),
       newCategories,
+      ...(accountErrors.length > 0 ? { accountErrors } : {}),
     });
   } catch (error) {
     console.error('Error previewing Teller import:', error);

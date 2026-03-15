@@ -1056,7 +1056,7 @@ export class LocalStorage {
     accountIds: string[],
     startDate: string,
     endDate: string
-  ): Promise<{ previewToken: string; accounts: import('../types').TellerImportPreviewAccount[]; newCategories: string[] }> {
+  ): Promise<{ previewToken: string; accounts: import('../types').TellerImportPreviewAccount[]; newCategories: string[]; accountErrors?: { accountName: string; error: string }[] }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

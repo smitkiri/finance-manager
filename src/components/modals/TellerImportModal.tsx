@@ -56,6 +56,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
   // Maps a new category name to '' (keep as-is) or an existing category name (remap)
   const [categoryChoices, setCategoryChoices] = useState<Record<string, string>>({});
   const [importSessions, setImportSessions] = useState<TellerImportResult[]>([]);
+  const [accountErrors, setAccountErrors] = useState<{ accountName: string; error: string }[]>([]);
   const [error, setError] = useState('');
 
   function toggleAccount(id: string) {
@@ -87,6 +88,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
       );
       setPreviewToken(result.previewToken);
       setPreviewAccounts(result.accounts);
+      setAccountErrors(result.accountErrors ?? []);
       const incoming = result.newCategories ?? [];
       setNewCategories(incoming);
       // Initialize choices: all set to '' (keep as-is)
@@ -324,6 +326,19 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                   </tbody>
                 </table>
               </div>
+
+              {accountErrors.length > 0 && (
+                <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                  <p className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                    Could not fetch transactions for {accountErrors.length} account{accountErrors.length !== 1 ? 's' : ''}:
+                  </p>
+                  <ul className="text-xs text-yellow-700 dark:text-yellow-400 space-y-0.5">
+                    {accountErrors.map(e => (
+                      <li key={e.accountName}>{e.accountName} — reconnect this account in Settings</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
                 {totalNew} new transaction{totalNew !== 1 ? 's' : ''} across {previewAccounts.filter(a => a.newCount > 0).length} account{previewAccounts.filter(a => a.newCount > 0).length !== 1 ? 's' : ''}
