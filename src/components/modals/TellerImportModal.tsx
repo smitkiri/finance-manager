@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { X, Building2, Loader2, CheckCircle2 } from 'lucide-react';
-import { Account, TellerImportPreviewAccount, TellerImportResult } from '../../types';
+import { Account, User, TellerImportPreviewAccount, TellerImportResult } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 
 interface Props {
   accounts: Account[];
+  users: User[];
   categories: string[];
   onClose: () => void;
   onImportComplete: (totalAdded: number) => void;
@@ -30,10 +31,15 @@ function getMonthOptions(): { label: string; start: string; end: string }[] {
   return options;
 }
 
-export function TellerImportModal({ accounts, categories, onClose, onImportComplete }: Props) {
+export function TellerImportModal({ accounts, users, categories, onClose, onImportComplete }: Props) {
   const tellerAccounts = useMemo(
     () => accounts.filter(a => a.tellerAccountId),
     [accounts]
+  );
+
+  const userMap = useMemo(
+    () => new Map(users.map(u => [u.id, u.name])),
+    [users]
   );
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
@@ -160,6 +166,9 @@ export function TellerImportModal({ accounts, categories, onClose, onImportCompl
                         className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600"
                       />
                       <span className="text-sm text-gray-800 dark:text-gray-200">{account.name}</span>
+                      {account.userId && userMap.has(account.userId) && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{userMap.get(account.userId)}</span>
+                      )}
                     </label>
                   ))}
                   {tellerAccounts.length === 0 && (

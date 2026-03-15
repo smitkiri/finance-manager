@@ -1095,6 +1095,7 @@ function AppContent() {
       {showTellerImport && (
         <TellerImportModal
           accounts={accounts}
+          users={users}
           categories={categories}
           onClose={() => setShowTellerImport(false)}
           onImportComplete={(totalAdded) => {
