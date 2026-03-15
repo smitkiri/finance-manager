@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft, Link as LinkIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { User, Source, StandardizedColumn, Account, ImportSession } from '../../types';
+import { User, Source, StandardizedColumn, Account, ImportSession, TellerCategoryMapping } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { BackupManager } from './BackupManager';
 
@@ -91,8 +91,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [alreadyAddedTellerAccountIds, setAlreadyAddedTellerAccountIds] = useState<Set<string>>(new Set());
 
   // Teller category mappings state
-  type CategoryMapping = { tellerCategory: string; userCategory: string; transactionCount: number };
-  const [categoryMappings, setCategoryMappings] = useState<CategoryMapping[]>([]);
+  const [categoryMappings, setCategoryMappings] = useState<TellerCategoryMapping[]>([]);
   const [categoryMappingEdits, setCategoryMappingEdits] = useState<Record<string, string>>({}); // tellerCategory -> edited userCategory
   const [savingCategoryMappings, setSavingCategoryMappings] = useState(false);
 
@@ -149,7 +148,7 @@ export const Settings: React.FC<SettingsProps> = ({
           const edits: Record<string, string> = {};
           for (const m of mappings) edits[m.tellerCategory] = m.userCategory;
           setCategoryMappingEdits(edits);
-        } catch { /* ignore */ }
+        } catch (err) { console.error('Failed to load Teller category mappings:', err); }
       }
     });
   }, [activeSection]);

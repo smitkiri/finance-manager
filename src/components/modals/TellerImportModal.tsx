@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { X, Building2, Loader2 } from 'lucide-react';
-import { Account, TellerImportPreviewAccount } from '../../types';
+import { X, Building2, Loader2, CheckCircle2 } from 'lucide-react';
+import { Account, TellerImportPreviewAccount, TellerImportResult } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   onImportComplete: (totalAdded: number) => void;
 }
 
-type Step = 'configure' | 'previewing' | 'category-review' | 'preview' | 'importing';
+type Step = 'configure' | 'previewing' | 'category-review' | 'preview' | 'importing' | 'done';
 type DateMode = 'month' | 'custom';
 
 function getMonthOptions(): { label: string; start: string; end: string }[] {
@@ -48,6 +48,7 @@ export function TellerImportModal({ accounts, categories, onClose, onImportCompl
   const [newCategories, setNewCategories] = useState<string[]>([]);
   // Maps a new category name to '' (keep as-is) or an existing category name (remap)
   const [categoryChoices, setCategoryChoices] = useState<Record<string, string>>({});
+  const [importSessions, setImportSessions] = useState<TellerImportResult[]>([]);
   const [error, setError] = useState('');
 
   function toggleAccount(id: string) {
@@ -103,8 +104,10 @@ export function TellerImportModal({ accounts, categories, onClose, onImportCompl
       }
       const result = await LocalStorage.tellerImportTransactions(previewToken, userMappings);
       const totalAdded = result.sessions.reduce((sum, s) => sum + s.added, 0);
+      setImportSessions(result.sessions);
+      // Notify parent first (triggers data refresh), then show done step
       onImportComplete(totalAdded);
-      onClose();
+      setStep('done');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to import transactions');
       setStep('preview');
@@ -337,6 +340,46 @@ export function TellerImportModal({ accounts, categories, onClose, onImportCompl
                   ) : (
                     <span>Import {totalNew} Transaction{totalNew !== 1 ? 's' : ''}</span>
                   )}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Step: done — per-account summary */}
+          {step === 'done' && (
+            <>
+              <div className="flex items-center space-x-2 mb-4">
+                <CheckCircle2 size={20} className="text-green-500 flex-shrink-0" />
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  Import complete
+                </p>
+              </div>
+              <div className="mb-5">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                      <th className="pb-2 font-medium">Account</th>
+                      <th className="pb-2 font-medium text-right">Added</th>
+                      <th className="pb-2 font-medium text-right">Skipped</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importSessions.map(s => (
+                      <tr key={s.sessionId} className="border-b border-gray-100 dark:border-gray-800">
+                        <td className="py-2 text-gray-800 dark:text-gray-200">{s.accountName}</td>
+                        <td className="py-2 text-right font-medium text-green-600 dark:text-green-400">{s.added}</td>
+                        <td className="py-2 text-right text-gray-500 dark:text-gray-400">{s.skipped}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  Close
                 </button>
               </div>
             </>

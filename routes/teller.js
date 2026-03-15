@@ -2,12 +2,15 @@ const express = require('express');
 const router = express.Router();
 const https = require('https');
 const fs = require('fs');
+const crypto = require('crypto');
 const db = require('../database');
 const { findSimilarTransactionCategory } = require('../helpers/categoryMatcher');
 const { detectTransfers } = require('../helpers/transferDetection');
 
+const UNCATEGORIZED = 'Uncategorized';
+
 const importPreviewCache = new Map();
-// { previewToken: { accounts: [...], expiresAt: timestamp } }
+// { previewToken: { accounts: [...], categoryMap: {...}, expiresAt: timestamp } }
 
 function cleanExpiredPreviews() {
   const now = Date.now();
@@ -481,10 +484,14 @@ router.put('/teller/category-mappings', async (req, res) => {
 async function fetchTellerTransactionsInRange(accessToken, tellerAccountId, startDate, endDate) {
   const transactions = [];
   let fromId = undefined;
+  // Teller returns transactions in reverse-chronological order (newest first).
+  // We rely on this ordering to break pagination early once we've passed startDate.
   while (true) {
     const path = `/accounts/${tellerAccountId}/transactions?count=100${fromId ? `&from_id=${fromId}` : ''}`;
     const response = await tellerRequest(path, accessToken);
-    if (response.status !== 200) break;
+    if (response.status !== 200) {
+      throw new Error(`Teller API error ${response.status} fetching transactions for account ${tellerAccountId}`);
+    }
     const batch = Array.isArray(response.data) ? response.data : [];
     for (const tx of batch) {
       if (tx.date < startDate) return transactions; // past range, stop
@@ -510,35 +517,38 @@ router.post('/teller/preview-import', async (req, res) => {
     return res.status(400).json({ error: 'startDate and endDate are required' });
   }
 
+  cleanExpiredPreviews();
+
   try {
     const enrollments = await readEnrollments();
 
-    // Load existing categories and saved Teller→user category mappings
-    const categoriesResult = await db.query('SELECT name FROM categories');
-    const existingCategoryNames = new Set(categoriesResult.rows.map(r => r.name));
-    existingCategoryNames.add('Uncategorized');
+    // Load existing categories, saved mappings, and existing transactions in parallel
+    const [categoriesResult, mappingsResult, existingTxResult] = await Promise.all([
+      db.query('SELECT name FROM categories'),
+      db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'"),
+      db.query('SELECT id, date, description, category FROM transactions'),
+    ]);
 
-    const mappingsResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+    const existingCategoryNames = new Set(categoriesResult.rows.map(r => r.name));
+    existingCategoryNames.add(UNCATEGORIZED);
+
     const savedMappings = mappingsResult.rows[0]?.value || {};
 
-    // Load existing transactions once for similarity matching
-    const existingTxResult = await db.query('SELECT id, date, description, category FROM transactions');
     const existingExpenses = existingTxResult.rows.map(row => ({
       id: row.id, date: row.date, description: row.description, category: row.category,
     }));
 
-    const previewAccounts = [];
-
-    for (const accountId of accountIds) {
+    // Fetch all accounts in parallel
+    const previewAccounts = (await Promise.all(accountIds.map(async (accountId) => {
       const accountResult = await db.query(
         'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
         [accountId]
       );
-      if (accountResult.rows.length === 0) continue;
+      if (accountResult.rows.length === 0) return null;
       const account = accountResult.rows[0];
 
       const enrollment = enrollments.find(e => e.enrollmentId === account.teller_enrollment_id);
-      if (!enrollment) continue;
+      if (!enrollment) return null;
 
       const transactions = await fetchTellerTransactionsInRange(
         enrollment.accessToken,
@@ -560,7 +570,7 @@ router.post('/teller/preview-import', async (req, res) => {
       const newTxs = transactions.filter(tx => !existingIds.has(tx.id));
       const dupTxs = transactions.filter(tx => existingIds.has(tx.id));
 
-      previewAccounts.push({
+      return {
         accountId,
         accountName: account.name,
         userId: account.user_id,
@@ -568,8 +578,8 @@ router.post('/teller/preview-import', async (req, res) => {
         newTransactions: newTxs,
         newCount: newTxs.length,
         duplicateCount: dupTxs.length,
-      });
-    }
+      };
+    }))).filter(Boolean);
 
     // Compute category for each new transaction and detect which categories are new to the user
     const categoryMap = {}; // txId -> computed category (after saved mappings)
@@ -584,7 +594,7 @@ router.post('/teller/preview-import', async (req, res) => {
           // Apply saved mappings first; otherwise keep Teller's category
           category = savedMappings[tellerCategory] || tellerCategory;
         } else {
-          category = findSimilarTransactionCategory(description, existingExpenses) || 'Uncategorized';
+          category = findSimilarTransactionCategory(description, existingExpenses) || UNCATEGORIZED;
         }
         categoryMap[tx.id] = category;
         allAssignedCategories.add(category);
@@ -593,7 +603,7 @@ router.post('/teller/preview-import', async (req, res) => {
 
     const newCategories = [...allAssignedCategories].filter(c => !existingCategoryNames.has(c));
 
-    const previewToken = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const previewToken = crypto.randomBytes(16).toString('hex');
     importPreviewCache.set(previewToken, {
       accounts: previewAccounts,
       categoryMap,
@@ -647,77 +657,80 @@ router.post('/teller/import-transactions', async (req, res) => {
     const sessions = [];
     const allNewExpenses = [];
 
-    for (const account of previewAccounts) {
-      if (account.newTransactions.length === 0) continue;
+    const client = await db.beginTransaction();
+    try {
+      for (const account of previewAccounts) {
+        if (account.newTransactions.length === 0) continue;
 
-      const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
 
-      await db.query(
-        `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [sessionId, account.userId || null, null, `Teller: ${account.accountName}`, null, account.newTransactions.length]
-      );
-
-      for (const tx of account.newTransactions) {
-        const description = tx.details?.counterparty?.name || tx.description;
-        // Use pre-computed category from preview, then apply any user mappings on top
-        const baseCategory = (categoryMap && categoryMap[tx.id]) || 'Uncategorized';
-        const category = userMappings[baseCategory] || baseCategory;
-
-        const expenseId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-        const expense = {
-          id: expenseId,
-          date: tx.date,
-          description,
-          category,
-          amount: Math.abs(parseFloat(tx.amount)),
-          type: tx.type === 'debit' ? 'expense' : 'income',
-          user: account.userId,
-          labels: [],
-          metadata: {
-            tellerTransactionId: tx.id,
-            sourceName: `Teller: ${account.accountName}`,
-            importedAt: new Date().toISOString(),
-            teller: { details: tx.details },
-          },
-          transferInfo: null,
-          excludedFromCalculations: false,
-          importId: sessionId,
-        };
-
-        await db.query(
-          `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations, import_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-          [
-            expense.id,
-            expense.date,
-            expense.description,
-            expense.category,
-            expense.amount,
-            expense.type,
-            expense.user,
-            JSON.stringify([]),
-            JSON.stringify(expense.metadata),
-            null,
-            false,
-            sessionId,
-          ]
+        await client.query(
+          `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [sessionId, account.userId || null, null, `Teller: ${account.accountName}`, null, account.newTransactions.length]
         );
 
-        allNewExpenses.push(expense);
-        existingExpenses.push(expense);
+        for (const tx of account.newTransactions) {
+          const description = tx.details?.counterparty?.name || tx.description;
+          // Use pre-computed category from preview, then apply any user mappings on top
+          const baseCategory = (categoryMap && categoryMap[tx.id]) || UNCATEGORIZED;
+          const category = userMappings[baseCategory] || baseCategory;
+
+          const expenseId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+          const expense = {
+            id: expenseId,
+            date: tx.date,
+            description,
+            category,
+            amount: Math.abs(parseFloat(tx.amount)),
+            type: tx.type === 'debit' ? 'expense' : 'income',
+            user: account.userId,
+            metadata: {
+              tellerTransactionId: tx.id,
+              sourceName: `Teller: ${account.accountName}`,
+              importedAt: new Date().toISOString(),
+              teller: { details: tx.details },
+            },
+          };
+
+          await client.query(
+            `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations, import_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            [
+              expense.id,
+              expense.date,
+              expense.description,
+              expense.category,
+              expense.amount,
+              expense.type,
+              expense.user,
+              JSON.stringify([]),
+              JSON.stringify(expense.metadata),
+              null,
+              false,
+              sessionId,
+            ]
+          );
+
+          allNewExpenses.push(expense);
+        }
+
+        sessions.push({
+          accountId: account.accountId,
+          accountName: account.accountName,
+          sessionId,
+          added: account.newTransactions.length,
+          skipped: account.duplicateCount,
+        });
       }
 
-      sessions.push({
-        accountId: account.accountId,
-        accountName: account.accountName,
-        sessionId,
-        added: account.newTransactions.length,
-        skipped: account.duplicateCount,
-      });
+      await db.commitTransaction(client);
+    } catch (txError) {
+      await db.rollbackTransaction(client);
+      throw txError;
     }
 
-    // Run transfer detection on all transactions
+    // Run transfer detection on all transactions (after successful commit)
     if (allNewExpenses.length > 0) {
       const allResult = await db.query('SELECT * FROM transactions');
       const allExpenses = allResult.rows.map(row => ({

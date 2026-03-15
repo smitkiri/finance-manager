@@ -176,6 +176,12 @@ export interface ImportSession {
   transactionCount: number;
 }
 
+export interface TellerCategoryMapping {
+  tellerCategory: string;
+  userCategory: string;
+  transactionCount: number;
+}
+
 export interface TellerImportPreviewAccount {
   accountId: string;
   accountName: string;
