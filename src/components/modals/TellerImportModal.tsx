@@ -88,6 +88,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
       );
       setPreviewToken(result.previewToken);
       setPreviewAccounts(result.accounts);
+      setReconnectAccounts([]);
       const incoming = result.newCategories ?? [];
       setNewCategories(incoming);
       // Initialize choices: all set to '' (keep as-is)
@@ -170,7 +171,24 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
           {(step === 'configure' || step === 'previewing') && (
             <>
               <div className="mb-5">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select accounts</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Select accounts</p>
+                  {tellerAccounts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedIds.size === tellerAccounts.length) {
+                          setSelectedIds(new Set());
+                        } else {
+                          setSelectedIds(new Set(tellerAccounts.map(a => a.id)));
+                        }
+                      }}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {selectedIds.size === tellerAccounts.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {tellerAccounts.map(account => (
                     <label key={account.id} className="flex items-center space-x-3 cursor-pointer">

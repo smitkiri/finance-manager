@@ -747,7 +747,7 @@ router.post('/teller/import-transactions', async (req, res) => {
         );
 
         for (const tx of account.newTransactions) {
-          const description = tx.details?.counterparty?.name || tx.description;
+          const description = tx.description || tx.details?.counterparty?.name;
           // Use pre-computed category from preview, then apply any user mappings on top
           const baseCategory = (categoryMap && categoryMap[tx.id]) || UNCATEGORIZED;
           const category = userMappings[baseCategory] || baseCategory;
