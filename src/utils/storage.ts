@@ -1102,7 +1102,7 @@ export class LocalStorage {
     return response.json();
   }
 
-  static async tellerRefreshBalances(): Promise<{ refreshed: number }> {
+  static async tellerRefreshBalances(): Promise<{ refreshed: number; reconnectRequired?: string[] }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/refresh-balances`, {
       method: 'POST',
     });

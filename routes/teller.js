@@ -393,12 +393,16 @@ router.post('/teller/refresh-balances', async (req, res) => {
 
     const today = new Date().toISOString().split('T')[0];
     let refreshed = 0;
+    const reconnectRequired = [];
 
     for (const enrollment of enrollments) {
       const { accessToken } = enrollment;
 
       const accountsResponse = await tellerRequest('/accounts', accessToken);
-      if (accountsResponse.status !== 200) continue;
+      if (accountsResponse.status !== 200) {
+        reconnectRequired.push(enrollment.institutionName || 'Bank Account');
+        continue;
+      }
 
       const tellerAccounts = Array.isArray(accountsResponse.data) ? accountsResponse.data : [];
 
@@ -434,7 +438,7 @@ router.post('/teller/refresh-balances', async (req, res) => {
       }
     }
 
-    res.json({ refreshed });
+    res.json({ refreshed, ...(reconnectRequired.length > 0 ? { reconnectRequired } : {}) });
   } catch (error) {
     console.error('Error refreshing Teller balances:', error);
     res.status(500).json({ error: 'Failed to refresh balances' });

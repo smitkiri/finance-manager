@@ -450,7 +450,17 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     setRefreshing(true);
     try {
       const result = await LocalStorage.tellerRefreshBalances();
-      toast.success(`Refreshed ${result.refreshed} account balances`, { position: 'bottom-right', autoClose: 3000 });
+      if (result.refreshed > 0) {
+        toast.success(`Refreshed ${result.refreshed} account balance${result.refreshed !== 1 ? 's' : ''}`, { position: 'bottom-right', autoClose: 3000 });
+      }
+      if (result.reconnectRequired && result.reconnectRequired.length > 0) {
+        toast.error(
+          `${result.reconnectRequired.join(', ')} need${result.reconnectRequired.length === 1 ? 's' : ''} to be reconnected in Settings`,
+          { position: 'bottom-right', autoClose: 6000 }
+        );
+      } else if (result.refreshed === 0) {
+        toast.success('Balances are up to date', { position: 'bottom-right', autoClose: 3000 });
+      }
       await loadData();
     } catch {
       toast.error('Failed to refresh balances', { position: 'bottom-right', autoClose: 3000 });
