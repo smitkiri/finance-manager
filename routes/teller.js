@@ -516,6 +516,9 @@ router.post('/teller/preview-import', async (req, res) => {
   if (!startDate || !endDate) {
     return res.status(400).json({ error: 'startDate and endDate are required' });
   }
+  if (startDate > endDate) {
+    return res.status(400).json({ error: 'startDate must be before endDate' });
+  }
 
   cleanExpiredPreviews();
 
@@ -526,7 +529,7 @@ router.post('/teller/preview-import', async (req, res) => {
     const [categoriesResult, mappingsResult, existingTxResult] = await Promise.all([
       db.query('SELECT name FROM categories'),
       db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'"),
-      db.query('SELECT id, date, description, category FROM transactions'),
+      db.query('SELECT id, date, description, category FROM transactions ORDER BY date DESC LIMIT 500'),
     ]);
 
     const existingCategoryNames = new Set(categoriesResult.rows.map(r => r.name));
@@ -662,7 +665,7 @@ router.post('/teller/import-transactions', async (req, res) => {
       for (const account of previewAccounts) {
         if (account.newTransactions.length === 0) continue;
 
-        const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        const sessionId = crypto.randomUUID();
 
         await client.query(
           `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
@@ -676,7 +679,7 @@ router.post('/teller/import-transactions', async (req, res) => {
           const baseCategory = (categoryMap && categoryMap[tx.id]) || UNCATEGORIZED;
           const category = userMappings[baseCategory] || baseCategory;
 
-          const expenseId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+          const expenseId = crypto.randomUUID();
           const expense = {
             id: expenseId,
             date: tx.date,
@@ -730,9 +733,17 @@ router.post('/teller/import-transactions', async (req, res) => {
       throw txError;
     }
 
-    // Run transfer detection on all transactions (after successful commit)
+    // Run transfer detection scoped to the import date window ± 3 days (after successful commit)
     if (allNewExpenses.length > 0) {
-      const allResult = await db.query('SELECT * FROM transactions');
+      const importDates = allNewExpenses.map(e => e.date).sort();
+      const windowStart = new Date(importDates[0]);
+      windowStart.setDate(windowStart.getDate() - 3);
+      const windowEnd = new Date(importDates[importDates.length - 1]);
+      windowEnd.setDate(windowEnd.getDate() + 3);
+      const allResult = await db.query(
+        'SELECT * FROM transactions WHERE date BETWEEN $1 AND $2',
+        [windowStart.toISOString().split('T')[0], windowEnd.toISOString().split('T')[0]]
+      );
       const allExpenses = allResult.rows.map(row => ({
         id: row.id,
         date: row.date,

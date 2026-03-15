@@ -13,6 +13,7 @@ interface Props {
 type Step = 'configure' | 'previewing' | 'category-review' | 'preview' | 'importing' | 'done';
 type DateMode = 'month' | 'custom';
 
+// Returns current month + 12 previous months (13 total)
 function getMonthOptions(): { label: string; start: string; end: string }[] {
   const options = [];
   const today = new Date();

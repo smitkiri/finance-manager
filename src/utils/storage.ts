@@ -17,7 +17,7 @@ export class LocalStorage {
 
   private static apiFetch(url: string, options?: RequestInit): Promise<Response> {
     const headers = {
-      'x-api-key': process.env.REACT_APP_API_SECRET || '',
+      ...(process.env.REACT_APP_API_SECRET ? { 'x-api-key': process.env.REACT_APP_API_SECRET } : {}),
       ...options?.headers,
     };
     return fetch(url, options ? { ...options, headers } : { headers });

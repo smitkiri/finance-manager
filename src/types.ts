@@ -11,6 +11,13 @@ export interface Expense {
     sourceId?: string;
     sourceName?: string;
     importedAt: string;
+    tellerTransactionId?: string;
+    teller?: {
+      details?: {
+        counterparty?: { name?: string };
+        category?: string;
+      };
+    };
   };
   transferInfo?: {
     isTransfer: boolean;
