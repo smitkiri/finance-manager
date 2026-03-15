@@ -71,7 +71,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [editUserName, setEditUserName] = useState('');
 
   // Teller state
-  const [tellerConfig, setTellerConfig] = useState<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string | null; connectedAt?: string | null }> } | null>(null);
+  const [tellerConfig, setTellerConfig] = useState<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string | null; connectedAt?: string | null; userId?: string | null }> } | null>(null);
   const [tellerConnecting, setTellerConnecting] = useState(false);
   const [tellerReconnecting, setTellerReconnecting] = useState<string | null>(null);
   const [tellerDisconnecting, setTellerDisconnecting] = useState<string | null>(null);
@@ -1052,11 +1052,14 @@ export const Settings: React.FC<SettingsProps> = ({
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
                                 {enrollment.institutionName ?? 'Bank Account'}
                               </p>
-                              {enrollment.connectedAt && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Connected {new Date(enrollment.connectedAt).toLocaleDateString()}
-                                </p>
-                              )}
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {enrollment.userId
+                                  ? (users.find(u => u.id === enrollment.userId)?.name ?? enrollment.userId)
+                                  : 'No user'}
+                                {enrollment.connectedAt && (
+                                  <> &middot; Connected {new Date(enrollment.connectedAt).toLocaleDateString()}</>
+                                )}
+                              </p>
                             </div>
                             <div className="flex items-center gap-3">
                               <button

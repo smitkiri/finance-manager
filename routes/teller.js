@@ -121,6 +121,7 @@ router.get('/teller/config', async (req, res) => {
         enrollmentId: e.enrollmentId,
         institutionName: e.institutionName || null,
         connectedAt: e.connectedAt || null,
+        userId: e.userId || null,
       })),
     });
   } catch (error) {
