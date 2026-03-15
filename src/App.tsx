@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { Plus, Upload, Sun, Moon } from 'lucide-react';
+import { Plus, Upload, Sun, Moon, Building2 } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User, DashboardStats } from './types';
+import { Expense, TransactionFormData, DateRange, CSVPreview, Source, User, DashboardStats, Account } from './types';
 import { NetWorth } from './components/networth/NetWorth';
 import { TransactionForm } from './components/transactions/TransactionForm';
 import { TransactionFiltersComponent, TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
@@ -18,6 +18,7 @@ import { LocalStorage } from './utils/storage';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
+import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
 import { ITEMS_PER_PAGE } from './constants';
 
@@ -52,6 +53,9 @@ function AppContent() {
   const [expensesLoading, setExpensesLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [dashboardStatsLoading, setDashboardStatsLoading] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [tellerEnabled, setTellerEnabled] = useState(false);
+  const [showTellerImport, setShowTellerImport] = useState(false);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -72,15 +76,19 @@ function AppContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedSources, loadedDateRange, loadedCategories, loadedUsers] = await Promise.all([
+        const [loadedSources, loadedDateRange, loadedCategories, loadedUsers, loadedAccounts, tellerConfig] = await Promise.all([
           LocalStorage.loadSources(),
           LocalStorage.loadDateRange(),
           LocalStorage.loadCategories(),
-          LocalStorage.loadUsers()
+          LocalStorage.loadUsers(),
+          LocalStorage.loadAccounts(),
+          LocalStorage.getTellerConfig()
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
         setUsers(loadedUsers);
+        setAccounts(loadedAccounts);
+        setTellerEnabled(tellerConfig.enabled);
         if (loadedDateRange) {
           setDateRange(loadedDateRange);
         }
@@ -922,6 +930,15 @@ function AppContent() {
               >
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
+              {tellerEnabled && accounts.some(a => a.tellerAccountId) && (
+                <button
+                  onClick={() => setShowTellerImport(true)}
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <Building2 size={16} />
+                  <span>Import from Bank</span>
+                </button>
+              )}
               <label className="cursor-pointer">
                 <input
                   type="file"
@@ -1071,6 +1088,23 @@ function AppContent() {
           onImportWithSource={handleImportWithSource}
           onDeleteSource={handleDeleteSource}
           users={users}
+        />
+      )}
+
+      {/* Teller Import Modal */}
+      {showTellerImport && (
+        <TellerImportModal
+          accounts={accounts}
+          users={users}
+          categories={categories}
+          onClose={() => setShowTellerImport(false)}
+          onImportComplete={(totalAdded) => {
+            bumpTransactionListVersion();
+            toast.success(`Imported ${totalAdded} transaction${totalAdded !== 1 ? 's' : ''} from bank`, {
+              position: 'bottom-right',
+              autoClose: 3000,
+            });
+          }}
         />
       )}
 

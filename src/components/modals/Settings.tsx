@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Edit, Trash2, Settings as SettingsIcon, Download, Save, ArrowRight, ArrowLeft, Link as LinkIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { User, Source, StandardizedColumn, Account, ImportSession } from '../../types';
+import { User, Source, StandardizedColumn, Account, ImportSession, TellerCategoryMapping } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { BackupManager } from './BackupManager';
 
@@ -73,6 +73,7 @@ export const Settings: React.FC<SettingsProps> = ({
   // Teller state
   const [tellerConfig, setTellerConfig] = useState<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string | null; connectedAt?: string | null }> } | null>(null);
   const [tellerConnecting, setTellerConnecting] = useState(false);
+  const [tellerReconnecting, setTellerReconnecting] = useState<string | null>(null);
   const [tellerDisconnecting, setTellerDisconnecting] = useState<string | null>(null);
   // Account selection modal state (shown after Teller Connect succeeds)
   const [pendingTellerEnrollment, setPendingTellerEnrollment] = useState<{
@@ -89,6 +90,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const [pendingTellerUserId, setPendingTellerUserId] = useState('');
   const [managingEnrollmentId, setManagingEnrollmentId] = useState<string | null>(null);
   const [alreadyAddedTellerAccountIds, setAlreadyAddedTellerAccountIds] = useState<Set<string>>(new Set());
+
+  // Teller category mappings state
+  const [categoryMappings, setCategoryMappings] = useState<TellerCategoryMapping[]>([]);
+  const [categoryMappingEdits, setCategoryMappingEdits] = useState<Record<string, string>>({}); // tellerCategory -> edited userCategory
+  const [savingCategoryMappings, setSavingCategoryMappings] = useState(false);
 
   // Accounts state (self-managed)
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -134,8 +140,17 @@ export const Settings: React.FC<SettingsProps> = ({
       setAccounts(data);
       setAccountsLoading(false);
     });
-    LocalStorage.getTellerConfig().then(config => {
+    LocalStorage.getTellerConfig().then(async config => {
       setTellerConfig(config);
+      if (config.enabled) {
+        try {
+          const { mappings } = await LocalStorage.getTellerCategoryMappings();
+          setCategoryMappings(mappings);
+          const edits: Record<string, string> = {};
+          for (const m of mappings) edits[m.tellerCategory] = m.userCategory;
+          setCategoryMappingEdits(edits);
+        } catch (err) { console.error('Failed to load Teller category mappings:', err); }
+      }
     });
   }, [activeSection]);
 
@@ -173,7 +188,7 @@ export const Settings: React.FC<SettingsProps> = ({
       }
       const connect = tc.setup({
         applicationId: tellerConfig.applicationId,
-        products: ['balance'],
+        products: ['transactions', 'balance'],
         onSuccess: async ({ accessToken, enrollment }: any) => {
           setTellerConnecting(false);
           const institutionName = enrollment?.institution?.name ?? null;
@@ -212,6 +227,54 @@ export const Settings: React.FC<SettingsProps> = ({
       document.head.appendChild(script);
     } else {
       setupConnect();
+    }
+  };
+
+  const handleReconnect = async (enrollment: { enrollmentId: string; institutionName?: string | null }) => {
+    if (!tellerConfig?.applicationId) return;
+    setTellerReconnecting(enrollment.enrollmentId);
+
+    try {
+      const { accessToken: currentToken } = await LocalStorage.getTellerEnrollmentToken(enrollment.enrollmentId);
+
+      const setupConnect = () => {
+        const tc = (window as any).TellerConnect;
+        if (!tc) {
+          setTimeout(setupConnect, 100);
+          return;
+        }
+        const connect = tc.setup({
+          applicationId: tellerConfig.applicationId,
+          products: ['transactions', 'balance'],
+          token: currentToken,
+          onSuccess: async ({ accessToken: newToken }: any) => {
+            try {
+              await LocalStorage.tellerUpdateEnrollmentToken(enrollment.enrollmentId, newToken);
+              toast.success(`${enrollment.institutionName ?? 'Bank'} reconnected`, { position: 'bottom-right', autoClose: 3000 });
+            } catch {
+              toast.error('Failed to save reconnected token', { position: 'bottom-right', autoClose: 3000 });
+            } finally {
+              setTellerReconnecting(null);
+            }
+          },
+          onExit: () => {
+            setTellerReconnecting(null);
+          },
+        });
+        connect.open();
+      };
+
+      if (!(window as any).TellerConnect) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.teller.io/connect/connect.js';
+        script.onload = setupConnect;
+        document.head.appendChild(script);
+      } else {
+        setupConnect();
+      }
+    } catch {
+      toast.error('Failed to initiate reconnect', { position: 'bottom-right', autoClose: 3000 });
+      setTellerReconnecting(null);
     }
   };
 
@@ -998,10 +1061,17 @@ export const Settings: React.FC<SettingsProps> = ({
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => handleAddAccountsToEnrollment(enrollment)}
-                                disabled={!!tellerDisconnecting}
+                                disabled={!!tellerDisconnecting || !!tellerReconnecting}
                                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
                               >
                                 Manage Accounts
+                              </button>
+                              <button
+                                onClick={() => handleReconnect(enrollment)}
+                                disabled={!!tellerDisconnecting || !!tellerReconnecting}
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                              >
+                                {tellerReconnecting === enrollment.enrollmentId ? 'Reconnecting...' : 'Reconnect'}
                               </button>
                               <button
                                 onClick={async () => {
@@ -1018,7 +1088,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     setTellerDisconnecting(null);
                                   }
                                 }}
-                                disabled={tellerDisconnecting === enrollment.enrollmentId}
+                                disabled={tellerDisconnecting === enrollment.enrollmentId || !!tellerReconnecting}
                                 className="text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
                               >
                                 {tellerDisconnecting === enrollment.enrollmentId ? 'Disconnecting...' : 'Disconnect'}
@@ -1202,6 +1272,78 @@ export const Settings: React.FC<SettingsProps> = ({
                     })}
                   </div>
                 )}
+              </div>
+            )}
+            {/* Teller Category Mappings — only shown when Teller is enabled and mappings exist */}
+            {activeSection === 'accounts' && tellerConfig?.enabled && categoryMappings.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Bank Category Mappings</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  These mappings are applied automatically when importing from your bank. Updating a mapping will immediately re-categorise all matching transactions.
+                </p>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-3">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr className="text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className="px-4 py-2 font-medium">Bank Category</th>
+                        <th className="px-4 py-2 font-medium">Mapped To</th>
+                        <th className="px-4 py-2 font-medium text-right">Transactions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {categoryMappings.map(m => (
+                        <tr key={m.tellerCategory}>
+                          <td className="px-4 py-2 text-gray-800 dark:text-gray-200 font-medium">{m.tellerCategory}</td>
+                          <td className="px-4 py-2">
+                            <select
+                              value={categoryMappingEdits[m.tellerCategory] ?? m.userCategory}
+                              onChange={e => setCategoryMappingEdits(prev => ({ ...prev, [m.tellerCategory]: e.target.value }))}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            >
+                              <option value="Uncategorized">Uncategorized</option>
+                              {categories.filter(c => c !== 'Uncategorized').map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                              {/* Include the current mapped value even if it's no longer in categories */}
+                              {!categories.includes(m.userCategory) && m.userCategory !== 'Uncategorized' && (
+                                <option value={m.userCategory}>{m.userCategory}</option>
+                              )}
+                            </select>
+                          </td>
+                          <td className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">{m.transactionCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  disabled={savingCategoryMappings}
+                  onClick={async () => {
+                    setSavingCategoryMappings(true);
+                    try {
+                      const updated = categoryMappings.map(m => ({
+                        tellerCategory: m.tellerCategory,
+                        userCategory: categoryMappingEdits[m.tellerCategory] ?? m.userCategory,
+                      }));
+                      await LocalStorage.updateTellerCategoryMappings(updated);
+                      // Refresh counts after update
+                      const { mappings } = await LocalStorage.getTellerCategoryMappings();
+                      setCategoryMappings(mappings);
+                      const edits: Record<string, string> = {};
+                      for (const mp of mappings) edits[mp.tellerCategory] = mp.userCategory;
+                      setCategoryMappingEdits(edits);
+                      onRefreshData();
+                      toast.success('Category mappings saved', { position: 'bottom-right', autoClose: 3000 });
+                    } catch {
+                      toast.error('Failed to save category mappings', { position: 'bottom-right', autoClose: 3000 });
+                    } finally {
+                      setSavingCategoryMappings(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                >
+                  {savingCategoryMappings ? 'Saving…' : 'Save Mappings'}
+                </button>
               </div>
             )}
             {activeSection === 'general' && (

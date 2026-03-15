@@ -11,6 +11,13 @@ export interface Expense {
     sourceId?: string;
     sourceName?: string;
     importedAt: string;
+    tellerTransactionId?: string;
+    teller?: {
+      details?: {
+        counterparty?: { name?: string };
+        category?: string;
+      };
+    };
   };
   transferInfo?: {
     isTransfer: boolean;
@@ -174,6 +181,27 @@ export interface ImportSession {
   sourceName: string;
   fileName: string | null;
   transactionCount: number;
+}
+
+export interface TellerCategoryMapping {
+  tellerCategory: string;
+  userCategory: string;
+  transactionCount: number;
+}
+
+export interface TellerImportPreviewAccount {
+  accountId: string;
+  accountName: string;
+  newCount: number;
+  duplicateCount: number;
+}
+
+export interface TellerImportResult {
+  accountId: string;
+  accountName: string;
+  sessionId: string;
+  added: number;
+  skipped: number;
 }
 
 export interface ReportData {

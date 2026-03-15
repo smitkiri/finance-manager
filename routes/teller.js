@@ -2,7 +2,22 @@ const express = require('express');
 const router = express.Router();
 const https = require('https');
 const fs = require('fs');
+const crypto = require('crypto');
 const db = require('../database');
+const { findSimilarTransactionCategory } = require('../helpers/categoryMatcher');
+const { detectTransfers } = require('../helpers/transferDetection');
+
+const UNCATEGORIZED = 'Uncategorized';
+
+const importPreviewCache = new Map();
+// { previewToken: { accounts: [...], categoryMap: {...}, expiresAt: timestamp } }
+
+function cleanExpiredPreviews() {
+  const now = Date.now();
+  for (const [token, entry] of importPreviewCache.entries()) {
+    if (entry.expiresAt < now) importPreviewCache.delete(token);
+  }
+}
 
 function isTellerEnabled() {
   return !!(
@@ -111,6 +126,44 @@ router.get('/teller/config', async (req, res) => {
   } catch (error) {
     console.error('Error checking teller config:', error);
     res.status(500).json({ error: 'Failed to check teller config' });
+  }
+});
+
+// GET /api/teller/enrollment-token/:enrollmentId
+// Returns the access token for a given enrollment so the frontend can open Teller Connect in reconnect mode.
+router.get('/teller/enrollment-token/:enrollmentId', async (req, res) => {
+  if (!isTellerEnabled()) {
+    return res.status(400).json({ error: 'Teller integration not enabled' });
+  }
+  try {
+    const enrollments = await readEnrollments();
+    const enrollment = enrollments.find(e => e.enrollmentId === req.params.enrollmentId);
+    if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
+    res.json({ accessToken: enrollment.accessToken });
+  } catch (error) {
+    console.error('Error fetching enrollment token:', error);
+    res.status(500).json({ error: 'Failed to fetch enrollment token' });
+  }
+});
+
+// PUT /api/teller/enrollment/:enrollmentId/token
+// Updates the access token for an existing enrollment after a reconnect.
+router.put('/teller/enrollment/:enrollmentId/token', async (req, res) => {
+  if (!isTellerEnabled()) {
+    return res.status(400).json({ error: 'Teller integration not enabled' });
+  }
+  const { accessToken } = req.body;
+  if (!accessToken) return res.status(400).json({ error: 'accessToken is required' });
+  try {
+    const enrollments = await readEnrollments();
+    const idx = enrollments.findIndex(e => e.enrollmentId === req.params.enrollmentId);
+    if (idx === -1) return res.status(404).json({ error: 'Enrollment not found' });
+    enrollments[idx] = { ...enrollments[idx], accessToken };
+    await writeEnrollments(enrollments);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating enrollment token:', error);
+    res.status(500).json({ error: 'Failed to update enrollment token' });
   }
 });
 
@@ -340,12 +393,16 @@ router.post('/teller/refresh-balances', async (req, res) => {
 
     const today = new Date().toISOString().split('T')[0];
     let refreshed = 0;
+    const reconnectRequired = [];
 
     for (const enrollment of enrollments) {
       const { accessToken } = enrollment;
 
       const accountsResponse = await tellerRequest('/accounts', accessToken);
-      if (accountsResponse.status !== 200) continue;
+      if (accountsResponse.status !== 200) {
+        reconnectRequired.push(enrollment.institutionName || 'Bank Account');
+        continue;
+      }
 
       const tellerAccounts = Array.isArray(accountsResponse.data) ? accountsResponse.data : [];
 
@@ -381,10 +438,404 @@ router.post('/teller/refresh-balances', async (req, res) => {
       }
     }
 
-    res.json({ refreshed });
+    res.json({ refreshed, ...(reconnectRequired.length > 0 ? { reconnectRequired } : {}) });
   } catch (error) {
     console.error('Error refreshing Teller balances:', error);
     res.status(500).json({ error: 'Failed to refresh balances' });
+  }
+});
+
+// GET /api/teller/category-mappings
+// Returns saved mappings plus the count of Teller-imported transactions per original bank category.
+router.get('/teller/category-mappings', async (req, res) => {
+  try {
+    const mappingsResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+    const savedMappings = mappingsResult.rows[0]?.value || {};
+
+    // Count transactions per original Teller category (stored in metadata)
+    const countsResult = await db.query(`
+      SELECT metadata->'teller'->'details'->>'category' AS teller_category, COUNT(*)::int AS count
+      FROM transactions
+      WHERE metadata->'teller'->'details'->>'category' IS NOT NULL
+      GROUP BY teller_category
+    `);
+    const countMap = {};
+    for (const row of countsResult.rows) {
+      countMap[row.teller_category] = row.count;
+    }
+
+    const mappings = Object.entries(savedMappings).map(([tellerCategory, userCategory]) => ({
+      tellerCategory,
+      userCategory,
+      transactionCount: countMap[tellerCategory] ?? 0,
+    }));
+
+    res.json({ mappings });
+  } catch (error) {
+    console.error('Error loading Teller category mappings:', error);
+    res.status(500).json({ error: 'Failed to load category mappings' });
+  }
+});
+
+// PUT /api/teller/category-mappings
+// Replaces all saved mappings and immediately re-categorises affected transactions.
+// Request: { mappings: [{ tellerCategory, userCategory }] }
+router.put('/teller/category-mappings', async (req, res) => {
+  const { mappings } = req.body;
+  if (!Array.isArray(mappings)) {
+    return res.status(400).json({ error: 'mappings array is required' });
+  }
+
+  try {
+    // Load existing mappings so we can detect which ones changed
+    const existingResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+    const existingMappings = existingResult.rows[0]?.value || {};
+
+    // Build the new mappings object
+    const newMappings = {};
+    for (const { tellerCategory, userCategory } of mappings) {
+      if (tellerCategory && userCategory) newMappings[tellerCategory] = userCategory;
+    }
+
+    // For each mapping that changed or is new, update the affected transactions
+    for (const [tellerCategory, userCategory] of Object.entries(newMappings)) {
+      if (existingMappings[tellerCategory] !== userCategory) {
+        await db.query(
+          `UPDATE transactions
+           SET category = $1
+           WHERE metadata->'teller'->'details'->>'category' = $2`,
+          [userCategory, tellerCategory]
+        );
+      }
+    }
+
+    // Persist the new mappings
+    await db.query(
+      `INSERT INTO metadata (key, value) VALUES ('teller_category_mappings', $1)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(newMappings)]
+    );
+
+    res.json({ success: true, updated: Object.keys(newMappings).length });
+  } catch (error) {
+    console.error('Error updating Teller category mappings:', error);
+    res.status(500).json({ error: 'Failed to update category mappings' });
+  }
+});
+
+async function fetchTellerTransactionsInRange(accessToken, tellerAccountId, startDate, endDate) {
+  const transactions = [];
+  let fromId = undefined;
+  // Teller returns transactions in reverse-chronological order (newest first).
+  // We rely on this ordering to break pagination early once we've passed startDate.
+  while (true) {
+    const path = `/accounts/${tellerAccountId}/transactions?count=100${fromId ? `&from_id=${fromId}` : ''}`;
+    const response = await tellerRequest(path, accessToken);
+    if (response.status !== 200) {
+      throw new Error(`Teller API error ${response.status} fetching transactions for account ${tellerAccountId}`);
+    }
+    const batch = Array.isArray(response.data) ? response.data : [];
+    for (const tx of batch) {
+      if (tx.date < startDate) return transactions; // past range, stop
+      if (tx.date <= endDate && tx.status === 'posted') transactions.push(tx);
+    }
+    if (batch.length < 100) break; // no more pages
+    fromId = batch[batch.length - 1].id;
+  }
+  return transactions;
+}
+
+// POST /api/teller/preview-import
+router.post('/teller/preview-import', async (req, res) => {
+  if (!isTellerEnabled()) {
+    return res.status(400).json({ error: 'Teller integration not enabled' });
+  }
+
+  const { accountIds, startDate, endDate } = req.body;
+  if (!Array.isArray(accountIds) || accountIds.length === 0) {
+    return res.status(400).json({ error: 'accountIds is required' });
+  }
+  if (!startDate || !endDate) {
+    return res.status(400).json({ error: 'startDate and endDate are required' });
+  }
+  if (startDate > endDate) {
+    return res.status(400).json({ error: 'startDate must be before endDate' });
+  }
+
+  cleanExpiredPreviews();
+
+  try {
+    const enrollments = await readEnrollments();
+
+    // Load existing categories, saved mappings, and existing transactions in parallel
+    const [categoriesResult, mappingsResult, existingTxResult] = await Promise.all([
+      db.query('SELECT name FROM categories'),
+      db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'"),
+      db.query('SELECT id, date, description, category FROM transactions ORDER BY date DESC LIMIT 500'),
+    ]);
+
+    const existingCategoryNames = new Set(categoriesResult.rows.map(r => r.name));
+    existingCategoryNames.add(UNCATEGORIZED);
+
+    const savedMappings = mappingsResult.rows[0]?.value || {};
+
+    const existingExpenses = existingTxResult.rows.map(row => ({
+      id: row.id, date: row.date, description: row.description, category: row.category,
+    }));
+
+    // Fetch all accounts in parallel; collect reconnect-required accounts separately
+    const reconnectRequired = [];
+    const previewAccounts = (await Promise.all(accountIds.map(async (accountId) => {
+      const accountResult = await db.query(
+        'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
+        [accountId]
+      );
+      if (accountResult.rows.length === 0) return null;
+      const account = accountResult.rows[0];
+
+      const enrollment = enrollments.find(e => e.enrollmentId === account.teller_enrollment_id);
+      if (!enrollment) return null;
+
+      let transactions;
+      try {
+        transactions = await fetchTellerTransactionsInRange(
+          enrollment.accessToken,
+          account.teller_account_id,
+          startDate,
+          endDate
+        );
+      } catch (err) {
+        if (err.message.includes('404')) {
+          reconnectRequired.push(account.name);
+          return null;
+        }
+        throw err;
+      }
+
+      const tellerIds = transactions.map(tx => tx.id);
+      let existingIds = new Set();
+      if (tellerIds.length > 0) {
+        const existingResult = await db.query(
+          "SELECT metadata->>'tellerTransactionId' as tid FROM transactions WHERE metadata->>'tellerTransactionId' = ANY($1::text[])",
+          [tellerIds]
+        );
+        existingIds = new Set(existingResult.rows.map(r => r.tid));
+      }
+
+      const newTxs = transactions.filter(tx => !existingIds.has(tx.id));
+      const dupTxs = transactions.filter(tx => existingIds.has(tx.id));
+
+      return {
+        accountId,
+        accountName: account.name,
+        accountType: account.type, // 'asset' | 'liability'
+        userId: account.user_id,
+        tellerAccountId: account.teller_account_id,
+        newTransactions: newTxs,
+        newCount: newTxs.length,
+        duplicateCount: dupTxs.length,
+      };
+    }))).filter(Boolean);
+
+    if (reconnectRequired.length > 0) {
+      return res.status(400).json({ error: 'reconnect_required', accounts: reconnectRequired });
+    }
+
+    // Compute category for each new transaction and detect which categories are new to the user
+    const categoryMap = {}; // txId -> computed category (after saved mappings)
+    const allAssignedCategories = new Set();
+
+    for (const account of previewAccounts) {
+      for (const tx of account.newTransactions) {
+        const description = tx.details?.counterparty?.name || tx.description;
+        const tellerCategory = tx.details?.category;
+        let category;
+        if (tellerCategory) {
+          // Apply saved mappings first; otherwise keep Teller's category
+          category = savedMappings[tellerCategory] || tellerCategory;
+        } else {
+          category = findSimilarTransactionCategory(description, existingExpenses) || UNCATEGORIZED;
+        }
+        categoryMap[tx.id] = category;
+        allAssignedCategories.add(category);
+      }
+    }
+
+    const newCategories = [...allAssignedCategories].filter(c => !existingCategoryNames.has(c));
+
+    const previewToken = crypto.randomBytes(16).toString('hex');
+    importPreviewCache.set(previewToken, {
+      accounts: previewAccounts,
+      categoryMap,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
+
+    res.json({
+      previewToken,
+      accounts: previewAccounts.map(a => ({
+        accountId: a.accountId,
+        accountName: a.accountName,
+        newCount: a.newCount,
+        duplicateCount: a.duplicateCount,
+      })),
+      newCategories,
+    });
+  } catch (error) {
+    console.error('Error previewing Teller import:', error);
+    res.status(500).json({ error: 'Failed to preview import' });
+  }
+});
+
+// POST /api/teller/import-transactions
+router.post('/teller/import-transactions', async (req, res) => {
+  const { previewToken, userMappings = {} } = req.body;
+  if (!previewToken) {
+    return res.status(400).json({ error: 'previewToken is required' });
+  }
+
+  cleanExpiredPreviews();
+  const preview = importPreviewCache.get(previewToken);
+  if (!preview) {
+    return res.status(400).json({ error: 'Preview expired or not found. Please preview again.' });
+  }
+
+  try {
+    // Save any new user-provided category mappings
+    if (Object.keys(userMappings).length > 0) {
+      const existingMappingsResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+      const existingMappings = existingMappingsResult.rows[0]?.value || {};
+      const merged = { ...existingMappings, ...userMappings };
+      await db.query(
+        `INSERT INTO metadata (key, value) VALUES ('teller_category_mappings', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [JSON.stringify(merged)]
+      );
+    }
+
+    const { accounts: previewAccounts, categoryMap } = preview;
+
+    const sessions = [];
+    const allNewExpenses = [];
+
+    const client = await db.beginTransaction();
+    try {
+      for (const account of previewAccounts) {
+        if (account.newTransactions.length === 0) continue;
+
+        const sessionId = crypto.randomUUID();
+
+        await client.query(
+          `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [sessionId, account.userId || null, null, `Teller: ${account.accountName}`, null, account.newTransactions.length]
+        );
+
+        for (const tx of account.newTransactions) {
+          const description = tx.details?.counterparty?.name || tx.description;
+          // Use pre-computed category from preview, then apply any user mappings on top
+          const baseCategory = (categoryMap && categoryMap[tx.id]) || UNCATEGORIZED;
+          const category = userMappings[baseCategory] || baseCategory;
+
+          const expenseId = crypto.randomUUID();
+          const expense = {
+            id: expenseId,
+            date: tx.date,
+            description,
+            category,
+            amount: Math.abs(parseFloat(tx.amount)),
+            // Credit card (liability): Teller 'credit' = purchase (expense), 'debit' = payment (income)
+            // Depository/asset: Teller 'debit' = money out (expense), 'credit' = money in (income)
+            type: account.accountType === 'liability'
+              ? (tx.type === 'credit' ? 'expense' : 'income')
+              : (tx.type === 'debit' ? 'expense' : 'income'),
+            user: account.userId,
+            metadata: {
+              tellerTransactionId: tx.id,
+              sourceName: `Teller: ${account.accountName}`,
+              importedAt: new Date().toISOString(),
+              teller: { details: tx.details },
+            },
+          };
+
+          await client.query(
+            `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations, import_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            [
+              expense.id,
+              expense.date,
+              expense.description,
+              expense.category,
+              expense.amount,
+              expense.type,
+              expense.user,
+              JSON.stringify([]),
+              JSON.stringify(expense.metadata),
+              null,
+              false,
+              sessionId,
+            ]
+          );
+
+          allNewExpenses.push(expense);
+        }
+
+        sessions.push({
+          accountId: account.accountId,
+          accountName: account.accountName,
+          sessionId,
+          added: account.newTransactions.length,
+          skipped: account.duplicateCount,
+        });
+      }
+
+      await db.commitTransaction(client);
+    } catch (txError) {
+      await db.rollbackTransaction(client);
+      throw txError;
+    }
+
+    // Run transfer detection scoped to the import date window ± 3 days (after successful commit)
+    if (allNewExpenses.length > 0) {
+      const importDates = allNewExpenses.map(e => e.date).sort();
+      const windowStart = new Date(importDates[0]);
+      windowStart.setDate(windowStart.getDate() - 3);
+      const windowEnd = new Date(importDates[importDates.length - 1]);
+      windowEnd.setDate(windowEnd.getDate() + 3);
+      const allResult = await db.query(
+        'SELECT * FROM transactions WHERE date BETWEEN $1 AND $2',
+        [windowStart.toISOString().split('T')[0], windowEnd.toISOString().split('T')[0]]
+      );
+      const allExpenses = allResult.rows.map(row => ({
+        id: row.id,
+        date: row.date,
+        description: row.description,
+        category: row.category,
+        amount: parseFloat(row.amount),
+        type: row.type,
+        user: row.user_id,
+        labels: row.labels || [],
+        metadata: row.metadata || {},
+        transferInfo: row.transfer_info,
+        excludedFromCalculations: row.excluded_from_calculations,
+        importId: row.import_id || null,
+      }));
+
+      const { updatedTransactions } = detectTransfers(allExpenses);
+      for (const expense of updatedTransactions) {
+        if (expense.transferInfo) {
+          await db.query(
+            'UPDATE transactions SET transfer_info = $1, excluded_from_calculations = $2 WHERE id = $3',
+            [JSON.stringify(expense.transferInfo), expense.excludedFromCalculations || false, expense.id]
+          );
+        }
+      }
+    }
+
+    importPreviewCache.delete(previewToken);
+    res.json({ sessions });
+  } catch (error) {
+    console.error('Error importing Teller transactions:', error);
+    res.status(500).json({ error: 'Failed to import transactions' });
   }
 });
 

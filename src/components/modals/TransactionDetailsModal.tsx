@@ -377,6 +377,19 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                   {transaction.importId && (
                     <p><span className="font-medium">Import ID:</span> {transaction.importId}</p>
                   )}
+                  {transaction.metadata?.teller?.details && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Bank Details
+                      </p>
+                      {transaction.metadata.teller.details.counterparty?.name && (
+                        <p><span className="font-medium">Merchant:</span> {transaction.metadata.teller.details.counterparty.name}</p>
+                      )}
+                      {transaction.metadata.teller.details.category && (
+                        <p><span className="font-medium">Bank Category:</span> {transaction.metadata.teller.details.category}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
