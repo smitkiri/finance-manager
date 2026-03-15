@@ -176,6 +176,21 @@ export interface ImportSession {
   transactionCount: number;
 }
 
+export interface TellerImportPreviewAccount {
+  accountId: string;
+  accountName: string;
+  newCount: number;
+  duplicateCount: number;
+}
+
+export interface TellerImportResult {
+  accountId: string;
+  accountName: string;
+  sessionId: string;
+  added: number;
+  skipped: number;
+}
+
 export interface ReportData {
   report: Report;
   transactions: Expense[];

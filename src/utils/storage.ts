@@ -15,6 +15,14 @@ const SOURCES_STORAGE_KEY = 'sources';
 export class LocalStorage {
   private static API_BASE = 'http://localhost:3001/api';
 
+  private static apiFetch(url: string, options?: RequestInit): Promise<Response> {
+    const headers = {
+      'x-api-key': process.env.REACT_APP_API_SECRET || '',
+      ...options?.headers,
+    };
+    return fetch(url, options ? { ...options, headers } : { headers });
+  }
+
   static async saveExpenses(expenses: Expense[]): Promise<void> {
     try {
       const metadata: StorageMetadata = {
@@ -27,7 +35,7 @@ export class LocalStorage {
         }
       };
 
-      const response = await fetch(`${this.API_BASE}/expenses`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,7 +58,7 @@ export class LocalStorage {
 
   static async loadExpenses(): Promise<Expense[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/expenses`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses`);
       
       if (!response.ok) {
         throw new Error('Failed to load expenses from server');
@@ -115,7 +123,7 @@ export class LocalStorage {
     if (searchText?.trim()) params.set('search', searchText.trim());
 
     try {
-      const response = await fetch(`${this.API_BASE}/expenses?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to load expenses page from server');
       }
@@ -143,7 +151,7 @@ export class LocalStorage {
     if (dateRange?.end) params.set('dateTo', typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10));
     if (userId != null && userId !== '') params.set('userId', userId);
     try {
-      const response = await fetch(`${this.API_BASE}/stats?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/stats?${params.toString()}`);
       if (!response.ok) return null;
       const data = await response.json();
       return data as DashboardStats;
@@ -155,7 +163,7 @@ export class LocalStorage {
 
   static async importCSVData(csvText: string, fileName?: string): Promise<{ expenses: Expense[]; sessionId?: string }> {
     try {
-      const response = await fetch(`${this.API_BASE}/import-csv`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-csv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +189,7 @@ export class LocalStorage {
 
   static async loadImportSessions(): Promise<ImportSession[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/import-sessions`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-sessions`);
       if (!response.ok) throw new Error('Failed to load import sessions');
       return response.json();
     } catch (error) {
@@ -191,7 +199,7 @@ export class LocalStorage {
   }
 
   static async undoImportSession(sessionId: string): Promise<{ removed: number }> {
-    const response = await fetch(`${this.API_BASE}/import-sessions/${sessionId}`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-sessions/${sessionId}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to undo import session');
@@ -219,7 +227,7 @@ export class LocalStorage {
 
   static async updateExpense(updatedExpense: Expense): Promise<Expense> {
     try {
-      const response = await fetch(`${this.API_BASE}/expenses/${updatedExpense.id}`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses/${updatedExpense.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -293,7 +301,7 @@ export class LocalStorage {
 
   static async exportData(): Promise<string> {
     try {
-      const response = await fetch(`${this.API_BASE}/export-csv`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/export-csv`);
       
       if (!response.ok) {
         throw new Error('Failed to export CSV');
@@ -310,7 +318,7 @@ export class LocalStorage {
   // Source Methods
   static async saveSource(source: import('../types').Source): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/sources`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -334,7 +342,7 @@ export class LocalStorage {
 
   static async updateSource(updatedSource: import('../types').Source): Promise<import('../types').Source[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -364,7 +372,7 @@ export class LocalStorage {
 
   static async loadSources(): Promise<import('../types').Source[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/sources`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources`);
       
       if (!response.ok) {
         throw new Error('Failed to load sources from server');
@@ -491,7 +499,7 @@ export class LocalStorage {
   // Date Range Persistence Methods
   static async saveDateRange(dateRange: { start: Date; end: Date }): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/date-range`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/date-range`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -519,7 +527,7 @@ export class LocalStorage {
 
   static async loadDateRange(): Promise<{ start: Date; end: Date } | null> {
     try {
-      const response = await fetch(`${this.API_BASE}/date-range`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/date-range`);
       if (!response.ok) {
         const stored = localStorage.getItem('dateRange');
         if (stored) {
@@ -550,7 +558,7 @@ export class LocalStorage {
   // Category Management Methods
   static async saveCategories(categories: string[]): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/categories`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -572,7 +580,7 @@ export class LocalStorage {
 
   static async loadCategories(): Promise<string[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/categories`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/categories`);
       
       if (!response.ok) {
         throw new Error('Failed to load categories from server');
@@ -652,7 +660,7 @@ export class LocalStorage {
   // Report Methods
   static async saveReport(report: Report): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -681,7 +689,7 @@ export class LocalStorage {
 
   static async loadReports(): Promise<Report[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports`);
       
       if (!response.ok) {
         throw new Error('Failed to load reports from server');
@@ -699,7 +707,7 @@ export class LocalStorage {
 
   static async deleteReport(reportId: string): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports/${reportId}`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportId}`, {
         method: 'DELETE',
       });
 
@@ -719,7 +727,7 @@ export class LocalStorage {
 
   static async saveReportData(reportData: ReportData): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports/${reportData.report.id}/data`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportData.report.id}/data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -742,7 +750,7 @@ export class LocalStorage {
 
   static async loadReportData(reportId: string): Promise<ReportData | null> {
     try {
-      const response = await fetch(`${this.API_BASE}/reports/${reportId}/data`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportId}/data`);
       
       if (!response.ok) {
         throw new Error('Failed to load report data from server');
@@ -787,7 +795,7 @@ export class LocalStorage {
   // User Management Methods
   static async saveUsers(users: import('../types').User[]): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE}/users`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -809,7 +817,7 @@ export class LocalStorage {
 
   static async loadUsers(): Promise<import('../types').User[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/users`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/users`);
       
       if (!response.ok) {
         throw new Error('Failed to load users from server');
@@ -875,7 +883,7 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await fetch(`${this.API_BASE}/accounts?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to load accounts');
       return await response.json();
     } catch (error) {
@@ -885,7 +893,7 @@ export class LocalStorage {
   }
 
   static async createAccount(account: Account): Promise<Account> {
-    const response = await fetch(`${this.API_BASE}/accounts`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(account),
@@ -895,7 +903,7 @@ export class LocalStorage {
   }
 
   static async updateAccount(account: Account): Promise<Account> {
-    const response = await fetch(`${this.API_BASE}/accounts/${account.id}`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${account.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: account.name, type: account.type }),
@@ -905,12 +913,12 @@ export class LocalStorage {
   }
 
   static async deleteAccount(accountId: string): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/accounts/${accountId}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete account');
   }
 
   static async addAccountBalance(accountId: string, balance: AccountBalance): Promise<AccountBalance> {
-    const response = await fetch(`${this.API_BASE}/accounts/${accountId}/balances`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(balance),
@@ -921,7 +929,7 @@ export class LocalStorage {
 
   static async loadAccountBalances(accountId: string): Promise<AccountBalance[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/accounts/${accountId}/balances`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances`);
       if (!response.ok) throw new Error('Failed to load account balances');
       return response.json();
     } catch (error) {
@@ -931,7 +939,7 @@ export class LocalStorage {
   }
 
   static async deleteAccountBalance(accountId: string, balanceId: string): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/accounts/${accountId}/balances/${balanceId}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances/${balanceId}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete balance entry');
   }
 
@@ -939,7 +947,7 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await fetch(`${this.API_BASE}/net-worth/summary?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/net-worth/summary?${params.toString()}`);
       if (!response.ok) return null;
       return response.json();
     } catch (error) {
@@ -952,7 +960,7 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await fetch(`${this.API_BASE}/net-worth/history?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/net-worth/history?${params.toString()}`);
       if (!response.ok) return [];
       return response.json();
     } catch (error) {
@@ -964,7 +972,7 @@ export class LocalStorage {
   // Teller Integration Methods
   static async getTellerConfig(): Promise<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string; connectedAt?: string }> }> {
     try {
-      const response = await fetch(`${this.API_BASE}/teller/config`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/config`);
       if (!response.ok) return { enabled: false, enrollments: [] };
       return response.json();
     } catch {
@@ -973,7 +981,7 @@ export class LocalStorage {
   }
 
   static async tellerPreviewAccounts(accessToken: string): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
-    const response = await fetch(`${this.API_BASE}/teller/preview-accounts`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessToken }),
@@ -989,7 +997,7 @@ export class LocalStorage {
     institutionName?: string | null,
     selectedAccounts?: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>
   ): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/teller/enroll`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enroll`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessToken, userId, enrollmentId, institutionName, selectedAccounts }),
@@ -998,7 +1006,7 @@ export class LocalStorage {
   }
 
   static async tellerPreviewEnrollmentAccounts(enrollmentId: string): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
-    const response = await fetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/preview-accounts`);
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/preview-accounts`);
     if (!response.ok) throw new Error('Failed to fetch Teller accounts');
     return response.json();
   }
@@ -1009,7 +1017,7 @@ export class LocalStorage {
     toAdd: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>,
     toRemove: string[]
   ): Promise<{ added: number; removed: number }> {
-    const response = await fetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/manage-accounts`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/manage-accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, toAdd, toRemove }),
@@ -1019,7 +1027,7 @@ export class LocalStorage {
   }
 
   static async tellerDisconnect(enrollmentId: string): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/teller/disconnect`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/disconnect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enrollmentId }),
@@ -1027,8 +1035,52 @@ export class LocalStorage {
     if (!response.ok) throw new Error('Failed to disconnect from Teller');
   }
 
+  static async getTellerCategoryMappings(): Promise<{ mappings: Array<{ tellerCategory: string; userCategory: string; transactionCount: number }> }> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/category-mappings`);
+    if (!response.ok) throw new Error('Failed to load category mappings');
+    return response.json();
+  }
+
+  static async updateTellerCategoryMappings(
+    mappings: Array<{ tellerCategory: string; userCategory: string }>
+  ): Promise<void> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/category-mappings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mappings }),
+    });
+    if (!response.ok) throw new Error('Failed to update category mappings');
+  }
+
+  static async tellerPreviewImport(
+    accountIds: string[],
+    startDate: string,
+    endDate: string
+  ): Promise<{ previewToken: string; accounts: import('../types').TellerImportPreviewAccount[]; newCategories: string[] }> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountIds, startDate, endDate }),
+    });
+    if (!response.ok) throw new Error('Failed to preview Teller import');
+    return response.json();
+  }
+
+  static async tellerImportTransactions(
+    previewToken: string,
+    userMappings: Record<string, string> = {}
+  ): Promise<{ sessions: import('../types').TellerImportResult[] }> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/import-transactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ previewToken, userMappings }),
+    });
+    if (!response.ok) throw new Error('Failed to import Teller transactions');
+    return response.json();
+  }
+
   static async tellerRefreshBalances(): Promise<{ refreshed: number }> {
-    const response = await fetch(`${this.API_BASE}/teller/refresh-balances`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/refresh-balances`, {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to refresh Teller balances');

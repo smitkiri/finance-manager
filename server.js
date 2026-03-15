@@ -12,6 +12,13 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// API key authentication
+app.use('/api', (req, res, next) => {
+  const key = req.headers['x-api-key'];
+  if (!process.env.API_SECRET || key === process.env.API_SECRET) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+});
+
 // Initialize database and run migration on startup
 (async () => {
   try {
@@ -39,7 +46,7 @@ app.use('/api', require('./routes/importSessions'));
 app.use('/api', require('./routes/netWorth'));
 app.use('/api', require('./routes/teller'));
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Artifacts directory: ${path.resolve('.artifacts')}`);
 
