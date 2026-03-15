@@ -1035,6 +1035,21 @@ export class LocalStorage {
     if (!response.ok) throw new Error('Failed to disconnect from Teller');
   }
 
+  static async getTellerEnrollmentToken(enrollmentId: string): Promise<{ accessToken: string }> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollment-token/${enrollmentId}`);
+    if (!response.ok) throw new Error('Failed to fetch enrollment token');
+    return response.json();
+  }
+
+  static async tellerUpdateEnrollmentToken(enrollmentId: string, accessToken: string): Promise<void> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollment/${enrollmentId}/token`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken }),
+    });
+    if (!response.ok) throw new Error('Failed to update enrollment token');
+  }
+
   static async getTellerCategoryMappings(): Promise<{ mappings: Array<{ tellerCategory: string; userCategory: string; transactionCount: number }> }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/category-mappings`);
     if (!response.ok) throw new Error('Failed to load category mappings');
@@ -1056,7 +1071,7 @@ export class LocalStorage {
     accountIds: string[],
     startDate: string,
     endDate: string
-  ): Promise<{ previewToken: string; accounts: import('../types').TellerImportPreviewAccount[]; newCategories: string[]; accountErrors?: { accountName: string; error: string }[] }> {
+  ): Promise<{ previewToken: string; accounts: import('../types').TellerImportPreviewAccount[]; newCategories: string[] }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

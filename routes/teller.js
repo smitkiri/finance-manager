@@ -129,6 +129,44 @@ router.get('/teller/config', async (req, res) => {
   }
 });
 
+// GET /api/teller/enrollment-token/:enrollmentId
+// Returns the access token for a given enrollment so the frontend can open Teller Connect in reconnect mode.
+router.get('/teller/enrollment-token/:enrollmentId', async (req, res) => {
+  if (!isTellerEnabled()) {
+    return res.status(400).json({ error: 'Teller integration not enabled' });
+  }
+  try {
+    const enrollments = await readEnrollments();
+    const enrollment = enrollments.find(e => e.enrollmentId === req.params.enrollmentId);
+    if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
+    res.json({ accessToken: enrollment.accessToken });
+  } catch (error) {
+    console.error('Error fetching enrollment token:', error);
+    res.status(500).json({ error: 'Failed to fetch enrollment token' });
+  }
+});
+
+// PUT /api/teller/enrollment/:enrollmentId/token
+// Updates the access token for an existing enrollment after a reconnect.
+router.put('/teller/enrollment/:enrollmentId/token', async (req, res) => {
+  if (!isTellerEnabled()) {
+    return res.status(400).json({ error: 'Teller integration not enabled' });
+  }
+  const { accessToken } = req.body;
+  if (!accessToken) return res.status(400).json({ error: 'accessToken is required' });
+  try {
+    const enrollments = await readEnrollments();
+    const idx = enrollments.findIndex(e => e.enrollmentId === req.params.enrollmentId);
+    if (idx === -1) return res.status(404).json({ error: 'Enrollment not found' });
+    enrollments[idx] = { ...enrollments[idx], accessToken };
+    await writeEnrollments(enrollments);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating enrollment token:', error);
+    res.status(500).json({ error: 'Failed to update enrollment token' });
+  }
+});
+
 // POST /api/teller/preview-accounts
 // Fetches accounts from Teller for a given access token without persisting anything.
 // Used to let the user select which accounts to add before enrolling.
@@ -542,7 +580,6 @@ router.post('/teller/preview-import', async (req, res) => {
     }));
 
     // Fetch all accounts in parallel
-    const accountErrors = [];
     const previewAccounts = (await Promise.all(accountIds.map(async (accountId) => {
       const accountResult = await db.query(
         'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
@@ -554,19 +591,12 @@ router.post('/teller/preview-import', async (req, res) => {
       const enrollment = enrollments.find(e => e.enrollmentId === account.teller_enrollment_id);
       if (!enrollment) return null;
 
-      let transactions;
-      try {
-        transactions = await fetchTellerTransactionsInRange(
-          enrollment.accessToken,
-          account.teller_account_id,
-          startDate,
-          endDate
-        );
-      } catch (err) {
-        console.error(`Skipping account ${account.name} (${account.teller_account_id}): ${err.message}`);
-        accountErrors.push({ accountName: account.name, error: err.message });
-        return null;
-      }
+      const transactions = await fetchTellerTransactionsInRange(
+        enrollment.accessToken,
+        account.teller_account_id,
+        startDate,
+        endDate
+      );
 
       const tellerIds = transactions.map(tx => tx.id);
       let existingIds = new Set();
@@ -630,7 +660,6 @@ router.post('/teller/preview-import', async (req, res) => {
         duplicateCount: a.duplicateCount,
       })),
       newCategories,
-      ...(accountErrors.length > 0 ? { accountErrors } : {}),
     });
   } catch (error) {
     console.error('Error previewing Teller import:', error);

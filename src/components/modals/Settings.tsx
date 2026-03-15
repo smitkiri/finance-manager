@@ -73,6 +73,7 @@ export const Settings: React.FC<SettingsProps> = ({
   // Teller state
   const [tellerConfig, setTellerConfig] = useState<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string | null; connectedAt?: string | null }> } | null>(null);
   const [tellerConnecting, setTellerConnecting] = useState(false);
+  const [tellerReconnecting, setTellerReconnecting] = useState<string | null>(null);
   const [tellerDisconnecting, setTellerDisconnecting] = useState<string | null>(null);
   // Account selection modal state (shown after Teller Connect succeeds)
   const [pendingTellerEnrollment, setPendingTellerEnrollment] = useState<{
@@ -226,6 +227,53 @@ export const Settings: React.FC<SettingsProps> = ({
       document.head.appendChild(script);
     } else {
       setupConnect();
+    }
+  };
+
+  const handleReconnect = async (enrollment: { enrollmentId: string; institutionName?: string | null }) => {
+    if (!tellerConfig?.applicationId) return;
+    setTellerReconnecting(enrollment.enrollmentId);
+
+    try {
+      const { accessToken: currentToken } = await LocalStorage.getTellerEnrollmentToken(enrollment.enrollmentId);
+
+      const setupConnect = () => {
+        const tc = (window as any).TellerConnect;
+        if (!tc) {
+          setTimeout(setupConnect, 100);
+          return;
+        }
+        const connect = tc.setup({
+          applicationId: tellerConfig.applicationId,
+          token: currentToken,
+          onSuccess: async ({ accessToken: newToken }: any) => {
+            try {
+              await LocalStorage.tellerUpdateEnrollmentToken(enrollment.enrollmentId, newToken);
+              toast.success(`${enrollment.institutionName ?? 'Bank'} reconnected`, { position: 'bottom-right', autoClose: 3000 });
+            } catch {
+              toast.error('Failed to save reconnected token', { position: 'bottom-right', autoClose: 3000 });
+            } finally {
+              setTellerReconnecting(null);
+            }
+          },
+          onExit: () => {
+            setTellerReconnecting(null);
+          },
+        });
+        connect.open();
+      };
+
+      if (!(window as any).TellerConnect) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.teller.io/connect/connect.js';
+        script.onload = setupConnect;
+        document.head.appendChild(script);
+      } else {
+        setupConnect();
+      }
+    } catch {
+      toast.error('Failed to initiate reconnect', { position: 'bottom-right', autoClose: 3000 });
+      setTellerReconnecting(null);
     }
   };
 
@@ -1012,10 +1060,17 @@ export const Settings: React.FC<SettingsProps> = ({
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => handleAddAccountsToEnrollment(enrollment)}
-                                disabled={!!tellerDisconnecting}
+                                disabled={!!tellerDisconnecting || !!tellerReconnecting}
                                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
                               >
                                 Manage Accounts
+                              </button>
+                              <button
+                                onClick={() => handleReconnect(enrollment)}
+                                disabled={!!tellerDisconnecting || !!tellerReconnecting}
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                              >
+                                {tellerReconnecting === enrollment.enrollmentId ? 'Reconnecting...' : 'Reconnect'}
                               </button>
                               <button
                                 onClick={async () => {
@@ -1032,7 +1087,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     setTellerDisconnecting(null);
                                   }
                                 }}
-                                disabled={tellerDisconnecting === enrollment.enrollmentId}
+                                disabled={tellerDisconnecting === enrollment.enrollmentId || !!tellerReconnecting}
                                 className="text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
                               >
                                 {tellerDisconnecting === enrollment.enrollmentId ? 'Disconnecting...' : 'Disconnect'}
