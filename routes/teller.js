@@ -114,6 +114,21 @@ router.get('/teller/config', async (req, res) => {
 
   try {
     const enrollments = await readEnrollments();
+
+    // For enrollments missing userId, fall back to the user_id from the accounts table
+    const enrollmentIds = enrollments.filter(e => !e.userId && e.enrollmentId).map(e => e.enrollmentId);
+    const accountUserMap = {};
+    if (enrollmentIds.length > 0) {
+      const result = await db.query(
+        `SELECT DISTINCT ON (teller_enrollment_id) teller_enrollment_id, user_id
+         FROM accounts WHERE teller_enrollment_id = ANY($1) AND user_id IS NOT NULL`,
+        [enrollmentIds]
+      );
+      for (const row of result.rows) {
+        accountUserMap[row.teller_enrollment_id] = row.user_id;
+      }
+    }
+
     res.json({
       enabled: true,
       applicationId: process.env.FINANCE_MANAGER_TELLER_APP_ID,
@@ -121,7 +136,7 @@ router.get('/teller/config', async (req, res) => {
         enrollmentId: e.enrollmentId,
         institutionName: e.institutionName || null,
         connectedAt: e.connectedAt || null,
-        userId: e.userId || null,
+        userId: e.userId || accountUserMap[e.enrollmentId] || null,
       })),
     });
   } catch (error) {
