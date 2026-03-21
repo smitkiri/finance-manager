@@ -167,3 +167,6 @@ temp/
 # Artifacts (local DB)
 /.artifacts/
 /.test_artifacts/
+
+# Git worktrees
+.worktrees/
