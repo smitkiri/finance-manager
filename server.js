@@ -45,6 +45,7 @@ app.use('/api', require('./routes/data'));
 app.use('/api', require('./routes/importSessions'));
 app.use('/api', require('./routes/netWorth'));
 app.use('/api', require('./routes/teller'));
+app.use('/api', require('./routes/dashboards'));
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`Server running on http://localhost:${PORT}`);
