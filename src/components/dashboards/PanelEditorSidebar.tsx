@@ -43,8 +43,9 @@ export const PanelEditorSidebar: React.FC<PanelEditorSidebarProps> = ({
 
   // Populate form when editing
   useEffect(() => {
+    let formValues: typeof EMPTY_FORM;
     if (panel) {
-      setForm({
+      formValues = {
         title: panel.title,
         chartType: panel.chartType,
         filterType: panel.filterType,
@@ -52,14 +53,16 @@ export const PanelEditorSidebar: React.FC<PanelEditorSidebarProps> = ({
         filterRegex: panel.filterRegex || '',
         seriesMode: panel.seriesMode,
         netOrientation: panel.netOrientation || 'income_positive',
-      });
+      };
     } else {
-      setForm({ ...EMPTY_FORM });
+      formValues = { ...EMPTY_FORM };
     }
+    setForm(formValues);
     setRegexError('');
     setPreviewTransactions([]);
     setPreviewTotal(0);
-  }, [panel]);
+    fetchPreview(formValues);
+  }, [panel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Validate regex
   const validateRegex = (value: string): boolean => {
@@ -95,9 +98,6 @@ export const PanelEditorSidebar: React.FC<PanelEditorSidebarProps> = ({
     setForm(next);
     fetchPreview(next);
   };
-
-  // Initial preview fetch on open
-  useEffect(() => { fetchPreview(form); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!form.title.trim()) return;

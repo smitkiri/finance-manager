@@ -58,7 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [editingPanel, setEditingPanel] = useState<DashboardPanelType | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
