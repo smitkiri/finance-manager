@@ -329,25 +329,27 @@ router.post('/dashboards/:id/data', async (req, res) => {
 
         const result = await db.query(sql, params);
 
-        // Aggregate rows into per-month data
+        // Aggregate rows into per-month data (keyed by sort_month for ordering)
         const monthMap = {};
         for (const row of result.rows) {
-          const month = row.month;
-          if (!monthMap[month]) monthMap[month] = { month };
+          const key = row.sort_month;
+          if (!monthMap[key]) monthMap[key] = { month: row.month };
           const total = parseFloat(row.total);
           if (panel.seriesMode === 'net_amount') {
             const sign = row.type === 'income' ? 1 : -1;
             const orientSign = panel.netOrientation === 'expense_positive' ? -1 : 1;
-            monthMap[month].net = ((monthMap[month].net || 0) + sign * total * orientSign);
+            monthMap[key].net = ((monthMap[key].net || 0) + sign * total * orientSign);
           } else {
-            if (row.type === 'income') monthMap[month].income = total;
-            else monthMap[month].expenses = total;
+            if (row.type === 'income') monthMap[key].income = total;
+            else monthMap[key].expenses = total;
           }
         }
 
         return {
           panelId: panel.id,
-          data: Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month)),
+          data: Object.entries(monthMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([, v]) => v),
         };
       })
     );

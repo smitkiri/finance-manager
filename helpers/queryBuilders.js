@@ -146,13 +146,14 @@ function buildPanelDataQuery({ dateFrom, dateTo, userId, filterType, filterCateg
 
   const sql = `
     SELECT
-      TO_CHAR(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
+      TO_CHAR(DATE_TRUNC('month', date), 'YYYY-MM') AS sort_month,
+      TO_CHAR(date, 'Mon YYYY') AS month,
       type,
       SUM(amount) AS total
     FROM transactions
     ${whereSql}${extraConditions}
-    GROUP BY month, type
-    ORDER BY month ASC
+    GROUP BY sort_month, month, type
+    ORDER BY sort_month ASC
   `;
 
   return { sql, params };
