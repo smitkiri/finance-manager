@@ -212,4 +212,43 @@ export interface ReportData {
   totalIncome: number;
   netAmount: number;
   monthlyData: { month: string; expenses: number; income: number }[];
-} 
+}
+
+// Personal Dashboards types
+export interface Dashboard {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  dateRangeStart: string; // YYYY-MM-DD
+  dateRangeEnd: string;   // YYYY-MM-DD
+  panelCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardPanel {
+  id: string;
+  dashboardId: string;
+  title: string;
+  chartType: 'bar' | 'line';
+  filterType: 'expense' | 'income' | 'both';
+  filterCategories: string[];
+  filterRegex: string | null;
+  seriesMode: 'two_series' | 'net_amount';
+  netOrientation: 'income_positive' | 'expense_positive' | null;
+  panelOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PanelMonthData {
+  month: string;      // "YYYY-MM"
+  income?: number;
+  expenses?: number;
+  net?: number;
+}
+
+export interface PanelData {
+  panelId: string;
+  data: PanelMonthData[];
+}

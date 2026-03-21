@@ -1,4 +1,4 @@
-import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory, ImportSession } from '../types';
+import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory, ImportSession, Dashboard, DashboardPanel, PanelData } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -1135,4 +1135,122 @@ export class LocalStorage {
       ];
     }
   }
-} 
+
+  // ─── Personal Dashboards ─────────────────────────────────────────────────────
+
+  static async loadDashboards(): Promise<Dashboard[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/dashboards`);
+      if (!response.ok) throw new Error('Failed to load dashboards');
+      return response.json();
+    } catch (error) {
+      console.error('Error loading dashboards:', error);
+      return [];
+    }
+  }
+
+  static async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'updatedAt' | 'panelCount'>): Promise<Dashboard> {
+    const response = await fetch(`${this.API_BASE}/dashboards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dashboard),
+    });
+    if (!response.ok) throw new Error('Failed to create dashboard');
+    return response.json();
+  }
+
+  static async updateDashboard(id: string, updates: Partial<Pick<Dashboard, 'name' | 'isDefault' | 'dateRangeStart' | 'dateRangeEnd'>>): Promise<Dashboard> {
+    const response = await fetch(`${this.API_BASE}/dashboards/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) throw new Error('Failed to update dashboard');
+    return response.json();
+  }
+
+  static async deleteDashboard(id: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/dashboards/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete dashboard');
+  }
+
+  static async createPanel(dashboardId: string, panel: Omit<DashboardPanel, 'dashboardId' | 'createdAt' | 'updatedAt'>): Promise<DashboardPanel> {
+    const response = await fetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...panel, dashboardId }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as any).error || 'Failed to create panel');
+    }
+    return response.json();
+  }
+
+  static async updatePanel(panelId: string, updates: Partial<Omit<DashboardPanel, 'id' | 'dashboardId' | 'createdAt' | 'updatedAt'>>): Promise<DashboardPanel> {
+    const response = await fetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) throw new Error('Failed to update panel');
+    return response.json();
+  }
+
+  static async deletePanel(panelId: string): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/dashboard-panels/${panelId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete panel');
+  }
+
+  static async reorderPanels(dashboardId: string, panelIds: string[]): Promise<void> {
+    const response = await fetch(`${this.API_BASE}/dashboards/${dashboardId}/panel-order`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ panelIds }),
+    });
+    if (!response.ok) throw new Error('Failed to reorder panels');
+  }
+
+  static async loadDashboardData(dashboardId: string, opts: { userId?: string | null; dateRangeStart: string; dateRangeEnd: string }): Promise<PanelData[]> {
+    try {
+      const response = await fetch(`${this.API_BASE}/dashboards/${dashboardId}/data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      });
+      if (!response.ok) throw new Error('Failed to load dashboard data');
+      const data = await response.json();
+      return data.panels as PanelData[];
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      return [];
+    }
+  }
+
+  static async previewPanelTransactions(opts: {
+    types?: string[];
+    categories?: string[];
+    regex?: string | null;
+    userId?: string | null;
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+  }): Promise<{ transactions: Expense[]; total: number }> {
+    const params = new URLSearchParams();
+    if (opts.types?.length) params.set('types', opts.types.join(','));
+    if (opts.categories?.length) params.set('categories', opts.categories.join(','));
+    if (opts.regex) params.set('regex', opts.regex);
+    if (opts.userId) params.set('userId', opts.userId);
+    if (opts.dateFrom) params.set('dateFrom', opts.dateFrom);
+    if (opts.dateTo) params.set('dateTo', opts.dateTo);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    try {
+      const response = await fetch(`${this.API_BASE}/dashboard-panels/preview?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to preview transactions');
+      return response.json();
+    } catch (error) {
+      console.error('Error previewing transactions:', error);
+      return { transactions: [], total: 0 };
+    }
+  }
+}
