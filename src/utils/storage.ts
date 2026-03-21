@@ -1235,6 +1235,7 @@ export class LocalStorage {
     dateFrom?: string;
     dateTo?: string;
     limit?: number;
+    offset?: number;
   }): Promise<{ transactions: Expense[]; total: number }> {
     const params = new URLSearchParams();
     if (opts.types?.length) params.set('types', opts.types.join(','));
@@ -1244,6 +1245,7 @@ export class LocalStorage {
     if (opts.dateFrom) params.set('dateFrom', opts.dateFrom);
     if (opts.dateTo) params.set('dateTo', opts.dateTo);
     if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.offset) params.set('offset', String(opts.offset));
     try {
       const response = await fetch(`${this.API_BASE}/dashboard-panels/preview?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to preview transactions');

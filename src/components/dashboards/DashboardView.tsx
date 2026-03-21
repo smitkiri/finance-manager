@@ -14,6 +14,7 @@ import { LocalStorage } from '../../utils/storage';
 import { DateRangePicker } from '../DateRangePicker';
 import { DashboardPanel } from './DashboardPanel';
 import { PanelEditorSidebar } from './PanelEditorSidebar';
+import { PanelTransactionsModal } from './PanelTransactionsModal';
 
 // Sortable wrapper for each panel
 const SortablePanel: React.FC<{
@@ -22,7 +23,8 @@ const SortablePanel: React.FC<{
   loading: boolean;
   onEdit: (p: DashboardPanelType) => void;
   onDelete: (id: string) => void;
-}> = ({ panel, data, loading, onEdit, onDelete }) => {
+  onViewTransactions: (p: DashboardPanelType) => void;
+}> = ({ panel, data, loading, onEdit, onDelete, onViewTransactions }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: panel.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -32,7 +34,7 @@ const SortablePanel: React.FC<{
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <DashboardPanel panel={panel} data={data} loading={loading} onEdit={onEdit} onDelete={onDelete} />
+      <DashboardPanel panel={panel} data={data} loading={loading} onEdit={onEdit} onDelete={onDelete} onViewTransactions={onViewTransactions} />
     </div>
   );
 };
@@ -56,6 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPanel, setEditingPanel] = useState<DashboardPanelType | null>(null);
+  const [viewingTransactionsPanel, setViewingTransactionsPanel] = useState<DashboardPanelType | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -184,6 +187,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   loading={dataLoading}
                   onEdit={p => { setEditingPanel(p); setEditorOpen(true); }}
                   onDelete={handleDeletePanel}
+                  onViewTransactions={p => setViewingTransactionsPanel(p)}
                 />
               ))}
             </div>
@@ -200,6 +204,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           selectedUserId={selectedUserId}
           onSave={handlePanelSaved}
           onClose={() => { setEditorOpen(false); setEditingPanel(null); }}
+        />
+      )}
+
+      {/* Panel transactions modal */}
+      {viewingTransactionsPanel && (
+        <PanelTransactionsModal
+          panel={viewingTransactionsPanel}
+          dashboard={dashboard}
+          selectedUserId={selectedUserId}
+          onClose={() => setViewingTransactionsPanel(null)}
         />
       )}
     </div>

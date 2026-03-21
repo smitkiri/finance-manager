@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, List } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -14,6 +14,7 @@ interface DashboardPanelProps {
   loading: boolean;
   onEdit: (panel: DashboardPanelType) => void;
   onDelete: (panelId: string) => void;
+  onViewTransactions: (panel: DashboardPanelType) => void;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -30,7 +31,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loading, onEdit, onDelete }) => {
+export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loading, onEdit, onDelete, onViewTransactions }) => {
   const { theme } = useTheme();
   const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';
   const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280';
@@ -116,6 +117,13 @@ export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loa
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate pr-2">{panel.title}</h3>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onViewTransactions(panel)}
+            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+            aria-label="View transactions"
+          >
+            <List size={14} />
+          </button>
           <button
             onClick={() => onEdit(panel)}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"

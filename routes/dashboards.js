@@ -175,7 +175,7 @@ router.post('/dashboards/:id/panels', async (req, res) => {
 // GET /api/dashboard-panels/preview — MUST be before /:panelId
 router.get('/dashboard-panels/preview', async (req, res) => {
   try {
-    const { types, categories, regex, userId, dateFrom, dateTo, limit = '10' } = req.query;
+    const { types, categories, regex, userId, dateFrom, dateTo, limit = '10', offset = '0' } = req.query;
 
     const parsedCategories = categories ? categories.split(',').filter(Boolean) : [];
     const parsedTypes = types ? types.split(',').filter(Boolean) : [];
@@ -204,13 +204,15 @@ router.get('/dashboard-panels/preview', async (req, res) => {
     );
     const total = parseInt(countResult.rows[0].count);
 
+    const limitParam = nextParam;
+    const offsetParam = nextParam + 1;
     const dataResult = await db.query(
       `SELECT id, date, description, category, amount, type, user_id
        FROM transactions
        ${whereSql}
        ORDER BY date DESC
-       LIMIT $${nextParam}`,
-      [...params, parseInt(limit)]
+       LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      [...params, parseInt(limit), parseInt(offset)]
     );
 
     const transactions = dataResult.rows.map(row => ({
