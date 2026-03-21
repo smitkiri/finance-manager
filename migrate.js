@@ -489,6 +489,58 @@ const addTellerAccountId = async () => {
 };
 
 /**
+ * Add dashboards and dashboard_panels tables for Personal Dashboards feature
+ */
+const addPersonalDashboardsTables = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_personal_dashboards_tables']
+  );
+  if (alreadyRun.rows.length > 0) {
+    console.log('Personal dashboards migration already completed, skipping...');
+    return;
+  }
+
+  console.log('Creating personal dashboards tables...');
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS dashboards (
+      id               VARCHAR(255) PRIMARY KEY,
+      name             VARCHAR(255) NOT NULL,
+      is_default       BOOLEAN NOT NULL DEFAULT FALSE,
+      date_range_start DATE NOT NULL,
+      date_range_end   DATE NOT NULL,
+      created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS dashboard_panels (
+      id                VARCHAR(255) PRIMARY KEY,
+      dashboard_id      VARCHAR(255) NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
+      title             VARCHAR(255) NOT NULL,
+      chart_type        VARCHAR(10) NOT NULL CHECK (chart_type IN ('bar', 'line')),
+      filter_type       VARCHAR(10) NOT NULL DEFAULT 'both' CHECK (filter_type IN ('expense', 'income', 'both')),
+      filter_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
+      filter_regex      TEXT,
+      series_mode       VARCHAR(20) NOT NULL DEFAULT 'two_series' CHECK (series_mode IN ('two_series', 'net_amount')),
+      net_orientation   VARCHAR(20) CHECK (net_orientation IN ('income_positive', 'expense_positive')),
+      panel_order       INTEGER NOT NULL DEFAULT 0,
+      created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_dashboard_panels_dashboard ON dashboard_panels(dashboard_id)
+  `);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_personal_dashboards_tables']
+  );
+  console.log('Personal dashboards tables created successfully');
+};
+
+/**
  * Main migration function
  */
 const runMigration = async () => {
@@ -532,6 +584,7 @@ const runMigration = async () => {
     await addTellerAccountId();
     await addTellerEnrollmentId();
     await addImportSessionsTable();
+    await addPersonalDashboardsTables();
 
     console.log('\nAll migrations completed successfully!');
     
