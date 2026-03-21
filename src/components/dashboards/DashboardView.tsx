@@ -9,7 +9,7 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Dashboard, DashboardPanel as DashboardPanelType, PanelData, PanelMonthData } from '../../types';
+import { Dashboard, DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { DateRangePicker } from '../DateRangePicker';
 import { DashboardPanel } from './DashboardPanel';
