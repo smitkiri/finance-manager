@@ -107,4 +107,55 @@ function rowToExpense(row) {
   };
 }
 
-module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense };
+/**
+ * Build the monthly aggregate SQL query for a single dashboard panel.
+ * Extends buildStatsWhereClause with panel-specific filters.
+ *
+ * @param {object} opts
+ * @param {string|null} opts.dateFrom  - YYYY-MM-DD
+ * @param {string|null} opts.dateTo    - YYYY-MM-DD
+ * @param {string|null} opts.userId
+ * @param {string}      opts.filterType  - 'expense' | 'income' | 'both'
+ * @param {string[]}    opts.filterCategories - [] means all
+ * @param {string|null} opts.filterRegex - POSIX regex or null
+ * @returns {{ sql: string, params: any[] }}
+ */
+function buildPanelDataQuery({ dateFrom, dateTo, userId, filterType, filterCategories, filterRegex }) {
+  const { whereSql, params } = buildStatsWhereClause(dateFrom, dateTo, userId);
+  // params already has $1, $2, $3 for dateFrom, dateTo, userId
+  let nextParam = params.length + 1;
+  let extraConditions = '';
+
+  if (filterType !== 'both') {
+    extraConditions += ` AND type = $${nextParam}`;
+    params.push(filterType);
+    nextParam++;
+  }
+
+  if (filterCategories && filterCategories.length > 0) {
+    extraConditions += ` AND category = ANY($${nextParam}::text[])`;
+    params.push(filterCategories);
+    nextParam++;
+  }
+
+  if (filterRegex) {
+    extraConditions += ` AND description ~* $${nextParam}`;
+    params.push(filterRegex);
+    nextParam++;
+  }
+
+  const sql = `
+    SELECT
+      TO_CHAR(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
+      type,
+      SUM(amount) AS total
+    FROM transactions
+    ${whereSql}${extraConditions}
+    GROUP BY month, type
+    ORDER BY month ASC
+  `;
+
+  return { sql, params };
+}
+
+module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense, buildPanelDataQuery };
