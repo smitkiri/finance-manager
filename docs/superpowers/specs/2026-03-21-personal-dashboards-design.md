@@ -45,6 +45,8 @@ CREATE TABLE dashboards (
 
 Only one row may have `is_default = TRUE`. Enforced in application logic: setting a dashboard as default first clears all others.
 
+**Dashboards are global (not per-user).** The `dashboards` table has no `user_id` column, consistent with how `reports` works in this app. The dashboard structure (panels, layout, date range) is shared; the transaction data shown inside panels is filtered per-user at query time using the global `selectedUserId` passed in the data request body.
+
 ### Table: `dashboard_panels`
 
 ```sql
@@ -60,7 +62,7 @@ CREATE TABLE dashboard_panels (
   net_orientation   VARCHAR(20) CHECK (net_orientation IN ('income_positive', 'expense_positive')),
   panel_order       INTEGER NOT NULL DEFAULT 0,
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- must be set explicitly to NOW() in all PATCH handlers
 );
 
 CREATE INDEX idx_dashboard_panels_dashboard ON dashboard_panels(dashboard_id);
@@ -81,7 +83,7 @@ New route file: `routes/dashboards.js`, mounted under `/api` in `server.js`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/dashboards` | List all dashboards (id, name, is_default, date range, panel count) |
+| `GET` | `/api/dashboards` | List all dashboards (id, name, is_default, date range, panel count via `LEFT JOIN` count subquery) |
 | `POST` | `/api/dashboards` | Create a new dashboard |
 | `PATCH` | `/api/dashboards/:id` | Update name, date range, or set as default |
 | `DELETE` | `/api/dashboards/:id` | Delete dashboard and all panels (CASCADE) |
@@ -126,7 +128,9 @@ Response:
 For `series_mode = 'net_amount'`, `data` entries contain `{ month, net }` instead.
 For `filter_type = 'expense'` or `'income'`, only that type's series is returned.
 
-**Implementation:** Fetch all panels for the dashboard, then run one aggregate SQL query per panel concurrently via `Promise.all` against the pg pool:
+**Implementation:** Fetch all panels for the dashboard, then run one aggregate SQL query per panel concurrently via `Promise.all` against the pg pool.
+
+Each query is built by starting with `buildStatsWhereClause(dateRangeStart, dateRangeEnd, userId)` from `helpers/queryBuilders.js` (which handles date range, user scoping, `excluded_from_calculations`, and the full transfer exclusion logic using `$1`, `$2`, `$3`). The returned `whereSql` already includes the `WHERE` keyword; panel-specific conditions are appended with `AND` starting at `$4`:
 
 ```sql
 SELECT
@@ -134,14 +138,10 @@ SELECT
   type,
   SUM(amount) AS total
 FROM transactions
-WHERE
-  date BETWEEN $1 AND $2
-  AND excluded_from_calculations = FALSE
-  AND (transfer_info IS NULL OR (transfer_info->>'excludedFromCalculations')::boolean = FALSE)
-  [AND user_id = $n]
-  [AND category = ANY($n)]
-  [AND description ~* $n]
-  [AND type = $n]
+<base WHERE from buildStatsWhereClause>
+  [AND type = ANY($4::text[])]           -- if filter_type != 'both'
+  [AND category = ANY($n::text[])]       -- if filter_categories non-empty
+  [AND description ~* $n]               -- if filter_regex non-null
 GROUP BY month, type
 ORDER BY month ASC
 ```
@@ -152,11 +152,13 @@ Regex is applied using PostgreSQL's `~*` (case-insensitive POSIX match). If `fil
 
 **`GET /api/dashboard-panels/preview`**
 
-Query params: `type`, `categories` (comma-separated), `regex`, `userId`, `dateFrom`, `dateTo`, `limit` (default 10).
+Query params: `types` (comma-separated, matches `buildExpensesWhereClause`'s `query.types` field), `categories` (comma-separated), `regex`, `userId`, `dateFrom`, `dateTo`, `limit` (default 10).
 
 Returns: `{ transactions: Expense[], total: number }`
 
 Reuses `buildExpensesWhereClause` from `helpers/queryBuilders.js` and appends an optional `description ~* $n` condition. Used by the panel editor for live filter validation. Max 10 rows returned; total is a separate `COUNT(*)` subquery.
+
+**Route ordering note:** The `/preview` route must be declared before `/:panelId` in `routes/dashboards.js` to prevent Express from capturing the literal string `"preview"` as a `panelId` parameter value.
 
 ---
 
@@ -248,7 +250,7 @@ src/components/dashboards/
 
 #### `DashboardPanel.tsx`
 - Receives `panel: DashboardPanel` and `data: PanelMonthData[]` as props
-- Renders a Recharts `ResponsiveContainer` with `LineChart` or `BarChart`
+- Renders Recharts `LineChart` or `BarChart` directly (not via the shared `Chart.tsx` component). This is intentional: `Chart.tsx` does not support multi-series bar charts or Y-axis inversion (needed for `net_orientation = 'expense_positive'`), and its interface is not designed for externally-provided data series. Reusing it would require significant surgery; a focused component is cleaner here.
   - `two_series`: two `Line`/`Bar` — income (green) and expenses (red)
   - `net_amount` with `income_positive`: single series, positive = income surplus
   - `net_amount` with `expense_positive`: single series, Y-axis inverted so high-expense months show tall bars going up
@@ -283,7 +285,13 @@ src/components/dashboards/
 
 ## Migration
 
-New migration file (e.g. `migrations/010_personal_dashboards.sql`) creating both tables with indexes. Tracked in the `migrations` table via the existing `migrate.js` runner.
+A new named migration function is added to `migrate.js` following the existing pattern: a named entry in the migrations sequence that checks the `migrations` table before running, then executes the `CREATE TABLE` DDL for `dashboards` and `dashboard_panels` inline. No separate `.sql` file — all migration SQL lives inside `migrate.js` as a JS string, consistent with all existing migrations in this project.
+
+---
+
+## New Dependencies
+
+- `@dnd-kit/core` and `@dnd-kit/sortable` — required for drag-and-drop panel reordering in `DashboardView.tsx`. Must be added via `npm install @dnd-kit/core @dnd-kit/sortable` before implementation.
 
 ---
 
