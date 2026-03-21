@@ -118,6 +118,7 @@ npm run build
 - 📊 **Report Builder**: Create custom reports with advanced filtering and data analysis
 - 🔧 **Settings Management**: Comprehensive settings page for categories, sources, users, and data management
 - 💼 **Net Worth Tracking**: Track assets and liabilities per user with historical balance snapshots and a net worth over time chart
+- 📊 **Personal Dashboards**: Create custom dashboards with up to 15 chart panels, each with configurable filters (category, regex, transaction type), bar/line charts, and drag-and-drop reordering
 
 ## 📝 Usage
 
@@ -140,6 +141,7 @@ The primary way to get data into the system is by importing CSV files from your 
 *   **Report Builder**: Generate custom reports based on your filtered data, allowing for deeper analysis and insights into your financial health.
 *   **Smart Transfer Detection**: The system intelligently identifies and handles internal transfers between your accounts, preventing them from skewing your income/expense reports.
 *   **Net Worth Tracking**: Create asset accounts (bank accounts, investments, etc.) and liability accounts (credit cards, loans, etc.) linked to each user. Record balance snapshots over time and view your total assets, liabilities, and net worth on a dedicated page with a historical line chart. When viewing all users, accounts are grouped and subtotalled per person. Account management lives in Settings → Accounts; balance updates are done directly from the Net Worth page.
+*   **Personal Dashboards**: Build your own analytics dashboards tailored to what matters most. Each dashboard supports up to 15 chart panels with independent filters — filter by category, transaction type (income/expense/both), or a description regex pattern (e.g. `uber|lyft`). Choose between bar and line charts, pick between two-series (income & expenses) or net amount display modes, and reorder panels via drag-and-drop. A live transaction preview in the panel editor shows which transactions match your filters before you save.
 
 ### Further Usage Details:
 
