@@ -20,6 +20,7 @@ import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
 import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
+import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
 import { ITEMS_PER_PAGE } from './constants';
 
 function AppContent() {
@@ -965,6 +966,12 @@ function AppContent() {
 
       <main className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8`}>
         <Routes>
+          <Route path="/personal-dashboards" element={
+            <PersonalDashboards
+              categories={categories}
+              selectedUserId={selectedUserId}
+            />
+          } />
           <Route path="/net-worth" element={
             <NetWorth
               selectedUserId={selectedUserId}
