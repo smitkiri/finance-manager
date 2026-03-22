@@ -3,6 +3,7 @@ import { Trash2, Edit, ChevronDown, Plus, ChevronUp } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency } from '../../utils';
 import { LabelSelector } from '../ui/LabelSelector';
+import { LabelBadge } from '../ui/LabelBadge';
 
 interface TransactionListProps {
   expenses: Expense[];
@@ -276,12 +277,11 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                       {expense.labels && expense.labels.length > 0 && (
                         <div className="flex space-x-1">
                           {expense.labels.map((label, index) => (
-                            <span
+                            <LabelBadge
                               key={index}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            >
-                              {label}
-                            </span>
+                              label={label}
+                              onRemove={() => onRemoveLabel(expense.id, label)}
+                            />
                           ))}
                         </div>
                       )}

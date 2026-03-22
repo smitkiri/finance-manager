@@ -14,21 +14,24 @@ interface SeriesStats {
   min: number | null;
   max: number | null;
   avg: number | null;
+  total: number | null;
 }
 
-function computeStats(values: number[]): { min: number | null; max: number | null; avg: number | null } {
-  if (values.length === 0) return { min: null, max: null, avg: null };
+function computeStats(values: number[]): { min: number | null; max: number | null; avg: number | null; total: number | null } {
+  if (values.length === 0) return { min: null, max: null, avg: null, total: null };
+  const sum = values.reduce((s, v) => s + v, 0);
   return {
     min: Math.min(...values),
     max: Math.max(...values),
-    avg: values.reduce((sum, v) => sum + v, 0) / values.length,
+    avg: sum / values.length,
+    total: sum,
   };
 }
 
 export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, seriesMode }) => {
   if (!legendOptions.show) return null;
 
-  const showAnyStats = legendOptions.min || legendOptions.max || legendOptions.avg;
+  const showAnyStats = legendOptions.min || legendOptions.max || legendOptions.avg || legendOptions.total;
 
   const seriesList: SeriesStats[] = [];
 
@@ -58,6 +61,7 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, s
                 legendOptions.min && series.min != null && `Min: ${formatCurrency(series.min)}`,
                 legendOptions.max && series.max != null && `Max: ${formatCurrency(series.max)}`,
                 legendOptions.avg && series.avg != null && `Avg: ${formatCurrency(series.avg)}`,
+                legendOptions.total && series.total != null && `Total: ${formatCurrency(series.total)}`,
               ].filter(Boolean).join(' · ')}
             </span>
           )}

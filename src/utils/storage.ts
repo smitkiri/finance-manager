@@ -1272,7 +1272,7 @@ export class LocalStorage {
     userId?: string | null;
     dateFrom?: string;
     dateTo?: string;
-  }): Promise<{ rows: { sortMonth: string; month: string; type: string; total: number }[] }> {
+  }): Promise<{ rows: { sortMonth: string; month: string; type: string; total: number }[]; monthMap: Record<string, { month: string }> }> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/chart-preview`, {
         method: 'POST',
@@ -1283,7 +1283,7 @@ export class LocalStorage {
       return response.json();
     } catch (error) {
       console.error('Error fetching chart preview:', error);
-      return { rows: [] };
+      return { rows: [], monthMap: {} };
     }
   }
 }

@@ -222,6 +222,10 @@ router.patch('/expenses/:id', async (req, res) => {
       fields.push(`excluded_from_calculations = $${paramIndex++}`);
       values.push(expenseData.excludedFromCalculations);
     }
+    if (expenseData.transferInfo !== undefined) {
+      fields.push(`transfer_info = $${paramIndex++}`);
+      values.push(JSON.stringify(expenseData.transferInfo));
+    }
 
     if (fields.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });

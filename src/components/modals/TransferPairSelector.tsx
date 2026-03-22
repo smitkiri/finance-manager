@@ -1,14 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { X, Search, ArrowRightLeft } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Search, ArrowRightLeft, Loader2 } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
+import { LocalStorage } from '../../utils/storage';
 
 interface TransferPairSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (pairTransactionId: string) => void;
   currentTransaction: Expense;
-  allTransactions: Expense[];
 }
 
 export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
@@ -16,61 +16,83 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
   onClose,
   onSelect,
   currentTransaction,
-  allTransactions
 }) => {
   const [searchText, setSearchText] = useState('');
+  const [allTransactions, setAllTransactions] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch all transactions when the selector opens
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setLoading(true);
+    LocalStorage.loadExpenses().then((loaded) => {
+      if (!cancelled) {
+        setAllTransactions(loaded);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
+  // Reset search when opening
+  useEffect(() => {
+    if (isOpen) setSearchText('');
+  }, [isOpen]);
 
   // Filter and sort transactions that can be paired
   const availableTransactions = useMemo(() => {
     const filtered = allTransactions.filter(t => {
       // Exclude the current transaction
       if (t.id === currentTransaction.id) return false;
-      
+
       // Exclude transactions that are already part of a transfer
       if (t.transferInfo?.isTransfer) return false;
-      
+
       // Must be opposite type (income vs expense)
       if (t.type === currentTransaction.type) return false;
-      
-      // Must be same user (transfer/refund)
-      if (t.user !== currentTransaction.user) return false;
-      
+
       // Apply search filter
       if (searchText) {
         const searchLower = searchText.toLowerCase();
         return (
           t.description.toLowerCase().includes(searchLower) ||
           t.category.toLowerCase().includes(searchLower) ||
+          t.user.toLowerCase().includes(searchLower) ||
           formatDate(t.date).toLowerCase().includes(searchLower)
         );
       }
-      
+
       return true;
     });
 
-    // Sort by match likelihood (exact amount match first, then by amount difference)
+    // Sort by match likelihood
     return filtered.sort((a, b) => {
-      const amountA = a.amount;
-      const amountB = b.amount;
       const currentAmount = currentTransaction.amount;
-      
-      // Calculate amount difference
-      const diffA = Math.abs(amountA - currentAmount);
-      const diffB = Math.abs(amountB - currentAmount);
-      
-      // Exact matches first
+
+      // Same user first
+      const sameUserA = a.user === currentTransaction.user;
+      const sameUserB = b.user === currentTransaction.user;
+      if (sameUserA && !sameUserB) return -1;
+      if (!sameUserA && sameUserB) return 1;
+
+      // Exact amount matches first
+      const diffA = Math.abs(a.amount - currentAmount);
+      const diffB = Math.abs(b.amount - currentAmount);
+
       if (diffA === 0 && diffB !== 0) return -1;
       if (diffB === 0 && diffA !== 0) return 1;
       if (diffA === 0 && diffB === 0) {
-        // If both are exact matches, sort by date (most recent first)
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       }
-      
+
       // Then sort by amount difference (smallest difference first)
       if (diffA !== diffB) {
         return diffA - diffB;
       }
-      
+
       // If same difference, sort by date (most recent first)
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
@@ -124,8 +146,8 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
               </p>
             </div>
             <div className={`text-lg font-bold ${
-              currentTransaction.type === 'expense' 
-                ? 'text-red-600 dark:text-red-400' 
+              currentTransaction.type === 'expense'
+                ? 'text-red-600 dark:text-red-400'
                 : 'text-green-600 dark:text-green-400'
             }`}>
               {currentTransaction.type === 'expense' ? '-' : '+'}
@@ -150,18 +172,24 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
 
         {/* Transaction List */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-400px)]">
-          {availableTransactions.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-purple-500 mr-2" />
+              <span className="text-gray-500 dark:text-gray-400">Loading transactions...</span>
+            </div>
+          ) : availableTransactions.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400">
-                {searchText 
-                  ? 'No matching transactions found' 
-                  : 'No available transactions to pair with. The transaction must be the opposite type (income/expense) and from the same user.'}
+                {searchText
+                  ? 'No matching transactions found'
+                  : 'No available transactions to pair with. The transaction must be the opposite type (income/expense).'}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
               {availableTransactions.map((transaction) => {
                 const isExactMatch = transaction.amount === currentTransaction.amount;
+                const isSameUser = transaction.user === currentTransaction.user;
                 return (
                   <button
                     key={transaction.id}
@@ -183,6 +211,11 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
                               Exact Match
                             </span>
                           )}
+                          {!isSameUser && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
+                              Different User
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -192,11 +225,15 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             {transaction.category}
                           </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">•</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {transaction.user}
+                          </span>
                         </div>
                       </div>
                       <div className={`text-lg font-bold ml-4 ${
-                        transaction.type === 'expense' 
-                          ? 'text-red-600 dark:text-red-400' 
+                        transaction.type === 'expense'
+                          ? 'text-red-600 dark:text-red-400'
                           : 'text-green-600 dark:text-green-400'
                       }`}>
                         {transaction.type === 'expense' ? '-' : '+'}
@@ -223,4 +260,3 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
     </div>
   );
 };
-

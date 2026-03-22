@@ -803,50 +803,60 @@ function AppContent() {
 
   const handleMarkAsTransferRefund = async (transactionId: string, pairTransactionId: string) => {
     try {
-      const transaction1 = expenses.find(exp => exp.id === transactionId);
-      const transaction2 = expenses.find(exp => exp.id === pairTransactionId);
-      
+      // Look up locally first, then fall back to loading from the API
+      let transaction1 = transactionList.find(exp => exp.id === transactionId) || expenses.find(exp => exp.id === transactionId);
+      let transaction2 = transactionList.find(exp => exp.id === pairTransactionId) || expenses.find(exp => exp.id === pairTransactionId);
+
+      if (!transaction1 || !transaction2) {
+        const allExpenses = await LocalStorage.loadExpenses();
+        transaction1 = transaction1 || allExpenses.find(exp => exp.id === transactionId);
+        transaction2 = transaction2 || allExpenses.find(exp => exp.id === pairTransactionId);
+      }
+
       if (!transaction1 || !transaction2) {
         console.error('One or both transactions not found');
+        toast.error('Could not find one or both transactions', { position: 'bottom-right', autoClose: 3000 });
         return;
       }
 
       // Generate a unique transfer ID
       const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Update both transactions with transfer info
-      const updatedTransaction1: Expense = {
+      const transferType = transaction1.user === transaction2.user ? 'self' : 'user';
+
+      // Update both transactions with transfer info via individual PATCH calls
+      const updatedTransaction1 = await LocalStorage.updateExpense({
         ...transaction1,
         transferInfo: {
           isTransfer: true,
           transferId,
-          transferType: 'self',
+          transferType,
           excludedFromCalculations: true,
           userOverride: false
         }
-      };
+      });
 
-      const updatedTransaction2: Expense = {
+      const updatedTransaction2 = await LocalStorage.updateExpense({
         ...transaction2,
         transferInfo: {
           isTransfer: true,
           transferId,
-          transferType: 'self',
+          transferType,
           excludedFromCalculations: true,
           userOverride: false
         }
-      };
-
-      // Update both transactions
-      let updatedExpenses = expenses.map(exp => {
-        if (exp.id === transactionId) return updatedTransaction1;
-        if (exp.id === pairTransactionId) return updatedTransaction2;
-        return exp;
       });
 
-      // Save to storage
-      await LocalStorage.saveExpenses(updatedExpenses);
-      setExpenses(updatedExpenses);
+      setExpenses(prev => prev.map(e => {
+        if (e.id === transactionId) return updatedTransaction1;
+        if (e.id === pairTransactionId) return updatedTransaction2;
+        return e;
+      }));
+      setTransactionList(prev => prev.map(e => {
+        if (e.id === transactionId) return updatedTransaction1;
+        if (e.id === pairTransactionId) return updatedTransaction2;
+        return e;
+      }));
       bumpTransactionListVersion();
 
       // Update selected transaction if it's one of the updated ones

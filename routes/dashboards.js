@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { buildStatsWhereClause, buildPanelDataQuery, buildFilterGroupsWhereClause } = require('../helpers/queryBuilders');
+const { buildStatsWhereClause, buildPanelDataQuery, buildFilterGroupsWhereClause, buildMonthSeries } = require('../helpers/queryBuilders');
 
 // ─── Helper: map a DB row to the Dashboard shape ───────────────────────────
 
@@ -232,6 +232,7 @@ router.post('/dashboard-panels/chart-preview', async (req, res) => {
 
     const result = await db.query(sql, params);
 
+    const monthMap = buildMonthSeries(dateFrom, dateTo);
     const rows = result.rows.map(row => ({
       sortMonth: row.sort_month,
       month: row.month,
@@ -239,7 +240,7 @@ router.post('/dashboard-panels/chart-preview', async (req, res) => {
       total: parseFloat(row.total),
     }));
 
-    res.json({ rows });
+    res.json({ rows, monthMap });
   } catch (err) {
     console.error('Error generating chart preview:', err);
     res.status(500).json({ error: 'Failed to generate chart preview' });
@@ -340,8 +341,9 @@ router.post('/dashboards/:id/data', async (req, res) => {
 
         const result = await db.query(sql, params);
 
-        // Aggregate rows into per-month data (keyed by sort_month for ordering)
-        const monthMap = {};
+        const monthMap = buildMonthSeries(dateRangeStart, dateRangeEnd);
+
+        // Aggregate rows into per-month data
         for (const row of result.rows) {
           const key = row.sort_month;
           if (!monthMap[key]) monthMap[key] = { month: row.month };

@@ -241,6 +241,7 @@ export interface LegendOptions {
   min: boolean;
   max: boolean;
   avg: boolean;
+  total: boolean;
 }
 
 export interface DashboardPanel {

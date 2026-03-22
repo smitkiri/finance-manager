@@ -227,4 +227,23 @@ function buildPanelDataQuery({ dateFrom, dateTo, userId, filterGroups }) {
   return { sql, params };
 }
 
-module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense, buildPanelDataQuery, buildFilterGroupsWhereClause };
+/**
+ * Build a month map pre-populated with every month in [dateFrom, dateTo].
+ * Keys are "YYYY-MM", values are { month: "Mon YYYY" }.
+ */
+function buildMonthSeries(dateFrom, dateTo) {
+  const monthMap = {};
+  const cur = new Date(dateFrom + 'T00:00:00');
+  const end = new Date(dateTo + 'T00:00:00');
+  cur.setDate(1);
+  end.setDate(1);
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  while (cur <= end) {
+    const key = cur.toISOString().slice(0, 7);
+    monthMap[key] = { month: `${monthNames[cur.getMonth()]} ${cur.getFullYear()}` };
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return monthMap;
+}
+
+module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense, buildPanelDataQuery, buildFilterGroupsWhereClause, buildMonthSeries };

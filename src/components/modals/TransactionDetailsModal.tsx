@@ -85,6 +85,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -407,14 +408,15 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         </div>
       </div>
 
-      {/* Transfer Pair Selector */}
-      <TransferPairSelector
-        isOpen={isPairSelectorOpen}
-        onClose={() => setIsPairSelectorOpen(false)}
-        onSelect={handleMarkAsTransferRefund}
-        currentTransaction={transaction}
-        allTransactions={allTransactions}
-      />
     </div>
+
+    {/* Transfer Pair Selector - rendered outside backdrop to avoid click propagation closing parent */}
+    <TransferPairSelector
+      isOpen={isPairSelectorOpen}
+      onClose={() => setIsPairSelectorOpen(false)}
+      onSelect={handleMarkAsTransferRefund}
+      currentTransaction={transaction}
+    />
+    </>
   );
 }; 

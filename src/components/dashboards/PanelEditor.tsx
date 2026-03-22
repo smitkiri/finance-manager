@@ -48,7 +48,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   const [seriesMode, setSeriesMode] = useState<'two_series' | 'net_amount'>(panel?.seriesMode || 'two_series');
   const [netOrientation, setNetOrientation] = useState<'income_positive' | 'expense_positive'>(panel?.netOrientation || 'income_positive');
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>(panel?.filterGroups || []);
-  const [legendOptions, setLegendOptions] = useState<LegendOptions>(panel?.legendOptions || { show: false, min: false, max: false, avg: false });
+  const [legendOptions, setLegendOptions] = useState<LegendOptions>(panel?.legendOptions || { show: false, min: false, max: false, avg: false, total: false });
 
   const [chartData, setChartData] = useState<PanelMonthData[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
@@ -105,8 +105,13 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
           dateTo,
         });
 
-        // Aggregate rows into PanelMonthData by month
+        // Use server-provided month series (includes all months in range)
         const monthMap: Record<string, PanelMonthData> = {};
+        for (const [key, val] of Object.entries(chartResult.monthMap || {})) {
+          monthMap[key] = val as PanelMonthData;
+        }
+
+        // Aggregate rows into PanelMonthData by month
         for (const row of chartResult.rows) {
           const key = row.sortMonth;
           if (!monthMap[key]) monthMap[key] = { month: row.month };
@@ -234,7 +239,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -340,7 +345,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
           </button>
           {legendOptions.show && (
             <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
-              {(['min', 'max', 'avg'] as const).map(stat => (
+              {(['min', 'max', 'avg', 'total'] as const).map(stat => (
                 <button
                   key={stat}
                   onClick={() => setLegendOptions(prev => ({ ...prev, [stat]: !prev[stat] }))}
