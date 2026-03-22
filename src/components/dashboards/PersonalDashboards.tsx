@@ -9,16 +9,10 @@ import { toast } from 'react-toastify';
 interface PersonalDashboardsProps {
   categories: string[];
   selectedUserId: string | null;
+  dateRange: { start: Date; end: Date };
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
-const oneYearAgo = () => {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - 1);
-  return d.toISOString().slice(0, 10);
-};
-
-export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categories, selectedUserId }) => {
+export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categories, selectedUserId, dateRange }) => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +45,8 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
       id: generateId(),
       name,
       isDefault: dashboards.length === 0,
-      dateRangeStart: oneYearAgo(),
-      dateRangeEnd: today(),
+      dateRangeStart: dateRange.start.toISOString().slice(0, 10),
+      dateRangeEnd: dateRange.end.toISOString().slice(0, 10),
     });
     setDashboards(prev => [...prev, created]);
     setSelectedId(created.id);
@@ -203,6 +197,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
           dashboard={selectedDashboard}
           categories={categories}
           selectedUserId={selectedUserId}
+          dateRange={dateRange}
           onDashboardUpdated={handleDashboardUpdated}
         />
       )}

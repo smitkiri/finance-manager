@@ -11,7 +11,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Dashboard, DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
 import { LocalStorage } from '../../utils/storage';
-import { DateRangePicker } from '../DateRangePicker';
 import { DashboardPanel } from './DashboardPanel';
 import { PanelEditorSidebar } from './PanelEditorSidebar';
 import { PanelTransactionsModal } from './PanelTransactionsModal';
@@ -43,19 +42,16 @@ interface DashboardViewProps {
   dashboard: Dashboard;
   categories: string[];
   selectedUserId: string | null;
+  dateRange: { start: Date; end: Date };
   onDashboardUpdated: (d: Dashboard) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  dashboard, categories, selectedUserId, onDashboardUpdated,
+  dashboard, categories, selectedUserId, dateRange, onDashboardUpdated,
 }) => {
   const [panels, setPanels] = useState<DashboardPanelType[]>([]);
   const [panelDataMap, setPanelDataMap] = useState<Record<string, PanelMonthData[]>>({});
   const [dataLoading, setDataLoading] = useState(false);
-  const [dateRange, setDateRange] = useState({
-    start: new Date(dashboard.dateRangeStart),
-    end: new Date(dashboard.dateRangeEnd),
-  });
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPanel, setEditingPanel] = useState<DashboardPanelType | null>(null);
   const [viewingTransactionsPanel, setViewingTransactionsPanel] = useState<DashboardPanelType | null>(null);
@@ -132,25 +128,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setPanelDataMap(prev => { const n = { ...prev }; delete n[panelId]; return n; });
   };
 
-  const handleDateChange = async (range: { start: Date; end: Date }) => {
-    setDateRange(range);
-    // Persist to dashboard
-    await LocalStorage.updateDashboard(dashboard.id, {
-      dateRangeStart: range.start.toISOString().slice(0, 10),
-      dateRangeEnd: range.end.toISOString().slice(0, 10),
-    });
-  };
-
   const panelLimitReached = panels.length >= 15;
 
   return (
     <div className="flex-1 overflow-auto p-6">
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-6">
-        <DateRangePicker
-          currentRange={dateRange}
-          onDateRangeChange={handleDateChange}
-        />
+      <div className="flex items-center justify-end mb-6">
         <button
           onClick={() => { setEditingPanel(null); setEditorOpen(true); }}
           disabled={panelLimitReached}
@@ -200,6 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           panel={editingPanel}
           categories={categories}
           selectedUserId={selectedUserId}
+          dateRange={dateRange}
           onSave={handlePanelSaved}
           onClose={() => { setEditorOpen(false); setEditingPanel(null); }}
         />
@@ -210,6 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <PanelTransactionsModal
           panel={viewingTransactionsPanel}
           dashboard={dashboard}
+          dateRange={dateRange}
           selectedUserId={selectedUserId}
           onClose={() => setViewingTransactionsPanel(null)}
         />

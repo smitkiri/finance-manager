@@ -10,6 +10,7 @@ interface PanelEditorSidebarProps {
   panel: DashboardPanel | null; // null = create mode
   categories: string[];
   selectedUserId: string | null;
+  dateRange: { start: Date; end: Date };
   onSave: (panel: DashboardPanel) => void;
   onClose: () => void;
 }
@@ -29,6 +30,7 @@ export const PanelEditorSidebar: React.FC<PanelEditorSidebarProps> = ({
   panel,
   categories,
   selectedUserId,
+  dateRange,
   onSave,
   onClose,
 }) => {
@@ -82,15 +84,15 @@ export const PanelEditorSidebar: React.FC<PanelEditorSidebarProps> = ({
         categories: currentForm.filterCategories,
         regex: currentForm.filterRegex || null,
         userId: selectedUserId,
-        dateFrom: dashboard.dateRangeStart,
-        dateTo: dashboard.dateRangeEnd,
+        dateFrom: dateRange.start.toISOString().slice(0, 10),
+        dateTo: dateRange.end.toISOString().slice(0, 10),
         limit: 10,
       });
       setPreviewTransactions(result.transactions);
       setPreviewTotal(result.total);
       setPreviewLoading(false);
     }, 400);
-  }, [dashboard, selectedUserId]);
+  }, [dateRange, selectedUserId]);
 
   const handleChange = (updates: Partial<typeof form>) => {
     const next = { ...form, ...updates };

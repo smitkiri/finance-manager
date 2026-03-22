@@ -970,6 +970,7 @@ function AppContent() {
             <PersonalDashboards
               categories={categories}
               selectedUserId={selectedUserId}
+              dateRange={dateRange}
             />
           } />
           <Route path="/net-worth" element={

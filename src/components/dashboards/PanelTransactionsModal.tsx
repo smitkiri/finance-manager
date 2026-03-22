@@ -8,12 +8,13 @@ import { ITEMS_PER_PAGE } from '../../constants';
 interface PanelTransactionsModalProps {
   panel: DashboardPanel;
   dashboard: Dashboard;
+  dateRange: { start: Date; end: Date };
   selectedUserId: string | null;
   onClose: () => void;
 }
 
 export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
-  panel, dashboard, selectedUserId, onClose,
+  panel, dashboard, dateRange, selectedUserId, onClose,
 }) => {
   const [transactions, setTransactions] = useState<Expense[]>([]);
   const [total, setTotal] = useState(0);
@@ -30,15 +31,15 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
       categories: panel.filterCategories,
       regex: panel.filterRegex,
       userId: selectedUserId,
-      dateFrom: dashboard.dateRangeStart,
-      dateTo: dashboard.dateRangeEnd,
+      dateFrom: dateRange.start.toISOString().slice(0, 10),
+      dateTo: dateRange.end.toISOString().slice(0, 10),
       limit: ITEMS_PER_PAGE,
       offset: (pageNum - 1) * ITEMS_PER_PAGE,
     });
     setTransactions(result.transactions);
     setTotal(result.total);
     setLoading(false);
-  }, [panel, dashboard, selectedUserId]);
+  }, [panel, dateRange, selectedUserId]);
 
   useEffect(() => { fetchPage(page); }, [page, fetchPage]);
 
