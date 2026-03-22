@@ -1,0 +1,20 @@
+{
+  "extends": ["react-app", "react-app/jest"],
+  "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-debugger": "error",
+    "no-alert": "off",
+    "eqeqeq": ["error", "always"],
+    "no-var": "error",
+    "prefer-const": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["server.js", "routes/**/*.js", "helpers/**/*.js", "migrate.js", "database.js"],
+      "env": { "node": true },
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

@@ -45,12 +45,6 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\""
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
   "browserslist": {
     "production": [
       ">0.2%",

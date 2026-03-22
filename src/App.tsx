@@ -380,7 +380,7 @@ function AppContent() {
   const handleAddLabel = useCallback(
     async (expenseId: string, label: string) => {
       try {
-        let expenseToUpdate =
+        const expenseToUpdate =
           transactionList.find((exp) => exp.id === expenseId) ||
           expenses.find((exp) => exp.id === expenseId);
         if (!expenseToUpdate) return;
@@ -408,7 +408,7 @@ function AppContent() {
   const handleRemoveLabel = useCallback(
     async (expenseId: string, label: string) => {
       try {
-        let expenseToUpdate =
+        const expenseToUpdate =
           transactionList.find((exp) => exp.id === expenseId) ||
           expenses.find((exp) => exp.id === expenseId);
         if (!expenseToUpdate) return;
@@ -869,7 +869,7 @@ function AppContent() {
 
   const handleExcludeToggle = async (transactionId: string, exclude: boolean) => {
     try {
-      let expenseToUpdate =
+      const expenseToUpdate =
         transactionList.find((exp) => exp.id === transactionId) ||
         expenses.find((exp) => exp.id === transactionId);
       if (!expenseToUpdate) return;

@@ -67,12 +67,12 @@ export class LocalStorage {
         throw new Error('Failed to save expenses');
       }
 
-      console.log(`Saved ${expenses.length} expenses to server`);
+      console.warn(`Saved ${expenses.length} expenses to server`);
     } catch (error) {
       console.error('Error saving expenses:', error);
       // Fallback to localStorage if server is not available
       localStorage.setItem('expenses', JSON.stringify(expenses));
-      console.log('Saved to localStorage as fallback');
+      console.warn('Saved to localStorage as fallback');
     }
   }
 
@@ -85,7 +85,7 @@ export class LocalStorage {
       }
 
       const expenses = await response.json();
-      console.log(`Loaded ${expenses.length} expenses from server`);
+      console.warn(`Loaded ${expenses.length} expenses from server`);
       return expenses;
     } catch (error) {
       console.error('Error loading expenses from server:', error);
@@ -93,7 +93,7 @@ export class LocalStorage {
       const stored = localStorage.getItem('expenses');
       if (stored) {
         const expenses = JSON.parse(stored);
-        console.log(`Loaded ${expenses.length} expenses from localStorage`);
+        console.warn(`Loaded ${expenses.length} expenses from localStorage`);
         return expenses;
       }
       return [];
@@ -143,13 +143,13 @@ export class LocalStorage {
         'dateTo',
         typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10)
       );
-    if (userId != null && userId !== '') params.set('userId', userId);
+    if (userId !== null && userId !== undefined && userId !== '') params.set('userId', userId);
     if (categories?.length) params.set('categories', categories.join(','));
     if (labels?.length) params.set('labels', labels.join(','));
     if (types?.length) params.set('types', types.join(','));
     if (sources?.length) params.set('sources', sources.join(','));
-    if (minAmount != null) params.set('minAmount', String(minAmount));
-    if (maxAmount != null) params.set('maxAmount', String(maxAmount));
+    if (minAmount !== null && minAmount !== undefined) params.set('minAmount', String(minAmount));
+    if (maxAmount !== null && maxAmount !== undefined) params.set('maxAmount', String(maxAmount));
     if (searchText?.trim()) params.set('search', searchText.trim());
 
     try {
@@ -191,7 +191,7 @@ export class LocalStorage {
         'dateTo',
         typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10)
       );
-    if (userId != null && userId !== '') params.set('userId', userId);
+    if (userId !== null && userId !== undefined && userId !== '') params.set('userId', userId);
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/stats?${params.toString()}`);
       if (!response.ok) return null;
@@ -221,7 +221,7 @@ export class LocalStorage {
       }
 
       const result = await response.json();
-      console.log(`Imported ${result.imported} new expenses, total: ${result.total}`);
+      console.warn(`Imported ${result.imported} new expenses, total: ${result.total}`);
 
       // Reload all expenses after import
       const expenses = await this.loadExpenses();
@@ -262,7 +262,7 @@ export class LocalStorage {
       // Save updated data
       await this.saveExpenses(updatedExpenses);
 
-      console.log(`Added new expense, total: ${updatedExpenses.length}`);
+      console.warn(`Added new expense, total: ${updatedExpenses.length}`);
       return updatedExpenses;
     } catch (error) {
       console.error('Error adding expense:', error);
@@ -288,7 +288,7 @@ export class LocalStorage {
       }
 
       const returnedExpense = await response.json();
-      console.log(`Updated expense ${updatedExpense.id}`);
+      console.warn(`Updated expense ${updatedExpense.id}`);
       return returnedExpense;
     } catch (error) {
       console.error('Error updating expense:', error);
@@ -307,7 +307,7 @@ export class LocalStorage {
       // Save updated data
       await this.saveExpenses(updatedExpenses);
 
-      console.log(`Deleted expense ${expenseId}, total: ${updatedExpenses.length}`);
+      console.warn(`Deleted expense ${expenseId}, total: ${updatedExpenses.length}`);
       return updatedExpenses;
     } catch (error) {
       console.error('Error deleting expense:', error);
@@ -379,7 +379,7 @@ export class LocalStorage {
         throw new Error('Failed to save source');
       }
 
-      console.log(`Saved source ${source.name}`);
+      console.warn(`Saved source ${source.name}`);
     } catch (error) {
       console.error('Error saving source:', error);
       // Fallback to localStorage
@@ -405,7 +405,7 @@ export class LocalStorage {
         throw new Error('Failed to update source');
       }
 
-      console.log(`Updated source ${updatedSource.name}`);
+      console.warn(`Updated source ${updatedSource.name}`);
 
       // Reload all sources to get the updated list
       return await this.loadSources();
@@ -430,7 +430,7 @@ export class LocalStorage {
       }
 
       const sources = await response.json();
-      console.log(`Loaded ${sources.length} sources from server`);
+      console.warn(`Loaded ${sources.length} sources from server`);
       return sources;
     } catch (error) {
       console.error('Error loading sources from server:', error);
@@ -566,7 +566,7 @@ export class LocalStorage {
         throw new Error('Failed to save date range');
       }
 
-      console.log(`Saved date range`);
+      console.warn(`Saved date range`);
     } catch (error) {
       console.error('Error saving date range:', error);
       // Fallback to localStorage
@@ -625,7 +625,7 @@ export class LocalStorage {
         throw new Error('Failed to save categories');
       }
 
-      console.log(`Saved ${categories.length} categories`);
+      console.warn(`Saved ${categories.length} categories`);
     } catch (error) {
       console.error('Error saving categories:', error);
       // Fallback to localStorage
@@ -642,7 +642,7 @@ export class LocalStorage {
       }
 
       const result = await response.json();
-      console.log(`Loaded ${result.categories.length} categories from server`);
+      console.warn(`Loaded ${result.categories.length} categories from server`);
       return result.categories;
     } catch (error) {
       console.error('Error loading categories from server:', error);
@@ -739,7 +739,7 @@ export class LocalStorage {
         throw new Error('Failed to save report');
       }
 
-      console.log(`Saved report ${report.id}`);
+      console.warn(`Saved report ${report.id}`);
     } catch (error) {
       console.error('Error saving report:', error);
       // Fallback to localStorage
@@ -763,7 +763,7 @@ export class LocalStorage {
       }
 
       const reports = await response.json();
-      console.log(`Loaded ${reports.length} reports from server`);
+      console.warn(`Loaded ${reports.length} reports from server`);
       return reports;
     } catch (error) {
       console.error('Error loading reports from server:', error);
@@ -782,7 +782,7 @@ export class LocalStorage {
         throw new Error('Failed to delete report');
       }
 
-      console.log(`Deleted report ${reportId}`);
+      console.warn(`Deleted report ${reportId}`);
     } catch (error) {
       console.error('Error deleting report:', error);
       // Fallback to localStorage
@@ -809,7 +809,7 @@ export class LocalStorage {
         throw new Error('Failed to save report data');
       }
 
-      console.log(`Saved report data for ${reportData.report.id}`);
+      console.warn(`Saved report data for ${reportData.report.id}`);
     } catch (error) {
       console.error('Error saving report data:', error);
       // Fallback to localStorage
@@ -827,7 +827,7 @@ export class LocalStorage {
       }
 
       const reportData = await response.json();
-      console.log(`Loaded report data for ${reportId}`);
+      console.warn(`Loaded report data for ${reportId}`);
       return reportData;
     } catch (error) {
       console.error('Error loading report data from server:', error);
@@ -881,7 +881,7 @@ export class LocalStorage {
         throw new Error('Failed to save users');
       }
 
-      console.log(`Saved ${users.length} users`);
+      console.warn(`Saved ${users.length} users`);
     } catch (error) {
       console.error('Error saving users:', error);
       // Fallback to localStorage
@@ -898,7 +898,7 @@ export class LocalStorage {
       }
 
       const result = await response.json();
-      console.log(`Loaded ${result.users.length} users from server`);
+      console.warn(`Loaded ${result.users.length} users from server`);
       return result.users;
     } catch (error) {
       console.error('Error loading users from server:', error);

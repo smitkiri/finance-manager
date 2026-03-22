@@ -28,12 +28,12 @@ function buildExpensesWhereClause(query) {
     params.push(Array.isArray(query.types) ? query.types : [query.types]);
     paramIndex++;
   }
-  if (query.minAmount != null && query.minAmount !== '') {
+  if (query.minAmount !== null && query.minAmount !== '') {
     conditions.push(`amount >= $${paramIndex}`);
     params.push(parseFloat(query.minAmount));
     paramIndex++;
   }
-  if (query.maxAmount != null && query.maxAmount !== '') {
+  if (query.maxAmount !== null && query.maxAmount !== '') {
     conditions.push(`amount <= $${paramIndex}`);
     params.push(parseFloat(query.maxAmount));
     paramIndex++;
@@ -168,7 +168,7 @@ function buildFilterGroupsWhereClause(filterGroups, params, startParam) {
           }
           break;
         case 'amount':
-          if (cond.value != null && cond.value !== '') {
+          if (cond.value !== null && cond.value !== '') {
             if (cond.operator === 'gte') {
               condSqls.push(`amount >= $${nextParam}`);
             } else {

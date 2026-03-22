@@ -9,11 +9,17 @@ const {
 
 router.get('/expenses', async (req, res) => {
   try {
-    const limit = req.query.limit != null ? parseInt(req.query.limit, 10) : null;
-    const offset = req.query.offset != null ? parseInt(req.query.offset, 10) : 0;
+    const limit =
+      req.query.limit !== null && req.query.limit !== undefined
+        ? parseInt(req.query.limit, 10)
+        : null;
+    const offset =
+      req.query.offset !== null && req.query.offset !== undefined
+        ? parseInt(req.query.offset, 10)
+        : 0;
 
     const parseList = (val) => {
-      if (val == null) return undefined;
+      if (val === null || val === undefined) return undefined;
       if (Array.isArray(val)) return val.filter(Boolean);
       return val
         .split(',')
@@ -36,7 +42,7 @@ router.get('/expenses', async (req, res) => {
     const { whereSql, params } = buildExpensesWhereClause(filters);
     const orderBy = 'ORDER BY date DESC';
 
-    if (limit != null && limit >= 0) {
+    if (limit !== null && limit >= 0) {
       const countResult = await db.query(
         `SELECT COUNT(*)::int AS total FROM transactions ${whereSql}`,
         params

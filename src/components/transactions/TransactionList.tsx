@@ -47,7 +47,8 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
 
   const ITEMS_PER_PAGE = 30;
-  const useServerPagination = totalCount !== undefined && onLoadMore != null;
+  const useServerPagination =
+    totalCount !== undefined && onLoadMore !== null && onLoadMore !== undefined;
 
   const visibleExpenses = useServerPagination ? expenses : expenses.slice(0, visibleCount);
   const hasMore = useServerPagination

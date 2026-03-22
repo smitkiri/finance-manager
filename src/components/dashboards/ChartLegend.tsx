@@ -42,12 +42,16 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, s
   const seriesList: SeriesStats[] = [];
 
   if (seriesMode === 'net_amount') {
-    const values = data.map((d) => d.net).filter((v): v is number => v != null);
+    const values = data.map((d) => d.net).filter((v): v is number => v !== null && v !== undefined);
     const stats = computeStats(values);
     seriesList.push({ label: 'Net', color: '#3b82f6', ...stats });
   } else {
-    const incomeValues = data.map((d) => d.income).filter((v): v is number => v != null);
-    const expenseValues = data.map((d) => d.expenses).filter((v): v is number => v != null);
+    const incomeValues = data
+      .map((d) => d.income)
+      .filter((v): v is number => v !== null && v !== undefined);
+    const expenseValues = data
+      .map((d) => d.expenses)
+      .filter((v): v is number => v !== null && v !== undefined);
     seriesList.push({ label: 'Income', color: '#22c55e', ...computeStats(incomeValues) });
     seriesList.push({ label: 'Expenses', color: '#ef4444', ...computeStats(expenseValues) });
   }
@@ -64,11 +68,21 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, s
           {showAnyStats && (
             <span className="text-gray-500 dark:text-gray-400">
               {[
-                legendOptions.min && series.min != null && `Min: ${formatCurrency(series.min)}`,
-                legendOptions.max && series.max != null && `Max: ${formatCurrency(series.max)}`,
-                legendOptions.avg && series.avg != null && `Avg: ${formatCurrency(series.avg)}`,
+                legendOptions.min &&
+                  series.min !== null &&
+                  series.min !== undefined &&
+                  `Min: ${formatCurrency(series.min)}`,
+                legendOptions.max &&
+                  series.max !== null &&
+                  series.max !== undefined &&
+                  `Max: ${formatCurrency(series.max)}`,
+                legendOptions.avg &&
+                  series.avg !== null &&
+                  series.avg !== undefined &&
+                  `Avg: ${formatCurrency(series.avg)}`,
                 legendOptions.total &&
-                  series.total != null &&
+                  series.total !== null &&
+                  series.total !== undefined &&
                   `Total: ${formatCurrency(series.total)}`,
               ]
                 .filter(Boolean)

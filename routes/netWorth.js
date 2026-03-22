@@ -120,7 +120,13 @@ router.delete('/accounts/:id', async (req, res) => {
 router.post('/accounts/:id/balances', async (req, res) => {
   try {
     const { id: balanceId, balance, date, note } = req.body;
-    if (balanceId == null || balance == null || !date) {
+    if (
+      balanceId === null ||
+      balanceId === undefined ||
+      balance === null ||
+      balance === undefined ||
+      !date
+    ) {
       return res.status(400).json({ error: 'id, balance, and date are required' });
     }
     // Verify account exists

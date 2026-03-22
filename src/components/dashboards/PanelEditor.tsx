@@ -153,7 +153,8 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             if (c.field === 'type') return !!c.value;
             if (c.field === 'category' || c.field === 'labels')
               return Array.isArray(c.value) && c.value.length > 0;
-            if (c.field === 'amount') return c.value !== '' && c.value != null;
+            if (c.field === 'amount')
+              return c.value !== '' && c.value !== null && c.value !== undefined;
             if (c.field === 'description') return !!c.value;
             return false;
           }),
