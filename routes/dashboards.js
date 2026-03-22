@@ -337,8 +337,7 @@ router.post('/dashboards/:id/data', async (req, res) => {
           const total = parseFloat(row.total);
           if (panel.seriesMode === 'net_amount') {
             const sign = row.type === 'income' ? 1 : -1;
-            const orientSign = panel.netOrientation === 'expense_positive' ? -1 : 1;
-            monthMap[key].net = ((monthMap[key].net || 0) + sign * total * orientSign);
+            monthMap[key].net = ((monthMap[key].net || 0) + sign * total);
           } else {
             if (row.type === 'income') monthMap[key].income = total;
             else monthMap[key].expenses = total;
