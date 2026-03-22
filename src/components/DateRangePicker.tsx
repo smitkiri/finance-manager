@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronDown, X } from 'lucide-react';
-import { format, subMonths, subYears, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
+import { format, subMonths, subYears, startOfMonth, endOfMonth, startOfDay, endOfDay, isValid } from 'date-fns';
 
 interface DateRange {
   start: Date;
@@ -34,6 +34,18 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const parseDateInputValue = (value: string): Date | null => {
+    const parts = value.split('-');
+    if (parts.length !== 3) return null;
+    const [year, month, day] = parts.map(Number);
+    const date = new Date(year, month - 1, day);
+    return isValid(date) ? date : null;
+  };
+
+  const formatDateSafe = (date: Date, fmt: string): string => {
+    return isValid(date) ? format(date, fmt) : '';
+  };
 
   const areSameDay = (date1: Date, date2: Date): boolean => {
     return date1.getFullYear() === date2.getFullYear() &&
@@ -217,8 +229,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
                 </label>
                 <input
                   type="date"
-                  value={format(tempStartDate, 'yyyy-MM-dd')}
-                  onChange={(e) => setTempStartDate(new Date(e.target.value))}
+                  value={formatDateSafe(tempStartDate, 'yyyy-MM-dd')}
+                  onChange={(e) => {
+                    const date = parseDateInputValue(e.target.value);
+                    if (date) setTempStartDate(date);
+                  }}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
@@ -228,8 +243,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ onDateRangeCha
                 </label>
                 <input
                   type="date"
-                  value={format(tempEndDate, 'yyyy-MM-dd')}
-                  onChange={(e) => setTempEndDate(new Date(e.target.value))}
+                  value={formatDateSafe(tempEndDate, 'yyyy-MM-dd')}
+                  onChange={(e) => {
+                    const date = parseDateInputValue(e.target.value);
+                    if (date) setTempEndDate(date);
+                  }}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
