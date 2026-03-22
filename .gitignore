@@ -170,3 +170,6 @@ temp/
 
 # Git worktrees
 .worktrees/
+
+# Superpowers
+.superpowers/
