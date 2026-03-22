@@ -40,7 +40,10 @@
     "docker:up": "docker-compose up -d postgres",
     "docker:down": "docker-compose down",
     "deploy-local": "npm run build && serve -s build -l 3001",
-    "serve-prod": "serve -s build -l 3001"
+    "serve-prod": "serve -s build -l 3001",
+    "lint": "eslint src/ routes/ helpers/ --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\""
   },
   "eslintConfig": {
     "extends": [
@@ -62,6 +65,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.0",
+    "lefthook": "^2.1.4",
     "postcss": "^8.4.0",
     "prettier": "^3.8.1",
     "tailwindcss": "^3.3.0"

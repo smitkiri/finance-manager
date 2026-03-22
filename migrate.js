@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
+require('pg');
 require('dotenv').config();
 const db = require('./database');
 
@@ -593,6 +593,7 @@ const addPanelFilterGroups = async () => {
  * NOTE: Register this in runMigration() only AFTER the new filter_groups
  * code path is confirmed working in production.
  */
+// eslint-disable-next-line no-unused-vars
 const dropOldPanelFilterColumns = async () => {
   const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
     'drop_old_panel_filter_columns',

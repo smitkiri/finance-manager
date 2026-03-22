@@ -178,6 +178,8 @@ function buildFilterGroupsWhereClause(filterGroups, params, startParam) {
             nextParam++;
           }
           break;
+        default:
+          break;
       }
     }
 

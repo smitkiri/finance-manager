@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Expense, DateRange } from '../types';
 import { filterExpensesByDateRange } from '../utils';
 
@@ -17,7 +17,7 @@ export const useFilters = (expenses: Expense[]) => {
   );
 
   // Memoize filtered expenses to prevent recalculation on every render
-  const { dateFilteredExpenses, filteredExpenses } = useMemo(() => {
+  const { filteredExpenses } = useMemo(() => {
     const dateFiltered = filterExpensesByDateRange(expenses, dateRange);
     const filtered = dateFiltered.filter((exp) => {
       // Type filter

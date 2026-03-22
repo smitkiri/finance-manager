@@ -2,7 +2,6 @@ const { findSimilarTransactionCategory } = require('./categoryMatcher');
 
 function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
-  const headers = parseCSVLine(lines[0]);
 
   return lines
     .slice(1)
@@ -120,7 +119,9 @@ function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []
             category = value || 'Uncategorized';
             break;
           case 'Amount':
-            amount = parseFloat(value.replace(/[,$\"]/g, '')) || 0;
+            amount = parseFloat(value.replace(/[,$"]/g, '')) || 0;
+            break;
+          default:
             break;
         }
       });

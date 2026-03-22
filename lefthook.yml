@@ -1,0 +1,23 @@
+pre-commit:
+  parallel: true
+  commands:
+    prettier-ts:
+      glob: '*.{ts,tsx}'
+      run: npx prettier --write {staged_files} && git add {staged_files}
+      stage_fixed: true
+    prettier-js:
+      glob: '*.js'
+      run: npx prettier --write {staged_files} && git add {staged_files}
+      stage_fixed: true
+    prettier-other:
+      glob: '*.{json,css,md,html,yml,yaml}'
+      run: npx prettier --write {staged_files} && git add {staged_files}
+      stage_fixed: true
+    eslint-ts:
+      glob: '*.{ts,tsx}'
+      run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
+      stage_fixed: true
+    eslint-js:
+      glob: '*.js'
+      run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
+      stage_fixed: true

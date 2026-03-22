@@ -1,4 +1,4 @@
-import { Source, CSVPreview } from '../types';
+import { Source } from '../types';
 import { LocalStorage } from '../utils/storage';
 
 export const csvService = {
