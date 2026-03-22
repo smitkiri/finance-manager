@@ -1,0 +1,52 @@
+<h2>Panel Creation & Editing</h2>
+<p class="subtitle">When a user clicks "Add Panel" or edits an existing panel, what's the experience?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Modal dialog</h3>
+      <p>Clicking "Add Panel" or the edit icon opens a centered modal with all panel settings (title, chart type, filters, series mode). Familiar pattern — same as how Reports work in this app.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Dashboard</div>
+        <div class="mockup-body" style="position:relative;min-height:80px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;opacity:0.3">
+            <div class="placeholder" style="height:50px;border-radius:4px"></div>
+            <div class="placeholder" style="height:50px;border-radius:4px"></div>
+          </div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <div style="background:var(--bg,#fff);border:1px solid #ccc;border-radius:8px;padding:12px;width:75%;box-shadow:0 4px 16px rgba(0,0,0,0.15)">
+              <div style="font-weight:600;font-size:12px;margin-bottom:8px">Edit Panel</div>
+              <div class="mock-input" style="margin-bottom:4px;font-size:10px">Title: Uber / Lyft</div>
+              <div class="mock-input" style="margin-bottom:4px;font-size:10px">Chart: Line ▾</div>
+              <div class="mock-input" style="font-size:10px">Regex: .*uber.*|.*lyft.*</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Slide-in side panel</h3>
+      <p>A configuration panel slides in from the right side, keeping the dashboard visible in the background. Good for seeing a live preview of the panel while tweaking settings.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Dashboard</div>
+        <div class="mockup-body" style="display:flex;gap:6px;min-height:80px">
+          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;opacity:0.5">
+            <div class="placeholder" style="height:50px;border-radius:4px"></div>
+            <div class="placeholder" style="height:50px;border-radius:4px"></div>
+          </div>
+          <div style="width:40%;border:1px solid #ccc;border-radius:6px;padding:8px;font-size:10px">
+            <div style="font-weight:600;margin-bottom:6px">Configure Panel</div>
+            <div class="mock-input" style="margin-bottom:3px;font-size:9px">Title</div>
+            <div class="mock-input" style="margin-bottom:3px;font-size:9px">Chart type</div>
+            <div class="mock-input" style="font-size:9px">Filters</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
