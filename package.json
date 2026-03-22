@@ -43,7 +43,8 @@
     "serve-prod": "serve -s build -l 3001",
     "lint": "eslint src/ routes/ helpers/ --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{js,json}\" \"routes/**/*.js\" \"helpers/**/*.js\"",
+    "typecheck": "tsc --noEmit"
   },
   "browserslist": {
     "production": [

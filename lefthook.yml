@@ -21,3 +21,12 @@ pre-commit:
       glob: '*.js'
       run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
       stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: npx tsc --noEmit
+    related-tests:
+      glob: '*.{ts,tsx,js}'
+      run: npx jest --bail --findRelatedTests {push_files}
