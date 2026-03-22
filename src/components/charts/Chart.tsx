@@ -101,12 +101,13 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
               stroke={axisStroke}
               fontSize={12}
               tickFormatter={(value) => `$${value}`}
+              domain={[(dataMin: number) => Math.min(0, dataMin), (dataMax: number) => Math.max(0, dataMax)]}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar 
-              dataKey="savings" 
+            <Bar
+              dataKey="savings"
               fill="#22c55e"
-              radius={[4, 4, 0, 0]} 
+              radius={[4, 4, 0, 0]}
             >
               {data.map((entry, index) => (
                 <Cell 

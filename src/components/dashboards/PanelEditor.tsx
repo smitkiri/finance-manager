@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-} from 'recharts';
 import { DashboardPanel, Dashboard, Expense, FilterGroup, LegendOptions, PanelMonthData } from '../../types';
 import { LocalStorage } from '../../utils/storage';
+import { PanelChart } from './PanelChart';
 import { ChartLegend } from './ChartLegend';
 import { TransactionPreview } from './TransactionPreview';
 import { FilterBuilder } from './FilterBuilder';
-import { formatCurrency, generateId } from '../../utils';
-import { useTheme } from '../../contexts/ThemeContext';
+import { generateId } from '../../utils';
 
 interface PanelEditorProps {
   dashboard: Dashboard;
@@ -23,24 +19,9 @@ interface PanelEditorProps {
   onCancel: () => void;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white dark:bg-gray-900 p-3 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg text-xs">
-      <p className="font-medium text-gray-900 dark:text-white mb-1">{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} style={{ color: entry.color ?? entry.fill }}>
-          {entry.name}: {formatCurrency(entry.value)}
-        </p>
-      ))}
-    </div>
-  );
-};
-
 export const PanelEditor: React.FC<PanelEditorProps> = ({
   dashboard, panel, categories, allLabels, selectedUserId, dateRange, onSave, onCancel,
 }) => {
-  const { theme } = useTheme();
   const isEdit = !!panel;
 
   const [title, setTitle] = useState(panel?.title || '');
@@ -58,9 +39,6 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   const [saving, setSaving] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';
-  const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280';
 
   // Validate regex conditions
   const regexErrors = filterGroups.flatMap((g, gi) =>
@@ -175,67 +153,6 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     } finally {
       setSaving(false);
     }
-  };
-
-  const yFormatter = (v: number) => `$${Math.abs(v).toFixed(0)}`;
-
-  const renderChart = () => {
-    if (chartLoading) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      );
-    }
-    if (!chartData.length) {
-      return (
-        <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400">
-          No data for selected filters
-        </div>
-      );
-    }
-
-    const isNet = seriesMode === 'net_amount';
-
-    if (chartType === 'line') {
-      return (
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-          <XAxis dataKey="month" stroke={axisStroke} fontSize={11} />
-          <YAxis stroke={axisStroke} fontSize={11} tickFormatter={yFormatter} />
-          <Tooltip content={<CustomTooltip />} />
-          {isNet ? (
-            <Line type="monotone" dataKey="net" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Net" />
-          ) : (
-            <>
-              <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Income" />
-              <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Expenses" />
-            </>
-          )}
-        </LineChart>
-      );
-    }
-
-    return (
-      <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-        <XAxis dataKey="month" stroke={axisStroke} fontSize={11} />
-        <YAxis stroke={axisStroke} fontSize={11} tickFormatter={yFormatter} reversed={netOrientation === 'expense_positive'} />
-        <Tooltip content={<CustomTooltip />} />
-        {isNet ? (
-          <Bar dataKey="net" radius={[4, 4, 0, 0]} name="Net">
-            {chartData.map((entry, i) => (
-              <Cell key={i} fill={(entry.net ?? 0) >= 0 ? '#22c55e' : '#ef4444'} />
-            ))}
-          </Bar>
-        ) : (
-          <>
-            <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="Income" />
-            <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses" />
-          </>
-        )}
-      </BarChart>
-    );
   };
 
   return (
@@ -363,9 +280,15 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
       {/* Chart area */}
       <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ height: legendOptions.show ? 310 : 280 }}>
-        <ResponsiveContainer width="100%" height={legendOptions.show ? '85%' : '100%'}>
-          {renderChart() as React.ReactElement}
-        </ResponsiveContainer>
+        <PanelChart
+          data={chartData}
+          chartType={chartType}
+          seriesMode={seriesMode}
+          netOrientation={netOrientation}
+          loading={chartLoading}
+          emptyMessage="No data for selected filters"
+          height={legendOptions.show ? '85%' : '100%'}
+        />
         <ChartLegend data={chartData} legendOptions={legendOptions} seriesMode={seriesMode} />
       </div>
 
