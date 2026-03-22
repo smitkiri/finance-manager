@@ -969,6 +969,7 @@ function AppContent() {
           <Route path="/personal-dashboards" element={
             <PersonalDashboards
               categories={categories}
+              allLabels={allLabels}
               selectedUserId={selectedUserId}
               dateRange={dateRange}
             />

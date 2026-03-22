@@ -12,7 +12,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Dashboard, DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { DashboardPanel } from './DashboardPanel';
-import { PanelEditorSidebar } from './PanelEditorSidebar';
+import { PanelEditor } from './PanelEditor';
 import { PanelTransactionsModal } from './PanelTransactionsModal';
 
 // Sortable wrapper for each panel
@@ -41,13 +41,14 @@ const SortablePanel: React.FC<{
 interface DashboardViewProps {
   dashboard: Dashboard;
   categories: string[];
+  allLabels: string[];
   selectedUserId: string | null;
   dateRange: { start: Date; end: Date };
   onDashboardUpdated: (d: Dashboard) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  dashboard, categories, selectedUserId, dateRange, onDashboardUpdated,
+  dashboard, categories, allLabels, selectedUserId, dateRange, onDashboardUpdated,
 }) => {
   const [panels, setPanels] = useState<DashboardPanelType[]>([]);
   const [panelDataMap, setPanelDataMap] = useState<Record<string, PanelMonthData[]>>({});
@@ -177,16 +178,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </DndContext>
       )}
 
-      {/* Panel editor sidebar */}
+      {/* Full-page panel editor */}
       {editorOpen && (
-        <PanelEditorSidebar
+        <PanelEditor
           dashboard={dashboard}
           panel={editingPanel}
           categories={categories}
+          allLabels={allLabels}
           selectedUserId={selectedUserId}
           dateRange={dateRange}
           onSave={handlePanelSaved}
-          onClose={() => { setEditorOpen(false); setEditingPanel(null); }}
+          onCancel={() => { setEditorOpen(false); setEditingPanel(null); }}
         />
       )}
 

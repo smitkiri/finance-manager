@@ -8,11 +8,12 @@ import { toast } from 'react-toastify';
 
 interface PersonalDashboardsProps {
   categories: string[];
+  allLabels: string[];
   selectedUserId: string | null;
   dateRange: { start: Date; end: Date };
 }
 
-export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categories, selectedUserId, dateRange }) => {
+export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categories, allLabels, selectedUserId, dateRange }) => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,6 +197,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
           key={selectedDashboard.id}
           dashboard={selectedDashboard}
           categories={categories}
+          allLabels={allLabels}
           selectedUserId={selectedUserId}
           dateRange={dateRange}
           onDashboardUpdated={handleDashboardUpdated}

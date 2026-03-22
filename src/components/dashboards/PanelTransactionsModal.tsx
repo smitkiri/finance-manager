@@ -25,11 +25,8 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
 
   const fetchPage = useCallback(async (pageNum: number) => {
     setLoading(true);
-    const types = panel.filterType === 'both' ? [] : [panel.filterType];
     const result = await LocalStorage.previewPanelTransactions({
-      types,
-      categories: panel.filterCategories,
-      regex: panel.filterRegex,
+      filterGroups: panel.filterGroups,
       userId: selectedUserId,
       dateFrom: dateRange.start.toISOString().slice(0, 10),
       dateTo: dateRange.end.toISOString().slice(0, 10),

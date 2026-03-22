@@ -67,12 +67,8 @@ export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loa
             <Line type="monotone" dataKey="net" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Net" />
           ) : (
             <>
-              {(panel.filterType === 'both' || panel.filterType === 'income') && (
-                <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Income" />
-              )}
-              {(panel.filterType === 'both' || panel.filterType === 'expense') && (
-                <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Expenses" />
-              )}
+              <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Income" />
+              <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Expenses" />
             </>
           )}
         </LineChart>
@@ -99,12 +95,8 @@ export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loa
           </Bar>
         ) : (
           <>
-            {(panel.filterType === 'both' || panel.filterType === 'income') && (
-              <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="Income" />
-            )}
-            {(panel.filterType === 'both' || panel.filterType === 'expense') && (
-              <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses" />
-            )}
+            <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="Income" />
+            <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses" />
           </>
         )}
       </BarChart>
