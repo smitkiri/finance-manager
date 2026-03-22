@@ -14,14 +14,14 @@ router.get('/import-sessions', async (req, res) => {
        ORDER BY created_at DESC`
     );
 
-    const sessions = result.rows.map(row => ({
+    const sessions = result.rows.map((row) => ({
       id: row.id,
       createdAt: row.created_at,
       userId: row.user_id,
       sourceId: row.source_id,
       sourceName: row.source_name,
       fileName: row.file_name,
-      transactionCount: row.transaction_count
+      transactionCount: row.transaction_count,
     }));
 
     res.json(sessions);
@@ -46,7 +46,7 @@ router.delete('/import-sessions/:id', async (req, res) => {
     // Re-run transfer detection on remaining transactions
     const remaining = await db.query('SELECT * FROM transactions');
     if (remaining.rows.length > 0) {
-      const transactions = remaining.rows.map(row => ({
+      const transactions = remaining.rows.map((row) => ({
         id: row.id,
         date: row.date,
         description: row.description,
@@ -57,7 +57,7 @@ router.delete('/import-sessions/:id', async (req, res) => {
         labels: row.labels || [],
         metadata: row.metadata || {},
         excludedFromCalculations: row.excluded_from_calculations,
-        importId: row.import_id || null
+        importId: row.import_id || null,
       }));
       const { updatedTransactions } = detectTransfers(transactions);
       const client = await db.beginTransaction();
@@ -65,7 +65,11 @@ router.delete('/import-sessions/:id', async (req, res) => {
         for (const t of updatedTransactions) {
           await client.query(
             `UPDATE transactions SET transfer_info = $1, excluded_from_calculations = $2 WHERE id = $3`,
-            [t.transferInfo ? JSON.stringify(t.transferInfo) : null, t.excludedFromCalculations || false, t.id]
+            [
+              t.transferInfo ? JSON.stringify(t.transferInfo) : null,
+              t.excludedFromCalculations || false,
+              t.id,
+            ]
           );
         }
         await db.commitTransaction(client);

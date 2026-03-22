@@ -101,7 +101,7 @@ const waitForDatabase = async (maxRetries = 30, delay = 1000) => {
         throw new Error('Database connection failed after maximum retries');
       }
       console.log(`Waiting for database... (${i + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 };

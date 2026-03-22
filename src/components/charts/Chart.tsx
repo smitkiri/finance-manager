@@ -1,5 +1,18 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { formatCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -11,12 +24,27 @@ interface ChartProps {
   categoryMode?: boolean;
 }
 
-const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const COLORS = [
+  '#3b82f6',
+  '#ef4444',
+  '#22c55e',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#84cc16',
+];
 
-export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, categoryMode = false }) => {
+export const Chart: React.FC<ChartProps> = ({
+  data,
+  type,
+  title,
+  height = 300,
+  categoryMode = false,
+}) => {
   const { theme } = useTheme();
-  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';   // gray-700 : gray-200
-  const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280';   // gray-400 : gray-500
+  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb'; // gray-700 : gray-200
+  const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280'; // gray-400 : gray-500
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -24,9 +52,12 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
         <div className="bg-white dark:bg-gray-900 p-3 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
           <p className="font-medium text-gray-900 dark:text-white">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ 
-              color: entry.dataKey === 'savings' && entry.value < 0 ? '#ef4444' : entry.color 
-            }}>
+            <p
+              key={index}
+              style={{
+                color: entry.dataKey === 'savings' && entry.value < 0 ? '#ef4444' : entry.color,
+              }}
+            >
               {entry.name}: {formatCurrency(entry.value)}
             </p>
           ))}
@@ -42,44 +73,38 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
         return (
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis
-              dataKey="month"
-              stroke={axisStroke}
-              fontSize={12}
-            />
-            <YAxis
-              stroke={axisStroke}
-              fontSize={12}
-              tickFormatter={(value) => `$${value}`}
-            />
+            <XAxis dataKey="month" stroke={axisStroke} fontSize={12} />
+            <YAxis stroke={axisStroke} fontSize={12} tickFormatter={(value) => `$${value}`} />
             <Tooltip content={<CustomTooltip />} />
             {categoryMode ? (
               // Dynamic category lines
-              Object.keys(data[0] || {}).filter(key => key !== 'month').map((category, index) => (
-                <Line 
-                  key={category}
-                  type="monotone" 
-                  dataKey={category} 
-                  stroke={COLORS[index % COLORS.length]} 
-                  strokeWidth={2}
-                  dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 2, r: 4 }}
-                  name={category}
-                />
-              ))
+              Object.keys(data[0] || {})
+                .filter((key) => key !== 'month')
+                .map((category, index) => (
+                  <Line
+                    key={category}
+                    type="monotone"
+                    dataKey={category}
+                    stroke={COLORS[index % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 2, r: 4 }}
+                    name={category}
+                  />
+                ))
             ) : (
               // Standard expenses/income lines
               <>
-                <Line 
-                  type="monotone" 
-                  dataKey="expenses" 
-                  stroke="#ef4444" 
+                <Line
+                  type="monotone"
+                  dataKey="expenses"
+                  stroke="#ef4444"
                   strokeWidth={2}
                   dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="income" 
-                  stroke="#22c55e" 
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  stroke="#22c55e"
                   strokeWidth={2}
                   dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
                 />
@@ -87,38 +112,30 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
             )}
           </LineChart>
         );
-      
+
       case 'savings-bar':
         return (
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis
-              dataKey="month"
-              stroke={axisStroke}
-              fontSize={12}
-            />
+            <XAxis dataKey="month" stroke={axisStroke} fontSize={12} />
             <YAxis
               stroke={axisStroke}
               fontSize={12}
               tickFormatter={(value) => `$${value}`}
-              domain={[(dataMin: number) => Math.min(0, dataMin), (dataMax: number) => Math.max(0, dataMax)]}
+              domain={[
+                (dataMin: number) => Math.min(0, dataMin),
+                (dataMax: number) => Math.max(0, dataMax),
+              ]}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar
-              dataKey="savings"
-              fill="#22c55e"
-              radius={[4, 4, 0, 0]}
-            >
+            <Bar dataKey="savings" fill="#22c55e" radius={[4, 4, 0, 0]}>
               {data.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={entry.savings >= 0 ? '#22c55e' : '#ef4444'} 
-                />
+                <Cell key={`cell-${index}`} fill={entry.savings >= 0 ? '#22c55e' : '#ef4444'} />
               ))}
             </Bar>
           </BarChart>
         );
-      
+
       case 'donut':
         return (
           <PieChart>
@@ -140,7 +157,7 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
             <Tooltip content={<CustomTooltip />} />
           </PieChart>
         );
-      
+
       default:
         return <div>Unsupported chart type</div>;
     }
@@ -154,4 +171,4 @@ export const Chart: React.FC<ChartProps> = ({ data, type, title, height = 300, c
       </ResponsiveContainer>
     </div>
   );
-}; 
+};

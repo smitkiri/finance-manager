@@ -1,2 +1,2 @@
 export { useCategories } from './useCategories';
-export { useFilters } from './useFilters'; 
+export { useFilters } from './useFilters';

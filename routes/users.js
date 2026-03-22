@@ -6,10 +6,10 @@ router.get('/users', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM users ORDER BY created_at');
 
-    let users = result.rows.map(row => ({
+    let users = result.rows.map((row) => ({
       id: row.id,
       name: row.name,
-      createdAt: row.created_at
+      createdAt: row.created_at,
     }));
 
     if (users.length === 0) {
@@ -17,8 +17,8 @@ router.get('/users', async (req, res) => {
         {
           id: 'default-user',
           name: 'Default',
-          createdAt: new Date().toISOString()
-        }
+          createdAt: new Date().toISOString(),
+        },
       ];
     }
 

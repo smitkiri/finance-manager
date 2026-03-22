@@ -49,7 +49,9 @@ function tellerRequest(path, accessToken) {
 
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', (chunk) => { data += chunk; });
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
       res.on('end', () => {
         try {
           resolve({ status: res.statusCode, data: JSON.parse(data) });
@@ -66,26 +68,24 @@ function tellerRequest(path, accessToken) {
 
 // Read enrollments array from DB, handling backward compat with old single-enrollment key
 async function readEnrollments() {
-  const arrayResult = await db.query(
-    "SELECT value FROM metadata WHERE key = 'teller_enrollments'"
-  );
+  const arrayResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_enrollments'");
   if (arrayResult.rows.length > 0) {
     return Array.isArray(arrayResult.rows[0].value) ? arrayResult.rows[0].value : [];
   }
 
   // Fall back to old single-enrollment key and migrate it
-  const singleResult = await db.query(
-    "SELECT value FROM metadata WHERE key = 'teller_enrollment'"
-  );
+  const singleResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_enrollment'");
   if (singleResult.rows.length > 0) {
     const old = singleResult.rows[0].value;
-    const migrated = [{
-      accessToken: old.accessToken,
-      userId: old.userId,
-      enrollmentId: old.enrollmentId,
-      institutionName: null,
-      connectedAt: new Date().toISOString(),
-    }];
+    const migrated = [
+      {
+        accessToken: old.accessToken,
+        userId: old.userId,
+        enrollmentId: old.enrollmentId,
+        institutionName: null,
+        connectedAt: new Date().toISOString(),
+      },
+    ];
     await db.query(
       `INSERT INTO metadata (key, value) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
@@ -116,7 +116,9 @@ router.get('/teller/config', async (req, res) => {
     const enrollments = await readEnrollments();
 
     // For enrollments missing userId, fall back to the user_id from the accounts table
-    const enrollmentIds = enrollments.filter(e => !e.userId && e.enrollmentId).map(e => e.enrollmentId);
+    const enrollmentIds = enrollments
+      .filter((e) => !e.userId && e.enrollmentId)
+      .map((e) => e.enrollmentId);
     const accountUserMap = {};
     if (enrollmentIds.length > 0) {
       const result = await db.query(
@@ -132,7 +134,7 @@ router.get('/teller/config', async (req, res) => {
     res.json({
       enabled: true,
       applicationId: process.env.FINANCE_MANAGER_TELLER_APP_ID,
-      enrollments: enrollments.map(e => ({
+      enrollments: enrollments.map((e) => ({
         enrollmentId: e.enrollmentId,
         institutionName: e.institutionName || null,
         connectedAt: e.connectedAt || null,
@@ -153,7 +155,7 @@ router.get('/teller/enrollment-token/:enrollmentId', async (req, res) => {
   }
   try {
     const enrollments = await readEnrollments();
-    const enrollment = enrollments.find(e => e.enrollmentId === req.params.enrollmentId);
+    const enrollment = enrollments.find((e) => e.enrollmentId === req.params.enrollmentId);
     if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
     res.json({ accessToken: enrollment.accessToken });
   } catch (error) {
@@ -172,7 +174,7 @@ router.put('/teller/enrollment/:enrollmentId/token', async (req, res) => {
   if (!accessToken) return res.status(400).json({ error: 'accessToken is required' });
   try {
     const enrollments = await readEnrollments();
-    const idx = enrollments.findIndex(e => e.enrollmentId === req.params.enrollmentId);
+    const idx = enrollments.findIndex((e) => e.enrollmentId === req.params.enrollmentId);
     if (idx === -1) return res.status(404).json({ error: 'Enrollment not found' });
     enrollments[idx] = { ...enrollments[idx], accessToken };
     await writeEnrollments(enrollments);
@@ -203,12 +205,14 @@ router.post('/teller/preview-accounts', async (req, res) => {
     }
 
     const accounts = Array.isArray(accountsResponse.data) ? accountsResponse.data : [];
-    res.json(accounts.map(a => ({
-      id: a.id,
-      name: a.name,
-      type: a.type,           // e.g. 'depository', 'credit', 'investment', 'loan'
-      subtype: a.subtype,     // e.g. 'checking', 'savings', 'credit_card'
-    })));
+    res.json(
+      accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.type, // e.g. 'depository', 'credit', 'investment', 'loan'
+        subtype: a.subtype, // e.g. 'checking', 'savings', 'credit_card'
+      }))
+    );
   } catch (error) {
     console.error('Error previewing Teller accounts:', error);
     res.status(500).json({ error: 'Failed to preview accounts' });
@@ -226,7 +230,7 @@ router.post('/teller/enroll', async (req, res) => {
   try {
     // Save the enrollment
     const enrollments = await readEnrollments();
-    const idx = enrollments.findIndex(e => e.enrollmentId === enrollmentId);
+    const idx = enrollments.findIndex((e) => e.enrollmentId === enrollmentId);
     const entry = {
       accessToken,
       userId: userId || null,
@@ -254,16 +258,22 @@ router.post('/teller/enroll', async (req, res) => {
       }
 
       for (const acct of selectedAccounts) {
-        const existing = await db.query(
-          'SELECT id FROM accounts WHERE teller_account_id = $1',
-          [acct.tellerAccountId]
-        );
+        const existing = await db.query('SELECT id FROM accounts WHERE teller_account_id = $1', [
+          acct.tellerAccountId,
+        ]);
         if (existing.rows.length === 0) {
           const accountId = Date.now().toString(36) + Math.random().toString(36).slice(2);
           await db.query(
             `INSERT INTO accounts (id, user_id, name, type, teller_account_id, teller_enrollment_id)
              VALUES ($1, $2, $3, $4, $5, $6)`,
-            [accountId, accountUserId, acct.alias, acct.accountType, acct.tellerAccountId, enrollmentId || null]
+            [
+              accountId,
+              accountUserId,
+              acct.alias,
+              acct.accountType,
+              acct.tellerAccountId,
+              enrollmentId || null,
+            ]
           );
         } else {
           // Update alias, type, and enrollment if account was already added
@@ -298,7 +308,7 @@ router.post('/teller/disconnect', async (req, res) => {
     );
 
     const enrollments = await readEnrollments();
-    const updated = enrollments.filter(e => e.enrollmentId !== enrollmentId);
+    const updated = enrollments.filter((e) => e.enrollmentId !== enrollmentId);
     await writeEnrollments(updated);
 
     res.json({ success: true, accountsDeleted: deleted.rowCount });
@@ -314,7 +324,7 @@ router.get('/teller/enrollments/:enrollmentId/preview-accounts', async (req, res
   try {
     const { enrollmentId } = req.params;
     const enrollments = await readEnrollments();
-    const enrollment = enrollments.find(e => e.enrollmentId === enrollmentId);
+    const enrollment = enrollments.find((e) => e.enrollmentId === enrollmentId);
     if (!enrollment) {
       return res.status(404).json({ error: 'Enrollment not found' });
     }
@@ -323,12 +333,14 @@ router.get('/teller/enrollments/:enrollmentId/preview-accounts', async (req, res
       return res.status(502).json({ error: 'Failed to fetch accounts from Teller' });
     }
     const accounts = Array.isArray(accountsResponse.data) ? accountsResponse.data : [];
-    res.json(accounts.map(a => ({
-      id: a.id,
-      name: a.name,
-      type: a.type,
-      subtype: a.subtype,
-    })));
+    res.json(
+      accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        subtype: a.subtype,
+      }))
+    );
   } catch (error) {
     console.error('Error previewing accounts for enrollment:', error);
     res.status(500).json({ error: 'Failed to preview accounts' });
@@ -345,7 +357,7 @@ router.post('/teller/enrollments/:enrollmentId/manage-accounts', async (req, res
     const { toAdd = [], toRemove = [], userId } = req.body;
 
     const enrollments = await readEnrollments();
-    const enrollment = enrollments.find(e => e.enrollmentId === enrollmentId);
+    const enrollment = enrollments.find((e) => e.enrollmentId === enrollmentId);
     if (!enrollment) {
       return res.status(404).json({ error: 'Enrollment not found' });
     }
@@ -374,16 +386,22 @@ router.post('/teller/enrollments/:enrollmentId/manage-accounts', async (req, res
     // Add new accounts
     let added = 0;
     for (const acct of toAdd) {
-      const existing = await db.query(
-        'SELECT id FROM accounts WHERE teller_account_id = $1',
-        [acct.tellerAccountId]
-      );
+      const existing = await db.query('SELECT id FROM accounts WHERE teller_account_id = $1', [
+        acct.tellerAccountId,
+      ]);
       if (existing.rows.length === 0) {
         const accountId = Date.now().toString(36) + Math.random().toString(36).slice(2);
         await db.query(
           `INSERT INTO accounts (id, user_id, name, type, teller_account_id, teller_enrollment_id)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [accountId, accountUserId, acct.alias, acct.accountType, acct.tellerAccountId, enrollmentId]
+          [
+            accountId,
+            accountUserId,
+            acct.alias,
+            acct.accountType,
+            acct.tellerAccountId,
+            enrollmentId,
+          ]
         );
         added++;
       }
@@ -432,7 +450,10 @@ router.post('/teller/refresh-balances', async (req, res) => {
 
         const accountId = existingAccount.rows[0].id;
 
-        const balancesResponse = await tellerRequest(`/accounts/${tellerAccount.id}/balances`, accessToken);
+        const balancesResponse = await tellerRequest(
+          `/accounts/${tellerAccount.id}/balances`,
+          accessToken
+        );
         if (balancesResponse.status !== 200) continue;
 
         const balanceData = balancesResponse.data;
@@ -465,7 +486,9 @@ router.post('/teller/refresh-balances', async (req, res) => {
 // Returns saved mappings plus the count of Teller-imported transactions per original bank category.
 router.get('/teller/category-mappings', async (req, res) => {
   try {
-    const mappingsResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+    const mappingsResult = await db.query(
+      "SELECT value FROM metadata WHERE key = 'teller_category_mappings'"
+    );
     const savedMappings = mappingsResult.rows[0]?.value || {};
 
     // Count transactions per original Teller category (stored in metadata)
@@ -504,7 +527,9 @@ router.put('/teller/category-mappings', async (req, res) => {
 
   try {
     // Load existing mappings so we can detect which ones changed
-    const existingResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+    const existingResult = await db.query(
+      "SELECT value FROM metadata WHERE key = 'teller_category_mappings'"
+    );
     const existingMappings = existingResult.rows[0]?.value || {};
 
     // Build the new mappings object
@@ -548,7 +573,9 @@ async function fetchTellerTransactionsInRange(accessToken, tellerAccountId, star
     const path = `/accounts/${tellerAccountId}/transactions?count=100${fromId ? `&from_id=${fromId}` : ''}`;
     const response = await tellerRequest(path, accessToken);
     if (response.status !== 200) {
-      throw new Error(`Teller API error ${response.status} fetching transactions for account ${tellerAccountId}`);
+      throw new Error(
+        `Teller API error ${response.status} fetching transactions for account ${tellerAccountId}`
+      );
     }
     const batch = Array.isArray(response.data) ? response.data : [];
     for (const tx of batch) {
@@ -587,71 +614,82 @@ router.post('/teller/preview-import', async (req, res) => {
     const [categoriesResult, mappingsResult, existingTxResult] = await Promise.all([
       db.query('SELECT name FROM categories'),
       db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'"),
-      db.query('SELECT id, date, description, category FROM transactions ORDER BY date DESC LIMIT 500'),
+      db.query(
+        'SELECT id, date, description, category FROM transactions ORDER BY date DESC LIMIT 500'
+      ),
     ]);
 
-    const existingCategoryNames = new Set(categoriesResult.rows.map(r => r.name));
+    const existingCategoryNames = new Set(categoriesResult.rows.map((r) => r.name));
     existingCategoryNames.add(UNCATEGORIZED);
 
     const savedMappings = mappingsResult.rows[0]?.value || {};
 
-    const existingExpenses = existingTxResult.rows.map(row => ({
-      id: row.id, date: row.date, description: row.description, category: row.category,
+    const existingExpenses = existingTxResult.rows.map((row) => ({
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      category: row.category,
     }));
 
     // Fetch all accounts in parallel; collect reconnect-required accounts separately
     const reconnectRequired = [];
-    const previewAccounts = (await Promise.all(accountIds.map(async (accountId) => {
-      const accountResult = await db.query(
-        'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
-        [accountId]
-      );
-      if (accountResult.rows.length === 0) return null;
-      const account = accountResult.rows[0];
+    const previewAccounts = (
+      await Promise.all(
+        accountIds.map(async (accountId) => {
+          const accountResult = await db.query(
+            'SELECT id, name, teller_account_id, teller_enrollment_id, user_id FROM accounts WHERE id = $1',
+            [accountId]
+          );
+          if (accountResult.rows.length === 0) return null;
+          const account = accountResult.rows[0];
 
-      const enrollment = enrollments.find(e => e.enrollmentId === account.teller_enrollment_id);
-      if (!enrollment) return null;
+          const enrollment = enrollments.find(
+            (e) => e.enrollmentId === account.teller_enrollment_id
+          );
+          if (!enrollment) return null;
 
-      let transactions;
-      try {
-        transactions = await fetchTellerTransactionsInRange(
-          enrollment.accessToken,
-          account.teller_account_id,
-          startDate,
-          endDate
-        );
-      } catch (err) {
-        if (err.message.includes('404')) {
-          reconnectRequired.push(account.name);
-          return null;
-        }
-        throw err;
-      }
+          let transactions;
+          try {
+            transactions = await fetchTellerTransactionsInRange(
+              enrollment.accessToken,
+              account.teller_account_id,
+              startDate,
+              endDate
+            );
+          } catch (err) {
+            if (err.message.includes('404')) {
+              reconnectRequired.push(account.name);
+              return null;
+            }
+            throw err;
+          }
 
-      const tellerIds = transactions.map(tx => tx.id);
-      let existingIds = new Set();
-      if (tellerIds.length > 0) {
-        const existingResult = await db.query(
-          "SELECT metadata->>'tellerTransactionId' as tid FROM transactions WHERE metadata->>'tellerTransactionId' = ANY($1::text[])",
-          [tellerIds]
-        );
-        existingIds = new Set(existingResult.rows.map(r => r.tid));
-      }
+          const tellerIds = transactions.map((tx) => tx.id);
+          let existingIds = new Set();
+          if (tellerIds.length > 0) {
+            const existingResult = await db.query(
+              "SELECT metadata->>'tellerTransactionId' as tid FROM transactions WHERE metadata->>'tellerTransactionId' = ANY($1::text[])",
+              [tellerIds]
+            );
+            existingIds = new Set(existingResult.rows.map((r) => r.tid));
+          }
 
-      const newTxs = transactions.filter(tx => !existingIds.has(tx.id));
-      const dupTxs = transactions.filter(tx => existingIds.has(tx.id));
+          const newTxs = transactions.filter((tx) => !existingIds.has(tx.id));
+          const dupTxs = transactions.filter((tx) => existingIds.has(tx.id));
 
-      return {
-        accountId,
-        accountName: account.name,
-        accountType: account.type, // 'asset' | 'liability'
-        userId: account.user_id,
-        tellerAccountId: account.teller_account_id,
-        newTransactions: newTxs,
-        newCount: newTxs.length,
-        duplicateCount: dupTxs.length,
-      };
-    }))).filter(Boolean);
+          return {
+            accountId,
+            accountName: account.name,
+            accountType: account.type, // 'asset' | 'liability'
+            userId: account.user_id,
+            tellerAccountId: account.teller_account_id,
+            newTransactions: newTxs,
+            newCount: newTxs.length,
+            duplicateCount: dupTxs.length,
+          };
+        })
+      )
+    ).filter(Boolean);
 
     if (reconnectRequired.length > 0) {
       return res.status(400).json({ error: 'reconnect_required', accounts: reconnectRequired });
@@ -677,7 +715,7 @@ router.post('/teller/preview-import', async (req, res) => {
       }
     }
 
-    const newCategories = [...allAssignedCategories].filter(c => !existingCategoryNames.has(c));
+    const newCategories = [...allAssignedCategories].filter((c) => !existingCategoryNames.has(c));
 
     const previewToken = crypto.randomBytes(16).toString('hex');
     importPreviewCache.set(previewToken, {
@@ -688,7 +726,7 @@ router.post('/teller/preview-import', async (req, res) => {
 
     res.json({
       previewToken,
-      accounts: previewAccounts.map(a => ({
+      accounts: previewAccounts.map((a) => ({
         accountId: a.accountId,
         accountName: a.accountName,
         newCount: a.newCount,
@@ -718,7 +756,9 @@ router.post('/teller/import-transactions', async (req, res) => {
   try {
     // Save any new user-provided category mappings
     if (Object.keys(userMappings).length > 0) {
-      const existingMappingsResult = await db.query("SELECT value FROM metadata WHERE key = 'teller_category_mappings'");
+      const existingMappingsResult = await db.query(
+        "SELECT value FROM metadata WHERE key = 'teller_category_mappings'"
+      );
       const existingMappings = existingMappingsResult.rows[0]?.value || {};
       const merged = { ...existingMappings, ...userMappings };
       await db.query(
@@ -743,7 +783,14 @@ router.post('/teller/import-transactions', async (req, res) => {
         await client.query(
           `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [sessionId, account.userId || null, null, `Teller: ${account.accountName}`, null, account.newTransactions.length]
+          [
+            sessionId,
+            account.userId || null,
+            null,
+            `Teller: ${account.accountName}`,
+            null,
+            account.newTransactions.length,
+          ]
         );
 
         for (const tx of account.newTransactions) {
@@ -761,9 +808,14 @@ router.post('/teller/import-transactions', async (req, res) => {
             amount: Math.abs(parseFloat(tx.amount)),
             // Credit card (liability): Teller 'credit' = purchase (expense), 'debit' = payment (income)
             // Depository/asset: Teller 'debit' = money out (expense), 'credit' = money in (income)
-            type: account.accountType === 'liability'
-              ? (tx.type === 'credit' ? 'expense' : 'income')
-              : (tx.type === 'debit' ? 'expense' : 'income'),
+            type:
+              account.accountType === 'liability'
+                ? tx.type === 'credit'
+                  ? 'expense'
+                  : 'income'
+                : tx.type === 'debit'
+                  ? 'expense'
+                  : 'income',
             user: account.userId,
             metadata: {
               tellerTransactionId: tx.id,
@@ -812,16 +864,16 @@ router.post('/teller/import-transactions', async (req, res) => {
 
     // Run transfer detection scoped to the import date window ± 3 days (after successful commit)
     if (allNewExpenses.length > 0) {
-      const importDates = allNewExpenses.map(e => e.date).sort();
+      const importDates = allNewExpenses.map((e) => e.date).sort();
       const windowStart = new Date(importDates[0]);
       windowStart.setDate(windowStart.getDate() - 3);
       const windowEnd = new Date(importDates[importDates.length - 1]);
       windowEnd.setDate(windowEnd.getDate() + 3);
-      const allResult = await db.query(
-        'SELECT * FROM transactions WHERE date BETWEEN $1 AND $2',
-        [windowStart.toISOString().split('T')[0], windowEnd.toISOString().split('T')[0]]
-      );
-      const allExpenses = allResult.rows.map(row => ({
+      const allResult = await db.query('SELECT * FROM transactions WHERE date BETWEEN $1 AND $2', [
+        windowStart.toISOString().split('T')[0],
+        windowEnd.toISOString().split('T')[0],
+      ]);
+      const allExpenses = allResult.rows.map((row) => ({
         id: row.id,
         date: row.date,
         description: row.description,
@@ -841,7 +893,11 @@ router.post('/teller/import-transactions', async (req, res) => {
         if (expense.transferInfo) {
           await db.query(
             'UPDATE transactions SET transfer_info = $1, excluded_from_calculations = $2 WHERE id = $3',
-            [JSON.stringify(expense.transferInfo), expense.excludedFromCalculations || false, expense.id]
+            [
+              JSON.stringify(expense.transferInfo),
+              expense.excludedFromCalculations || false,
+              expense.id,
+            ]
           );
         }
       }

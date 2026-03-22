@@ -84,7 +84,7 @@ function buildStatsWhereClause(dateFrom, dateTo, userId) {
         OR (transfer_info->>'transferType') = 'self' AND (COALESCE((transfer_info->>'excludedFromCalculations')::boolean, false) = false)
         OR ((transfer_info->>'transferType') IS NULL OR (transfer_info->>'transferType') NOT IN ('user', 'self')) AND (COALESCE((transfer_info->>'excludedFromCalculations')::boolean, false) = false)
       )
-    )`
+    )`,
   ];
   const params = [dateFrom || null, dateTo || null, userId || null];
   return { whereSql: 'WHERE ' + conditions.join(' AND '), params };
@@ -103,7 +103,7 @@ function rowToExpense(row) {
     metadata: row.metadata || {},
     transferInfo: row.transfer_info ? row.transfer_info : undefined,
     excludedFromCalculations: row.excluded_from_calculations || false,
-    importId: row.import_id || null
+    importId: row.import_id || null,
   };
 }
 
@@ -190,9 +190,7 @@ function buildFilterGroupsWhereClause(filterGroups, params, startParam) {
     return { sql: '', nextParam };
   }
 
-  const sql = groupSqls.length === 1
-    ? groupSqls[0]
-    : `(${groupSqls.join(' OR ')})`;
+  const sql = groupSqls.length === 1 ? groupSqls[0] : `(${groupSqls.join(' OR ')})`;
 
   return { sql, nextParam };
 }
@@ -206,7 +204,9 @@ function buildPanelDataQuery({ dateFrom, dateTo, userId, filterGroups }) {
   let nextParam = params.length + 1;
 
   const { sql: filterSql, nextParam: updatedParam } = buildFilterGroupsWhereClause(
-    filterGroups, params, nextParam
+    filterGroups,
+    params,
+    nextParam
   );
   nextParam = updatedParam;
 
@@ -237,7 +237,20 @@ function buildMonthSeries(dateFrom, dateTo) {
   const end = new Date(dateTo + 'T00:00:00');
   cur.setDate(1);
   end.setDate(1);
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   while (cur <= end) {
     const key = cur.toISOString().slice(0, 7);
     monthMap[key] = { month: `${monthNames[cur.getMonth()]} ${cur.getFullYear()}` };
@@ -246,4 +259,11 @@ function buildMonthSeries(dateFrom, dateTo) {
   return monthMap;
 }
 
-module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense, buildPanelDataQuery, buildFilterGroupsWhereClause, buildMonthSeries };
+module.exports = {
+  buildExpensesWhereClause,
+  buildStatsWhereClause,
+  rowToExpense,
+  buildPanelDataQuery,
+  buildFilterGroupsWhereClause,
+  buildMonthSeries,
+};

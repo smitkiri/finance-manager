@@ -13,7 +13,12 @@ interface PersonalDashboardsProps {
   dateRange: { start: Date; end: Date };
 }
 
-export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categories, allLabels, selectedUserId, dateRange }) => {
+export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
+  categories,
+  allLabels,
+  selectedUserId,
+  dateRange,
+}) => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +31,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
       const list = await LocalStorage.loadDashboards();
       setDashboards(list);
       if (list.length > 0) {
-        const def = list.find(d => d.isDefault) || list[0];
+        const def = list.find((d) => d.isDefault) || list[0];
         setSelectedId(def.id);
       }
       setLoading(false);
@@ -38,7 +43,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
     if (renamingId && renameInputRef.current) renameInputRef.current.focus();
   }, [renamingId]);
 
-  const selectedDashboard = dashboards.find(d => d.id === selectedId) || null;
+  const selectedDashboard = dashboards.find((d) => d.id === selectedId) || null;
 
   const handleCreateDashboard = async () => {
     const name = `Dashboard ${dashboards.length + 1}`;
@@ -49,22 +54,24 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
       dateRangeStart: dateRange.start.toISOString().slice(0, 10),
       dateRangeEnd: dateRange.end.toISOString().slice(0, 10),
     });
-    setDashboards(prev => [...prev, created]);
+    setDashboards((prev) => [...prev, created]);
     setSelectedId(created.id);
   };
 
   const handleSetDefault = async (id: string) => {
     await LocalStorage.updateDashboard(id, { isDefault: true });
-    setDashboards(prev => prev.map(d => ({
-      ...d,
-      isDefault: d.id === id,
-    })));
+    setDashboards((prev) =>
+      prev.map((d) => ({
+        ...d,
+        isDefault: d.id === id,
+      }))
+    );
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this dashboard and all its panels?')) return;
     await LocalStorage.deleteDashboard(id);
-    const remaining = dashboards.filter(d => d.id !== id);
+    const remaining = dashboards.filter((d) => d.id !== id);
     setDashboards(remaining);
     if (selectedId === id) setSelectedId(remaining[0]?.id || null);
     toast.success('Dashboard deleted');
@@ -76,14 +83,17 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
   };
 
   const handleRenameSubmit = async (id: string) => {
-    if (!renameValue.trim()) { setRenamingId(null); return; }
+    if (!renameValue.trim()) {
+      setRenamingId(null);
+      return;
+    }
     const updated = await LocalStorage.updateDashboard(id, { name: renameValue.trim() });
-    setDashboards(prev => prev.map(d => d.id === id ? { ...d, name: updated.name } : d));
+    setDashboards((prev) => prev.map((d) => (d.id === id ? { ...d, name: updated.name } : d)));
     setRenamingId(null);
   };
 
   const handleDashboardUpdated = (updated: Dashboard) => {
-    setDashboards(prev => prev.map(d => d.id === updated.id ? updated : d));
+    setDashboards((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
   };
 
   if (loading) {
@@ -101,7 +111,9 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
         <LayoutDashboard size={48} className="text-gray-300 dark:text-gray-600" />
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">No dashboards yet</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create your first dashboard to start visualizing your transactions.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Create your first dashboard to start visualizing your transactions.
+          </p>
         </div>
         <button
           onClick={handleCreateDashboard}
@@ -121,23 +133,25 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
         {/* Dropdown */}
         <select
           value={selectedId || ''}
-          onChange={e => setSelectedId(e.target.value)}
+          onChange={(e) => setSelectedId(e.target.value)}
           className="text-sm font-medium bg-transparent text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {dashboards.map(d => (
-            <option key={d.id} value={d.id}>{d.name}</option>
+          {dashboards.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
           ))}
         </select>
 
         {/* Inline rename */}
-        {selectedDashboard && (
-          renamingId === selectedDashboard.id ? (
+        {selectedDashboard &&
+          (renamingId === selectedDashboard.id ? (
             <input
               ref={renameInputRef}
               value={renameValue}
-              onChange={e => setRenameValue(e.target.value)}
+              onChange={(e) => setRenameValue(e.target.value)}
               onBlur={() => handleRenameSubmit(selectedDashboard.id)}
-              onKeyDown={e => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') handleRenameSubmit(selectedDashboard.id);
                 if (e.key === 'Escape') setRenamingId(null);
               }}
@@ -151,8 +165,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({ categori
             >
               <Pencil size={14} />
             </button>
-          )
-        )}
+          ))}
 
         {/* Set default */}
         {selectedDashboard && (

@@ -18,7 +18,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
   existingLabels,
   allLabels,
   maxLabels,
-  position
+  position,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredLabels, setFilteredLabels] = useState<string[]>([]);
@@ -33,16 +33,17 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
   useEffect(() => {
     // Get recently used labels (excluding already added ones)
     const recentlyUsedLabels = allLabels
-      .filter(label => !existingLabels.includes(label))
+      .filter((label) => !existingLabels.includes(label))
       .slice(0, 2);
 
     if (searchTerm.trim() === '') {
       setFilteredLabels(recentlyUsedLabels);
     } else {
       const filtered = allLabels
-        .filter(label => 
-          !existingLabels.includes(label) &&
-          label.toLowerCase().includes(searchTerm.toLowerCase())
+        .filter(
+          (label) =>
+            !existingLabels.includes(label) &&
+            label.toLowerCase().includes(searchTerm.toLowerCase())
         )
         .slice(0, 5);
       setFilteredLabels(filtered);
@@ -76,11 +77,8 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-      />
-      
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+
       {/* Label Selector */}
       <div
         className="fixed z-50 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 min-w-64 max-w-80"
@@ -88,14 +86,12 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
           left: position.x,
           top: position.y,
           transform: 'translate(-50%, -100%)',
-          marginTop: '-8px'
+          marginTop: '-8px',
         }}
       >
         <div className="p-3 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-              Add Label
-            </h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Add Label</h3>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -103,7 +99,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
               <X size={16} />
             </button>
           </div>
-          
+
           <form onSubmit={handleSubmit}>
             <input
               ref={inputRef}
@@ -144,4 +140,4 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
       </div>
     </>
   );
-}; 
+};

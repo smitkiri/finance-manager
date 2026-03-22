@@ -69,63 +69,77 @@ router.post('/restore', upload.single('backupFile'), async (req, res) => {
       }
     }
     if (backupData.sources) {
-        for (const source of backupData.sources) {
-          await client.query(
-            `INSERT INTO sources (id, name, mappings, flip_income_expense, created_at, last_used)
+      for (const source of backupData.sources) {
+        await client.query(
+          `INSERT INTO sources (id, name, mappings, flip_income_expense, created_at, last_used)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
-            [source.id, source.name, JSON.stringify(source.mappings), source.flip_income_expense, source.created_at, source.last_used]
-          );
-        }
+          [
+            source.id,
+            source.name,
+            JSON.stringify(source.mappings),
+            source.flip_income_expense,
+            source.created_at,
+            source.last_used,
+          ]
+        );
+      }
     }
     if (backupData.transactions) {
-        for (const transaction of backupData.transactions) {
-            await client.query(
-              `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations, created_at, updated_at)
+      for (const transaction of backupData.transactions) {
+        await client.query(
+          `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations, created_at, updated_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING`,
-              [
-                transaction.id,
-                transaction.date,
-                transaction.description,
-                transaction.category,
-                transaction.amount,
-                transaction.type,
-                transaction.user_id,
-                JSON.stringify(transaction.labels),
-                JSON.stringify(transaction.metadata),
-                JSON.stringify(transaction.transfer_info),
-                transaction.excluded_from_calculations,
-                transaction.created_at,
-                transaction.updated_at
-              ]
-            );
-        }
+          [
+            transaction.id,
+            transaction.date,
+            transaction.description,
+            transaction.category,
+            transaction.amount,
+            transaction.type,
+            transaction.user_id,
+            JSON.stringify(transaction.labels),
+            JSON.stringify(transaction.metadata),
+            JSON.stringify(transaction.transfer_info),
+            transaction.excluded_from_calculations,
+            transaction.created_at,
+            transaction.updated_at,
+          ]
+        );
+      }
     }
     if (backupData.reports) {
-        for (const report of backupData.reports) {
-          await client.query(
-            `INSERT INTO reports (id, name, description, filters, created_at, last_modified)
+      for (const report of backupData.reports) {
+        await client.query(
+          `INSERT INTO reports (id, name, description, filters, created_at, last_modified)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
-            [report.id, report.name, report.description, JSON.stringify(report.filters), report.created_at, report.last_modified]
-          );
-        }
+          [
+            report.id,
+            report.name,
+            report.description,
+            JSON.stringify(report.filters),
+            report.created_at,
+            report.last_modified,
+          ]
+        );
+      }
     }
     if (backupData.date_ranges) {
-        for (const range of backupData.date_ranges) {
-          await client.query(
-            `INSERT INTO date_ranges (id, start_date, end_date, created_at)
+      for (const range of backupData.date_ranges) {
+        await client.query(
+          `INSERT INTO date_ranges (id, start_date, end_date, created_at)
              VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
-            [range.id, range.start_date, range.end_date, range.created_at]
-          );
-        }
+          [range.id, range.start_date, range.end_date, range.created_at]
+        );
+      }
     }
     if (backupData.metadata) {
-        for (const meta of backupData.metadata) {
-          await client.query(
-            `INSERT INTO metadata (key, value, updated_at)
+      for (const meta of backupData.metadata) {
+        await client.query(
+          `INSERT INTO metadata (key, value, updated_at)
              VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
-            [meta.key, JSON.stringify(meta.value), meta.updated_at]
-          );
-        }
+          [meta.key, JSON.stringify(meta.value), meta.updated_at]
+        );
+      }
     }
     // Restore accounts before account_balances (foreign key dependency)
     if (backupData.accounts) {
@@ -133,7 +147,14 @@ router.post('/restore', upload.single('backupFile'), async (req, res) => {
         await client.query(
           `INSERT INTO accounts (id, user_id, name, type, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
-          [account.id, account.user_id, account.name, account.type, account.created_at, account.updated_at]
+          [
+            account.id,
+            account.user_id,
+            account.name,
+            account.type,
+            account.created_at,
+            account.updated_at,
+          ]
         );
       }
     }
@@ -142,7 +163,14 @@ router.post('/restore', upload.single('backupFile'), async (req, res) => {
         await client.query(
           `INSERT INTO account_balances (id, account_id, balance, date, note, created_at)
            VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
-          [balance.id, balance.account_id, balance.balance, balance.date, balance.note, balance.created_at]
+          [
+            balance.id,
+            balance.account_id,
+            balance.balance,
+            balance.date,
+            balance.note,
+            balance.created_at,
+          ]
         );
       }
     }

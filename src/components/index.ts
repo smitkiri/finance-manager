@@ -25,4 +25,4 @@ export { CategoryTable } from './charts/CategoryTable';
 // Layout components
 export { Sidebar } from './Sidebar';
 export { Dashboard } from './Dashboard';
-export { DateRangePicker } from './DateRangePicker'; 
+export { DateRangePicker } from './DateRangePicker';

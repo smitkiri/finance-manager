@@ -6,13 +6,13 @@ router.get('/sources', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM sources ORDER BY created_at');
 
-    const sources = result.rows.map(row => ({
+    const sources = result.rows.map((row) => ({
       id: row.id,
       name: row.name,
       mappings: row.mappings,
       flipIncomeExpense: row.flip_income_expense,
       createdAt: row.created_at,
-      lastUsed: row.last_used
+      lastUsed: row.last_used,
     }));
 
     res.json(sources);
@@ -40,18 +40,18 @@ router.post('/sources', async (req, res) => {
         JSON.stringify(source.mappings || []),
         source.flipIncomeExpense || false,
         source.createdAt || new Date().toISOString(),
-        source.lastUsed || new Date().toISOString()
+        source.lastUsed || new Date().toISOString(),
       ]
     );
 
     const allSourcesResult = await db.query('SELECT * FROM sources ORDER BY created_at');
-    const sources = allSourcesResult.rows.map(row => ({
+    const sources = allSourcesResult.rows.map((row) => ({
       id: row.id,
       name: row.name,
       mappings: row.mappings,
       flipIncomeExpense: row.flip_income_expense,
       createdAt: row.created_at,
-      lastUsed: row.last_used
+      lastUsed: row.last_used,
     }));
 
     res.json({ success: true, sources });
@@ -68,13 +68,13 @@ router.delete('/sources/:sourceName', async (req, res) => {
     await db.query('DELETE FROM sources WHERE name = $1', [sourceName]);
 
     const result = await db.query('SELECT * FROM sources ORDER BY created_at');
-    const sources = result.rows.map(row => ({
+    const sources = result.rows.map((row) => ({
       id: row.id,
       name: row.name,
       mappings: row.mappings,
       flipIncomeExpense: row.flip_income_expense,
       createdAt: row.created_at,
-      lastUsed: row.last_used
+      lastUsed: row.last_used,
     }));
 
     res.json({ success: true, sources });
@@ -114,18 +114,18 @@ router.put('/sources/:sourceId', async (req, res) => {
         JSON.stringify(source.mappings || []),
         source.flipIncomeExpense || false,
         source.lastUsed || new Date().toISOString(),
-        sourceId
+        sourceId,
       ]
     );
 
     const allSourcesResult = await db.query('SELECT * FROM sources ORDER BY created_at');
-    const sources = allSourcesResult.rows.map(row => ({
+    const sources = allSourcesResult.rows.map((row) => ({
       id: row.id,
       name: row.name,
       mappings: row.mappings,
       flipIncomeExpense: row.flip_income_expense,
       createdAt: row.created_at,
-      lastUsed: row.last_used
+      lastUsed: row.last_used,
     }));
 
     res.json({ success: true, sources });

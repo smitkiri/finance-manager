@@ -8,11 +8,7 @@ interface UserFilterProps {
   onUserChange: (userId: string | null) => void;
 }
 
-export const UserFilter: React.FC<UserFilterProps> = ({
-  users,
-  selectedUserId,
-  onUserChange
-}) => {
+export const UserFilter: React.FC<UserFilterProps> = ({ users, selectedUserId, onUserChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +27,7 @@ export const UserFilter: React.FC<UserFilterProps> = ({
     if (selectedUserId === null) {
       return 'All Users';
     }
-    const user = users.find(u => u.id === selectedUserId);
+    const user = users.find((u) => u.id === selectedUserId);
     return user ? user.name : 'All Users';
   };
 
@@ -62,8 +58,8 @@ export const UserFilter: React.FC<UserFilterProps> = ({
       >
         <User size={16} />
         <span>{getSelectedUserText()}</span>
-        <ChevronDown 
-          size={14} 
+        <ChevronDown
+          size={14}
           className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
@@ -74,8 +70,8 @@ export const UserFilter: React.FC<UserFilterProps> = ({
             <button
               onClick={() => handleUserSelect(null)}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                selectedUserId === null 
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' 
+                selectedUserId === null
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
                   : 'text-gray-700 dark:text-gray-300'
               }`}
             >
@@ -86,8 +82,8 @@ export const UserFilter: React.FC<UserFilterProps> = ({
                 key={user.id}
                 onClick={() => handleUserSelect(user.id)}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                  selectedUserId === user.id 
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' 
+                  selectedUserId === user.id
+                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
                     : 'text-gray-700 dark:text-gray-300'
                 }`}
               >
@@ -99,4 +95,4 @@ export const UserFilter: React.FC<UserFilterProps> = ({
       )}
     </div>
   );
-}; 
+};

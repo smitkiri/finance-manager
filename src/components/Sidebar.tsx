@@ -1,5 +1,14 @@
 import React from 'react';
-import { Menu, X, BarChart3, Receipt, FileText, Settings, TrendingUp, LayoutDashboard } from 'lucide-react';
+import {
+  Menu,
+  X,
+  BarChart3,
+  Receipt,
+  FileText,
+  Settings,
+  TrendingUp,
+  LayoutDashboard,
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
@@ -32,12 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       </button>
 
       {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={onToggle}
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onToggle} />}
 
       {/* Sidebar */}
       <div
@@ -48,9 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Finance Manager
-            </h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Finance Manager</h1>
           </div>
 
           {/* Navigation */}
@@ -58,9 +60,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             <ul className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.path === '/'
-                  ? location.pathname === '/'
-                  : location.pathname === item.path;
+                const isActive =
+                  item.path === '/' ? location.pathname === '/' : location.pathname === item.path;
                 return (
                   <li key={item.path}>
                     <button
@@ -86,4 +87,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       </div>
     </>
   );
-}; 
+};

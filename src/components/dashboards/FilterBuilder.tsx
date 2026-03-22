@@ -19,10 +19,19 @@ const FIELD_OPTIONS: { value: FilterCondition['field']; label: string }[] = [
 
 const OPERATORS_BY_FIELD: Record<FilterCondition['field'], { value: string; label: string }[]> = {
   type: [{ value: 'is', label: 'is' }],
-  category: [{ value: 'is', label: 'is' }, { value: 'is_not', label: 'is not' }],
-  labels: [{ value: 'includes', label: 'includes' }, { value: 'excludes', label: 'excludes' }],
+  category: [
+    { value: 'is', label: 'is' },
+    { value: 'is_not', label: 'is not' },
+  ],
+  labels: [
+    { value: 'includes', label: 'includes' },
+    { value: 'excludes', label: 'excludes' },
+  ],
   description: [{ value: 'matches', label: 'matches' }],
-  amount: [{ value: 'gte', label: '>=' }, { value: 'lte', label: '<=' }],
+  amount: [
+    { value: 'gte', label: '>=' },
+    { value: 'lte', label: '<=' },
+  ],
 };
 
 function defaultOperator(field: FilterCondition['field']): string {
@@ -47,7 +56,7 @@ const ConditionValueInput: React.FC<{
     return (
       <select
         value={(value as string) || ''}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         <option value="">Select...</option>
@@ -58,16 +67,16 @@ const ConditionValueInput: React.FC<{
   }
 
   if (field === 'category') {
-    const selected = Array.isArray(value) ? value as string[] : [];
+    const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
       <div className="flex-1 flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded min-h-[34px] max-h-24 overflow-y-auto">
-        {categories.map(cat => (
+        {categories.map((cat) => (
           <button
             key={cat}
             type="button"
             onClick={() => {
               const next = selected.includes(cat)
-                ? selected.filter(c => c !== cat)
+                ? selected.filter((c) => c !== cat)
                 : [...selected, cat];
               onChange(next);
             }}
@@ -85,16 +94,16 @@ const ConditionValueInput: React.FC<{
   }
 
   if (field === 'labels') {
-    const selected = Array.isArray(value) ? value as string[] : [];
+    const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
       <div className="flex-1 flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded min-h-[34px] max-h-24 overflow-y-auto">
-        {allLabels.map(label => (
+        {allLabels.map((label) => (
           <button
             key={label}
             type="button"
             onClick={() => {
               const next = selected.includes(label)
-                ? selected.filter(l => l !== label)
+                ? selected.filter((l) => l !== label)
                 : [...selected, label];
               onChange(next);
             }}
@@ -119,7 +128,7 @@ const ConditionValueInput: React.FC<{
       <input
         type="number"
         value={value as number | string}
-        onChange={e => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
+        onChange={(e) => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
         placeholder="0.00"
         className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
@@ -131,7 +140,7 @@ const ConditionValueInput: React.FC<{
     <input
       type="text"
       value={(value as string) || ''}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       placeholder="regex pattern (e.g. uber|lyft)"
       className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
     />
@@ -139,7 +148,10 @@ const ConditionValueInput: React.FC<{
 };
 
 export const FilterBuilder: React.FC<FilterBuilderProps> = ({
-  filterGroups, onChange, categories, allLabels,
+  filterGroups,
+  onChange,
+  categories,
+  allLabels,
 }) => {
   const updateCondition = (gi: number, ci: number, updates: Partial<FilterCondition>) => {
     const next = filterGroups.map((g, gIdx) => {
@@ -235,22 +247,28 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   {/* Field */}
                   <select
                     value={cond.field}
-                    onChange={e => handleFieldChange(gi, ci, e.target.value as FilterCondition['field'])}
+                    onChange={(e) =>
+                      handleFieldChange(gi, ci, e.target.value as FilterCondition['field'])
+                    }
                     className="min-w-[100px] px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    {FIELD_OPTIONS.map(f => (
-                      <option key={f.value} value={f.value}>{f.label}</option>
+                    {FIELD_OPTIONS.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
                     ))}
                   </select>
 
                   {/* Operator */}
                   <select
                     value={cond.operator}
-                    onChange={e => updateCondition(gi, ci, { operator: e.target.value })}
+                    onChange={(e) => updateCondition(gi, ci, { operator: e.target.value })}
                     className="min-w-[70px] px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    {OPERATORS_BY_FIELD[cond.field].map(op => (
-                      <option key={op.value} value={op.value}>{op.label}</option>
+                    {OPERATORS_BY_FIELD[cond.field].map((op) => (
+                      <option key={op.value} value={op.value}>
+                        {op.label}
+                      </option>
                     ))}
                   </select>
 
@@ -259,7 +277,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({
                     condition={cond}
                     categories={categories}
                     allLabels={allLabels}
-                    onChange={val => updateCondition(gi, ci, { value: val })}
+                    onChange={(val) => updateCondition(gi, ci, { value: val })}
                   />
 
                   {/* Remove */}

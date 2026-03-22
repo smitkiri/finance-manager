@@ -13,7 +13,7 @@ router.post('/import-csv', async (req, res) => {
     const expenses = parseCSV(csvText);
 
     const existingResult = await db.query('SELECT * FROM transactions');
-    const existingExpenses = existingResult.rows.map(row => ({
+    const existingExpenses = existingResult.rows.map((row) => ({
       id: row.id,
       date: row.date,
       description: row.description,
@@ -25,13 +25,16 @@ router.post('/import-csv', async (req, res) => {
       metadata: row.metadata || {},
       transferInfo: row.transfer_info,
       excludedFromCalculations: row.excluded_from_calculations,
-      importId: row.import_id || null
+      importId: row.import_id || null,
     }));
 
-    const { merged: mergedExpenses, added: addedExpenses } = mergeExpenses(existingExpenses, expenses);
+    const { merged: mergedExpenses, added: addedExpenses } = mergeExpenses(
+      existingExpenses,
+      expenses
+    );
 
     const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-    const addedIds = new Set(addedExpenses.map(e => e.id));
+    const addedIds = new Set(addedExpenses.map((e) => e.id));
 
     const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
 
@@ -63,7 +66,7 @@ router.post('/import-csv', async (req, res) => {
             JSON.stringify(expense.metadata || {}),
             expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
             expense.excludedFromCalculations || false,
-            addedIds.has(expense.id) ? sessionId : (expense.importId || null)
+            addedIds.has(expense.id) ? sessionId : expense.importId || null,
           ]
         );
       }
@@ -80,7 +83,7 @@ router.post('/import-csv', async (req, res) => {
       added: addedExpenses.length,
       total: updatedTransactions.length,
       transfersDetected: transfers.length,
-      sessionId
+      sessionId,
     });
   } catch (error) {
     console.error('Error importing CSV:', error);
@@ -96,24 +99,26 @@ router.get('/export-csv', async (req, res) => {
       return res.status(404).json({ error: 'No expenses found' });
     }
 
-    const expenses = result.rows.map(row => ({
+    const expenses = result.rows.map((row) => ({
       date: row.date,
       description: row.description,
       category: row.category,
       amount: parseFloat(row.amount),
-      type: row.type
+      type: row.type,
     }));
 
     const headers = ['Date', 'Description', 'Category', 'Amount', 'Type'];
     const csvContent = [
       headers.join(','),
-      ...expenses.map(exp => [
-        exp.date,
-        `"${exp.description}"`,
-        `"${exp.category}"`,
-        exp.amount.toString(),
-        exp.type
-      ].join(','))
+      ...expenses.map((exp) =>
+        [
+          exp.date,
+          `"${exp.description}"`,
+          `"${exp.category}"`,
+          exp.amount.toString(),
+          exp.type,
+        ].join(',')
+      ),
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
@@ -173,7 +178,7 @@ router.post('/import-with-mapping', async (req, res) => {
     }
 
     const existingResult = await db.query('SELECT * FROM transactions');
-    const existingExpenses = existingResult.rows.map(row => ({
+    const existingExpenses = existingResult.rows.map((row) => ({
       id: row.id,
       date: row.date,
       description: row.description,
@@ -185,15 +190,23 @@ router.post('/import-with-mapping', async (req, res) => {
       metadata: row.metadata || {},
       transferInfo: row.transfer_info,
       excludedFromCalculations: row.excluded_from_calculations,
-      importId: row.import_id || null
+      importId: row.import_id || null,
     }));
 
-    const { expenses, autoFilledCategories } = parseCSVWithMapping(csvText, mapping, userId, existingExpenses);
+    const { expenses, autoFilledCategories } = parseCSVWithMapping(
+      csvText,
+      mapping,
+      userId,
+      existingExpenses
+    );
 
-    const { merged: mergedExpenses, added: addedExpenses } = mergeExpenses(existingExpenses, expenses);
+    const { merged: mergedExpenses, added: addedExpenses } = mergeExpenses(
+      existingExpenses,
+      expenses
+    );
 
     const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-    const addedIds = new Set(addedExpenses.map(e => e.id));
+    const addedIds = new Set(addedExpenses.map((e) => e.id));
 
     const { transfers, updatedTransactions } = detectTransfers(mergedExpenses);
 
@@ -202,7 +215,14 @@ router.post('/import-with-mapping', async (req, res) => {
       await client.query(
         `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [sessionId, userId || null, mapping?.id || null, mapping?.name || 'Manual Import', fileName || null, addedExpenses.length]
+        [
+          sessionId,
+          userId || null,
+          mapping?.id || null,
+          mapping?.name || 'Manual Import',
+          fileName || null,
+          addedExpenses.length,
+        ]
       );
 
       await client.query('DELETE FROM transactions');
@@ -225,7 +245,7 @@ router.post('/import-with-mapping', async (req, res) => {
             JSON.stringify(expense.metadata || {}),
             expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
             expense.excludedFromCalculations || false,
-            addedIds.has(expense.id) ? sessionId : (expense.importId || null)
+            addedIds.has(expense.id) ? sessionId : expense.importId || null,
           ]
         );
       }
@@ -243,7 +263,7 @@ router.post('/import-with-mapping', async (req, res) => {
       total: updatedTransactions.length,
       transfersDetected: transfers.length,
       autoFilledCategories,
-      sessionId
+      sessionId,
     });
   } catch (error) {
     console.error('Error importing CSV with mapping:', error);

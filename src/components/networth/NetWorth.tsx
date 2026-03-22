@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
 import { Trash2, X, ChevronDown, ChevronUp, History, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -19,12 +25,21 @@ function generateId(): string {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 // Modal for adding a balance entry
@@ -40,7 +55,12 @@ function formatBalanceInput(raw: string): string {
   const dotIndex = cleaned.indexOf('.');
   if (dotIndex !== -1) {
     // Keep only the first decimal point, limit to 2 decimal places
-    cleaned = cleaned.slice(0, dotIndex + 1) + cleaned.slice(dotIndex + 1).replace(/\./g, '').slice(0, 2);
+    cleaned =
+      cleaned.slice(0, dotIndex + 1) +
+      cleaned
+        .slice(dotIndex + 1)
+        .replace(/\./g, '')
+        .slice(0, 2);
   }
   const [intPart = '', decPart] = cleaned.split('.');
   const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -72,13 +92,18 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Update Balance — {account.name}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
             <X size={20} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Balance ($)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Balance ($)
+            </label>
             <input
               type="text"
               inputMode="decimal"
@@ -90,20 +115,24 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Date
+            </label>
             <input
               type="date"
               value={date}
-              onChange={e => setDate(e.target.value)}
+              onChange={(e) => setDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Note (optional)
+            </label>
             <input
               type="text"
               value={note}
-              onChange={e => setNote(e.target.value)}
+              onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Monthly snapshot"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -138,13 +167,18 @@ interface BulkBalanceModalProps {
   onSave: (entries: { accountId: string; balance: number }[], date: string, note?: string) => void;
 }
 
-const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, onClose, onSave }) => {
+const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
+  accounts,
+  users,
+  onClose,
+  onSave,
+}) => {
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
   const [balances, setBalances] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      accounts.map(a => [
+      accounts.map((a) => [
         a.id,
         a.currentBalance !== undefined && a.currentBalance !== 0
           ? formatBalanceInput(a.currentBalance.toFixed(2))
@@ -154,16 +188,16 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, on
   );
 
   const handleBalanceChange = (accountId: string, value: string) => {
-    setBalances(prev => ({ ...prev, [accountId]: formatBalanceInput(value) }));
+    setBalances((prev) => ({ ...prev, [accountId]: formatBalanceInput(value) }));
   };
 
   const entries = accounts
-    .map(a => ({ accountId: a.id, raw: balances[a.id] ?? '' }))
-    .filter(e => e.raw.trim() !== '')
-    .map(e => ({ accountId: e.accountId, balance: parseFloat(e.raw.replace(/,/g, '')) }))
-    .filter(e => !isNaN(e.balance));
+    .map((a) => ({ accountId: a.id, raw: balances[a.id] ?? '' }))
+    .filter((e) => e.raw.trim() !== '')
+    .map((e) => ({ accountId: e.accountId, balance: parseFloat(e.raw.replace(/,/g, '')) }))
+    .filter((e) => !isNaN(e.balance));
 
-  const anyInvalid = accounts.some(a => {
+  const anyInvalid = accounts.some((a) => {
     const raw = (balances[a.id] ?? '').trim();
     if (raw === '') return false;
     return isNaN(parseFloat(raw.replace(/,/g, '')));
@@ -177,21 +211,25 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, on
 
   // Group accounts by user, preserving user order
   const userGroups = users
-    .map(u => ({ user: u, accounts: accounts.filter(a => a.userId === u.id) }))
-    .filter(g => g.accounts.length > 0);
+    .map((u) => ({ user: u, accounts: accounts.filter((a) => a.userId === u.id) }))
+    .filter((g) => g.accounts.length > 0);
   const showUserHeaders = userGroups.length > 1;
 
   const AccountRow = ({ account }: { account: Account }) => (
     <div className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
       <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{account.name}</span>
-        <span className="text-xs text-gray-400 dark:text-gray-500">{account.type === 'asset' ? 'Asset' : 'Liability'}</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">
+          {account.name}
+        </span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">
+          {account.type === 'asset' ? 'Asset' : 'Liability'}
+        </span>
       </div>
       <input
         type="text"
         inputMode="decimal"
         value={balances[account.id] ?? ''}
-        onChange={e => handleBalanceChange(account.id, e.target.value)}
+        onChange={(e) => handleBalanceChange(account.id, e.target.value)}
         placeholder="skip"
         className="w-36 px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
@@ -203,8 +241,13 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, on
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Update All Balances</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+            Update All Balances
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
             <X size={18} />
           </button>
         </div>
@@ -213,20 +256,24 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, on
           {/* Date + Note */}
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Date</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
+                Date
+              </label>
               <input
                 type="date"
                 value={date}
-                onChange={e => setDate(e.target.value)}
+                onChange={(e) => setDate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Note</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
+                Note
+              </label>
               <input
                 type="text"
                 value={note}
-                onChange={e => setNote(e.target.value)}
+                onChange={(e) => setNote(e.target.value)}
                 placeholder="optional"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -235,16 +282,18 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, on
 
           {/* Account rows, scrollable */}
           <div className="flex-1 overflow-y-auto px-6 py-2">
-            {showUserHeaders ? (
-              userGroups.map(({ user, accounts: groupAccounts }) => (
-                <div key={user.id} className="mb-4 last:mb-0">
-                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">{user.name}</p>
-                  {groupAccounts.map(account => <AccountRow key={account.id} account={account} />)}
-                </div>
-              ))
-            ) : (
-              accounts.map(account => <AccountRow key={account.id} account={account} />)
-            )}
+            {showUserHeaders
+              ? userGroups.map(({ user, accounts: groupAccounts }) => (
+                  <div key={user.id} className="mb-4 last:mb-0">
+                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">
+                      {user.name}
+                    </p>
+                    {groupAccounts.map((account) => (
+                      <AccountRow key={account.id} account={account} />
+                    ))}
+                  </div>
+                ))
+              : accounts.map((account) => <AccountRow key={account.id} account={account} />)}
           </div>
 
           {/* Footer */}
@@ -261,7 +310,9 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({ accounts, users, on
               disabled={entries.length === 0 || anyInvalid || !date}
               className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {entries.length > 0 ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}` : 'Save'}
+              {entries.length > 0
+                ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}`
+                : 'Save'}
             </button>
           </div>
         </form>
@@ -290,13 +341,13 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => 
 
   const handleExpand = () => {
     if (!expanded) loadHistory();
-    setExpanded(e => !e);
+    setExpanded((e) => !e);
   };
 
   const handleDeleteBalance = async (balanceId: string) => {
     try {
       await LocalStorage.deleteAccountBalance(account.id, balanceId);
-      setHistory(prev => prev.filter(b => b.id !== balanceId));
+      setHistory((prev) => prev.filter((b) => b.id !== balanceId));
     } catch {
       toast.error('Failed to delete balance entry', { position: 'bottom-right', autoClose: 3000 });
     }
@@ -311,7 +362,9 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => 
     <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900">
         <div className="flex-1 min-w-0">
-          <span className="font-medium text-gray-900 dark:text-white truncate block">{account.name}</span>
+          <span className="font-medium text-gray-900 dark:text-white truncate block">
+            {account.name}
+          </span>
         </div>
         <div className="flex items-center gap-3 ml-4">
           <span className={`text-base font-semibold ${balanceColor}`}>
@@ -355,11 +408,17 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => 
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {history.map(entry => (
+                {history.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="py-1.5 text-gray-700 dark:text-gray-300">{formatDate(entry.date as string)}</td>
-                    <td className={`py-1.5 text-right font-medium ${balanceColor}`}>{formatCurrency(entry.balance)}</td>
-                    <td className="py-1.5 pl-4 text-gray-500 dark:text-gray-400">{entry.note || '—'}</td>
+                    <td className="py-1.5 text-gray-700 dark:text-gray-300">
+                      {formatDate(entry.date as string)}
+                    </td>
+                    <td className={`py-1.5 text-right font-medium ${balanceColor}`}>
+                      {formatCurrency(entry.balance)}
+                    </td>
+                    <td className="py-1.5 pl-4 text-gray-500 dark:text-gray-400">
+                      {entry.note || '—'}
+                    </td>
                     <td className="py-1.5 text-right">
                       <button
                         onClick={() => handleDeleteBalance(entry.id)}
@@ -387,7 +446,9 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 shadow-lg text-sm">
       <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">{formatDate(label)}</p>
-      <p className={`font-semibold ${(data?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+      <p
+        className={`font-semibold ${(data?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}
+      >
         Net Worth: {formatCurrency(data?.netWorth ?? 0)}
       </p>
     </div>
@@ -397,8 +458,8 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';  // gray-700 : gray-200
-  const tickFill = theme === 'dark' ? '#9ca3af' : '#6b7280';    // gray-400 : gray-500
+  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb'; // gray-700 : gray-200
+  const tickFill = theme === 'dark' ? '#9ca3af' : '#6b7280'; // gray-400 : gray-500
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [summary, setSummary] = useState<NetWorthSummary | null>(null);
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
@@ -440,7 +501,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   }, [loadData]);
 
   useEffect(() => {
-    LocalStorage.getTellerConfig().then(config => {
+    LocalStorage.getTellerConfig().then((config) => {
       setTellerEnabled(config.enabled);
       setTellerConnected((config.enrollments?.length ?? 0) > 0);
     });
@@ -451,7 +512,10 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     try {
       const result = await LocalStorage.tellerRefreshBalances();
       if (result.refreshed > 0) {
-        toast.success(`Refreshed ${result.refreshed} account balance${result.refreshed !== 1 ? 's' : ''}`, { position: 'bottom-right', autoClose: 3000 });
+        toast.success(
+          `Refreshed ${result.refreshed} account balance${result.refreshed !== 1 ? 's' : ''}`,
+          { position: 'bottom-right', autoClose: 3000 }
+        );
       }
       if (result.reconnectRequired && result.reconnectRequired.length > 0) {
         toast.error(
@@ -514,9 +578,12 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     });
   };
 
-  const manualAccounts = accounts.filter(a => !a.tellerAccountId);
+  const manualAccounts = accounts.filter((a) => !a.tellerAccountId);
 
-  const netWorthColor = (summary?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
+  const netWorthColor =
+    (summary?.netWorth ?? 0) >= 0
+      ? 'text-blue-600 dark:text-blue-400'
+      : 'text-red-600 dark:text-red-400';
 
   // Find the history entry closest to 1 month ago
   const oneMonthAgoNetWorth = (() => {
@@ -534,19 +601,29 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     return diffDays <= 14 ? closest.netWorth : null;
   })();
 
-  const netWorthChange = oneMonthAgoNetWorth !== null ? (summary?.netWorth ?? 0) - oneMonthAgoNetWorth : null;
+  const netWorthChange =
+    oneMonthAgoNetWorth !== null ? (summary?.netWorth ?? 0) - oneMonthAgoNetWorth : null;
 
   // Format chart dates for x-axis
-  const chartData = history.map(h => ({
+  const chartData = history.map((h) => ({
     ...h,
-    dateLabel: new Date(h.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    dateLabel: new Date(h.date).toLocaleDateString('en-US', {
+      month: 'short',
+      year: '2-digit',
+      timeZone: 'UTC',
+    }),
   }));
 
   // Only show one tick per unique month/year to avoid duplicate X axis labels
   const chartTicks = chartData.reduce<string[]>((acc, d) => {
-    const lastLabel = acc.length > 0
-      ? new Date(acc[acc.length - 1]).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
-      : null;
+    const lastLabel =
+      acc.length > 0
+        ? new Date(acc[acc.length - 1]).toLocaleDateString('en-US', {
+            month: 'short',
+            year: '2-digit',
+            timeZone: 'UTC',
+          })
+        : null;
     if (d.dateLabel !== lastLabel) acc.push(d.date);
     return acc;
   }, []);
@@ -555,18 +632,20 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   // When "All Users" is selected, group accounts per user.
   const userGroups: { user: User | null; assets: Account[]; liabilities: Account[] }[] =
     selectedUserId !== null
-      ? [{
-          user: users.find(u => u.id === selectedUserId) ?? null,
-          assets: accounts.filter(a => a.type === 'asset'),
-          liabilities: accounts.filter(a => a.type === 'liability'),
-        }]
+      ? [
+          {
+            user: users.find((u) => u.id === selectedUserId) ?? null,
+            assets: accounts.filter((a) => a.type === 'asset'),
+            liabilities: accounts.filter((a) => a.type === 'liability'),
+          },
+        ]
       : users
-          .map(user => ({
+          .map((user) => ({
             user,
-            assets: accounts.filter(a => a.userId === user.id && a.type === 'asset'),
-            liabilities: accounts.filter(a => a.userId === user.id && a.type === 'liability'),
+            assets: accounts.filter((a) => a.userId === user.id && a.type === 'asset'),
+            liabilities: accounts.filter((a) => a.userId === user.id && a.type === 'liability'),
           }))
-          .filter(g => g.assets.length > 0 || g.liabilities.length > 0);
+          .filter((g) => g.assets.length > 0 || g.liabilities.length > 0);
 
   const showUserHeaders = selectedUserId === null && userGroups.length > 1;
 
@@ -611,8 +690,11 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                 {formatCurrency(summary?.netWorth ?? 0)}
               </p>
               {netWorthChange !== null && (
-                <p className={`text-sm mt-1 font-medium ${netWorthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {netWorthChange >= 0 ? '+' : ''}{formatCurrency(netWorthChange)} vs 1mo ago
+                <p
+                  className={`text-sm mt-1 font-medium ${netWorthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                >
+                  {netWorthChange >= 0 ? '+' : ''}
+                  {formatCurrency(netWorthChange)} vs 1mo ago
                 </p>
               )}
             </div>
@@ -633,19 +715,29 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
           {/* Net worth history chart */}
           {chartData.length > 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Net Worth Over Time</h3>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
+                Net Worth Over Time
+              </h3>
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                   <XAxis
                     dataKey="date"
                     ticks={chartTicks}
-                    tickFormatter={v => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })}
+                    tickFormatter={(v) =>
+                      new Date(v).toLocaleDateString('en-US', {
+                        month: 'short',
+                        year: '2-digit',
+                        timeZone: 'UTC',
+                      })
+                    }
                     tick={{ fontSize: 12, fill: tickFill }}
                     stroke={gridStroke}
                   />
                   <YAxis
-                    tickFormatter={v => `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                    tickFormatter={(v) =>
+                      `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                    }
                     tick={{ fontSize: 12, fill: tickFill }}
                     stroke={gridStroke}
                   />
@@ -679,22 +771,32 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
             <div className="space-y-8">
               {userGroups.map(({ user, assets, liabilities }) => {
                 const groupAssetTotal = assets.reduce((s, a) => s + (a.currentBalance ?? 0), 0);
-                const groupLiabilityTotal = liabilities.reduce((s, a) => s + (a.currentBalance ?? 0), 0);
+                const groupLiabilityTotal = liabilities.reduce(
+                  (s, a) => s + (a.currentBalance ?? 0),
+                  0
+                );
                 const groupNetWorth = groupAssetTotal - groupLiabilityTotal;
-                const groupNetWorthColor = groupNetWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
+                const groupNetWorthColor =
+                  groupNetWorth >= 0
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-red-600 dark:text-red-400';
 
                 return (
                   <div key={user?.id ?? 'single'} className="space-y-5">
                     {/* Per-user header — only shown in "All Users" mode with multiple users */}
                     {showUserHeaders && user && (
                       <div className="flex items-center gap-3 pb-2 border-b border-gray-200 dark:border-gray-800">
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{user.name}</h3>
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                          {user.name}
+                        </h3>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           Assets {formatCurrency(groupAssetTotal)}
                           {' · '}
                           Liabilities {formatCurrency(groupLiabilityTotal)}
                           {' · '}
-                          <span className={groupNetWorthColor}>Net {formatCurrency(groupNetWorth)}</span>
+                          <span className={groupNetWorthColor}>
+                            Net {formatCurrency(groupNetWorth)}
+                          </span>
                         </span>
                       </div>
                     )}
@@ -702,9 +804,13 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                     {/* Assets */}
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Assets</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Assets
+                        </h4>
                         <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                          {formatCurrency(showUserHeaders ? groupAssetTotal : (summary?.totalAssets ?? 0))}
+                          {formatCurrency(
+                            showUserHeaders ? groupAssetTotal : (summary?.totalAssets ?? 0)
+                          )}
                         </span>
                       </div>
                       {assets.length === 0 ? (
@@ -713,7 +819,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {assets.map(account => (
+                          {assets.map((account) => (
                             <AccountRow
                               key={account.id}
                               account={account}
@@ -727,9 +833,13 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                     {/* Liabilities */}
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Liabilities</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Liabilities
+                        </h4>
                         <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                          {formatCurrency(showUserHeaders ? groupLiabilityTotal : (summary?.totalLiabilities ?? 0))}
+                          {formatCurrency(
+                            showUserHeaders ? groupLiabilityTotal : (summary?.totalLiabilities ?? 0)
+                          )}
                         </span>
                       </div>
                       {liabilities.length === 0 ? (
@@ -738,7 +848,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {liabilities.map(account => (
+                          {liabilities.map((account) => (
                             <AccountRow
                               key={account.id}
                               account={account}

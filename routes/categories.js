@@ -6,7 +6,7 @@ router.get('/categories', async (req, res) => {
   try {
     const result = await db.query('SELECT name FROM categories ORDER BY name');
 
-    let categories = result.rows.map(row => row.name);
+    let categories = result.rows.map((row) => row.name);
 
     if (categories.length === 0) {
       const defaultCategories = [
@@ -19,7 +19,7 @@ router.get('/categories', async (req, res) => {
         'Entertainment',
         'Personal',
         'Professional Services',
-        'Uncategorized'
+        'Uncategorized',
       ];
       categories = defaultCategories;
     }
@@ -66,7 +66,7 @@ router.get('/labels', async (req, res) => {
       FROM transactions, jsonb_array_elements_text(COALESCE(labels, '[]'::jsonb)) AS lbl
       ORDER BY lbl
     `);
-    res.json({ labels: result.rows.map(row => row.lbl) });
+    res.json({ labels: result.rows.map((row) => row.lbl) });
   } catch (error) {
     console.error('Error reading labels:', error);
     res.status(500).json({ error: 'Failed to read labels' });

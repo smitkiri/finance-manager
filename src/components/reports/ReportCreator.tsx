@@ -19,7 +19,7 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
   sources,
   onCreateReport,
   onCancel,
-  globalDateRange
+  globalDateRange,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -29,17 +29,15 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
 
   // Set default date range to globalDateRange on mount
   useEffect(() => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      dateRange: prev.dateRange || globalDateRange
+      dateRange: prev.dateRange || globalDateRange,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globalDateRange]);
 
   // Get all unique labels from expenses
-  const allLabels = Array.from(new Set(
-    expenses.flatMap(expense => expense.labels || [])
-  ));
+  const allLabels = Array.from(new Set(expenses.flatMap((expense) => expense.labels || [])));
 
   // Update preview when filters change
   useEffect(() => {
@@ -47,8 +45,6 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
     setPreviewCount(filteredExpenses.length);
     setPreviewAmount(filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0));
   }, [filters, expenses]);
-
-
 
   const handleCreateReport = () => {
     if (!name.trim()) {
@@ -105,7 +101,9 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
         <div className="lg:col-span-1 space-y-6">
           {/* Report Details */}
           <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Report Details</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Report Details
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -142,17 +140,13 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
                 <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                   {previewCount}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Transactions
-                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Transactions</div>
               </div>
               <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                   ${previewAmount.toFixed(2)}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Total Amount
-                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Total Amount</div>
               </div>
             </div>
           </div>
@@ -184,4 +178,4 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
       </div>
     </div>
   );
-}; 
+};

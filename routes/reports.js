@@ -6,13 +6,13 @@ router.get('/reports', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM reports ORDER BY created_at DESC');
 
-    const reports = result.rows.map(row => ({
+    const reports = result.rows.map((row) => ({
       id: row.id,
       name: row.name,
       description: row.description,
       filters: row.filters,
       createdAt: row.created_at,
-      lastModified: row.last_modified
+      lastModified: row.last_modified,
     }));
 
     res.json(reports);
@@ -40,7 +40,7 @@ router.post('/reports', async (req, res) => {
         report.description || null,
         JSON.stringify(report.filters || {}),
         report.createdAt || new Date().toISOString(),
-        report.lastModified || new Date().toISOString()
+        report.lastModified || new Date().toISOString(),
       ]
     );
 

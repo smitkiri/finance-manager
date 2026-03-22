@@ -31,16 +31,16 @@ function getMonthOptions(): { label: string; start: string; end: string }[] {
   return options;
 }
 
-export function TellerImportModal({ accounts, users, categories, onClose, onImportComplete }: Props) {
-  const tellerAccounts = useMemo(
-    () => accounts.filter(a => a.tellerAccountId),
-    [accounts]
-  );
+export function TellerImportModal({
+  accounts,
+  users,
+  categories,
+  onClose,
+  onImportComplete,
+}: Props) {
+  const tellerAccounts = useMemo(() => accounts.filter((a) => a.tellerAccountId), [accounts]);
 
-  const userMap = useMemo(
-    () => new Map(users.map(u => [u.id, u.name])),
-    [users]
-  );
+  const userMap = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users]);
 
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
@@ -60,7 +60,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
   const [error, setError] = useState('');
 
   function toggleAccount(id: string) {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -141,7 +141,9 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
             <Building2 size={20} className="text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Import from Bank</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Import from Bank
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -155,9 +157,14 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
         <div className="p-6">
           {reconnectAccounts.length > 0 && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
-              <p className="font-medium mb-1">The following account{reconnectAccounts.length !== 1 ? 's need' : ' needs'} to be reconnected in Settings before importing:</p>
+              <p className="font-medium mb-1">
+                The following account{reconnectAccounts.length !== 1 ? 's need' : ' needs'} to be
+                reconnected in Settings before importing:
+              </p>
               <ul className="list-disc list-inside space-y-0.5">
-                {reconnectAccounts.map(name => <li key={name}>{name}</li>)}
+                {reconnectAccounts.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
               </ul>
             </div>
           )}
@@ -172,7 +179,9 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
             <>
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Select accounts</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Select accounts
+                  </p>
                   {tellerAccounts.length > 0 && (
                     <button
                       type="button"
@@ -180,7 +189,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                         if (selectedIds.size === tellerAccounts.length) {
                           setSelectedIds(new Set());
                         } else {
-                          setSelectedIds(new Set(tellerAccounts.map(a => a.id)));
+                          setSelectedIds(new Set(tellerAccounts.map((a) => a.id)));
                         }
                       }}
                       className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
@@ -190,7 +199,7 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                   )}
                 </div>
                 <div className="space-y-2">
-                  {tellerAccounts.map(account => (
+                  {tellerAccounts.map((account) => (
                     <label key={account.id} className="flex items-center space-x-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -198,20 +207,28 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                         onChange={() => toggleAccount(account.id)}
                         className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600"
                       />
-                      <span className="text-sm text-gray-800 dark:text-gray-200">{account.name}</span>
+                      <span className="text-sm text-gray-800 dark:text-gray-200">
+                        {account.name}
+                      </span>
                       {account.userId && userMap.has(account.userId) && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{userMap.get(account.userId)}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {userMap.get(account.userId)}
+                        </span>
                       )}
                     </label>
                   ))}
                   {tellerAccounts.length === 0 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No bank accounts connected.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No bank accounts connected.
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="mb-5">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date range</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Date range
+                </p>
                 <div className="flex space-x-4 mb-3">
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
@@ -236,11 +253,13 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                 {dateMode === 'month' ? (
                   <select
                     value={selectedMonth}
-                    onChange={e => setSelectedMonth(Number(e.target.value))}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     {monthOptions.map((opt, idx) => (
-                      <option key={idx} value={idx}>{opt.label}</option>
+                      <option key={idx} value={idx}>
+                        {opt.label}
+                      </option>
                     ))}
                   </select>
                 ) : (
@@ -248,14 +267,14 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                     <input
                       type="date"
                       value={customStart}
-                      onChange={e => setCustomStart(e.target.value)}
+                      onChange={(e) => setCustomStart(e.target.value)}
                       className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                     <span className="self-center text-gray-500 dark:text-gray-400">to</span>
                     <input
                       type="date"
                       value={customEnd}
-                      onChange={e => setCustomEnd(e.target.value)}
+                      onChange={(e) => setCustomEnd(e.target.value)}
                       className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </div>
@@ -283,7 +302,8 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
           {step === 'category-review' && (
             <>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                The following categories from your bank don't exist yet. Keep them as new categories or map them to ones you already use.
+                The following categories from your bank don't exist yet. Keep them as new categories
+                or map them to ones you already use.
               </p>
               <div className="mb-5 max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -294,20 +314,26 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                     </tr>
                   </thead>
                   <tbody>
-                    {newCategories.map(cat => (
+                    {newCategories.map((cat) => (
                       <tr key={cat} className="border-b border-gray-100 dark:border-gray-800">
                         <td className="py-2 text-gray-800 dark:text-gray-200 font-medium">{cat}</td>
                         <td className="py-2 pl-4">
                           <select
                             value={categoryChoices[cat] ?? ''}
-                            onChange={e => setCategoryChoices(prev => ({ ...prev, [cat]: e.target.value }))}
+                            onChange={(e) =>
+                              setCategoryChoices((prev) => ({ ...prev, [cat]: e.target.value }))
+                            }
                             className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           >
                             <option value="">Keep as new category</option>
                             <option value="Uncategorized">Uncategorized</option>
-                            {categories.filter(c => c !== 'Uncategorized').map(c => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
+                            {categories
+                              .filter((c) => c !== 'Uncategorized')
+                              .map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
                           </select>
                         </td>
                       </tr>
@@ -320,7 +346,10 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
               </p>
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => { setStep('configure'); setError(''); }}
+                  onClick={() => {
+                    setStep('configure');
+                    setError('');
+                  }}
                   className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   ← Back
@@ -348,11 +377,18 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                     </tr>
                   </thead>
                   <tbody>
-                    {previewAccounts.map(a => (
-                      <tr key={a.accountId} className="border-b border-gray-100 dark:border-gray-800">
+                    {previewAccounts.map((a) => (
+                      <tr
+                        key={a.accountId}
+                        className="border-b border-gray-100 dark:border-gray-800"
+                      >
                         <td className="py-2 text-gray-800 dark:text-gray-200">{a.accountName}</td>
-                        <td className="py-2 text-right font-medium text-green-600 dark:text-green-400">{a.newCount}</td>
-                        <td className="py-2 text-right text-gray-500 dark:text-gray-400">{a.duplicateCount}</td>
+                        <td className="py-2 text-right font-medium text-green-600 dark:text-green-400">
+                          {a.newCount}
+                        </td>
+                        <td className="py-2 text-right text-gray-500 dark:text-gray-400">
+                          {a.duplicateCount}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -360,12 +396,17 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
               </div>
 
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-                {totalNew} new transaction{totalNew !== 1 ? 's' : ''} across {previewAccounts.filter(a => a.newCount > 0).length} account{previewAccounts.filter(a => a.newCount > 0).length !== 1 ? 's' : ''}
+                {totalNew} new transaction{totalNew !== 1 ? 's' : ''} across{' '}
+                {previewAccounts.filter((a) => a.newCount > 0).length} account
+                {previewAccounts.filter((a) => a.newCount > 0).length !== 1 ? 's' : ''}
               </p>
 
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => { setStep(newCategories.length > 0 ? 'category-review' : 'configure'); setError(''); }}
+                  onClick={() => {
+                    setStep(newCategories.length > 0 ? 'category-review' : 'configure');
+                    setError('');
+                  }}
                   disabled={step === 'importing'}
                   className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
                 >
@@ -382,7 +423,9 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                       <span>Importing…</span>
                     </>
                   ) : (
-                    <span>Import {totalNew} Transaction{totalNew !== 1 ? 's' : ''}</span>
+                    <span>
+                      Import {totalNew} Transaction{totalNew !== 1 ? 's' : ''}
+                    </span>
                   )}
                 </button>
               </div>
@@ -408,11 +451,18 @@ export function TellerImportModal({ accounts, users, categories, onClose, onImpo
                     </tr>
                   </thead>
                   <tbody>
-                    {importSessions.map(s => (
-                      <tr key={s.sessionId} className="border-b border-gray-100 dark:border-gray-800">
+                    {importSessions.map((s) => (
+                      <tr
+                        key={s.sessionId}
+                        className="border-b border-gray-100 dark:border-gray-800"
+                      >
                         <td className="py-2 text-gray-800 dark:text-gray-200">{s.accountName}</td>
-                        <td className="py-2 text-right font-medium text-green-600 dark:text-green-400">{s.added}</td>
-                        <td className="py-2 text-right text-gray-500 dark:text-gray-400">{s.skipped}</td>
+                        <td className="py-2 text-right font-medium text-green-600 dark:text-green-400">
+                          {s.added}
+                        </td>
+                        <td className="py-2 text-right text-gray-500 dark:text-gray-400">
+                          {s.skipped}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

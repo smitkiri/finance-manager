@@ -17,16 +17,18 @@ router.get('/accounts', async (req, res) => {
        FROM accounts ${whereSql} ORDER BY type, name`,
       params
     );
-    res.json(result.rows.map(r => ({
-      id: r.id,
-      userId: r.user_id,
-      name: r.name,
-      type: r.type,
-      tellerAccountId: r.teller_account_id ?? null,
-      tellerEnrollmentId: r.teller_enrollment_id ?? null,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    })));
+    res.json(
+      result.rows.map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        name: r.name,
+        type: r.type,
+        tellerAccountId: r.teller_account_id ?? null,
+        tellerEnrollmentId: r.teller_enrollment_id ?? null,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }))
+    );
   } catch (error) {
     console.error('Error loading accounts:', error);
     res.status(500).json({ error: 'Failed to load accounts' });
@@ -50,7 +52,14 @@ router.post('/accounts', async (req, res) => {
       [id, userId, name, type]
     );
     const r = result.rows[0];
-    res.json({ id: r.id, userId: r.user_id, name: r.name, type: r.type, createdAt: r.created_at, updatedAt: r.updated_at });
+    res.json({
+      id: r.id,
+      userId: r.user_id,
+      name: r.name,
+      type: r.type,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    });
   } catch (error) {
     console.error('Error creating account:', error);
     res.status(500).json({ error: 'Failed to create account' });
@@ -77,7 +86,14 @@ router.put('/accounts/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
     const r = result.rows[0];
-    res.json({ id: r.id, userId: r.user_id, name: r.name, type: r.type, createdAt: r.created_at, updatedAt: r.updated_at });
+    res.json({
+      id: r.id,
+      userId: r.user_id,
+      name: r.name,
+      type: r.type,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    });
   } catch (error) {
     console.error('Error updating account:', error);
     res.status(500).json({ error: 'Failed to update account' });
@@ -87,7 +103,9 @@ router.put('/accounts/:id', async (req, res) => {
 // DELETE /api/accounts/:id
 router.delete('/accounts/:id', async (req, res) => {
   try {
-    const result = await db.query('DELETE FROM accounts WHERE id = $1 RETURNING id', [req.params.id]);
+    const result = await db.query('DELETE FROM accounts WHERE id = $1 RETURNING id', [
+      req.params.id,
+    ]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
@@ -141,14 +159,16 @@ router.get('/accounts/:id/balances', async (req, res) => {
        ORDER BY date DESC, created_at DESC`,
       [req.params.id]
     );
-    res.json(result.rows.map(r => ({
-      id: r.id,
-      accountId: r.account_id,
-      balance: parseFloat(r.balance),
-      date: r.date,
-      note: r.note,
-      createdAt: r.created_at,
-    })));
+    res.json(
+      result.rows.map((r) => ({
+        id: r.id,
+        accountId: r.account_id,
+        balance: parseFloat(r.balance),
+        date: r.date,
+        note: r.note,
+        createdAt: r.created_at,
+      }))
+    );
   } catch (error) {
     console.error('Error loading account balances:', error);
     res.status(500).json({ error: 'Failed to load account balances' });
@@ -259,12 +279,14 @@ router.get('/net-worth/history', async (req, res) => {
       params
     );
 
-    res.json(result.rows.map(r => ({
-      date: r.date,
-      totalAssets: parseFloat(r.total_assets),
-      totalLiabilities: parseFloat(r.total_liabilities),
-      netWorth: parseFloat(r.total_assets) - parseFloat(r.total_liabilities),
-    })));
+    res.json(
+      result.rows.map((r) => ({
+        date: r.date,
+        totalAssets: parseFloat(r.total_assets),
+        totalLiabilities: parseFloat(r.total_liabilities),
+        netWorth: parseFloat(r.total_assets) - parseFloat(r.total_liabilities),
+      }))
+    );
   } catch (error) {
     console.error('Error computing net worth history:', error);
     res.status(500).json({ error: 'Failed to compute net worth history' });

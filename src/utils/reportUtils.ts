@@ -1,13 +1,16 @@
 import { Expense, ReportFilter, ReportData, Report } from '../types';
 import { generateId } from '../utils';
 
-export const applyReportFilters = (expenses: Expense[], filters: ReportFilter | undefined): Expense[] => {
+export const applyReportFilters = (
+  expenses: Expense[],
+  filters: ReportFilter | undefined
+): Expense[] => {
   // If no filters provided, return all expenses
   if (!filters) {
     return expenses;
   }
 
-  return expenses.filter(expense => {
+  return expenses.filter((expense) => {
     // Date range filter
     if (filters.dateRange) {
       const expenseDate = new Date(expense.date);
@@ -26,7 +29,7 @@ export const applyReportFilters = (expenses: Expense[], filters: ReportFilter | 
     // Label filter
     if (filters.labels && filters.labels.length > 0) {
       const expenseLabels = expense.labels || [];
-      if (!filters.labels.some(label => expenseLabels.includes(label))) {
+      if (!filters.labels.some((label) => expenseLabels.includes(label))) {
         return false;
       }
     }
@@ -58,45 +61,49 @@ export const applyReportFilters = (expenses: Expense[], filters: ReportFilter | 
   });
 };
 
-export const generateReportData = (
-  report: Report,
-  filteredExpenses: Expense[]
-): ReportData => {
+export const generateReportData = (report: Report, filteredExpenses: Expense[]): ReportData => {
   // Calculate category breakdown
   const categoryBreakdown: { [category: string]: number } = {};
   let totalExpenses = 0;
   let totalIncome = 0;
 
-  filteredExpenses.forEach(expense => {
+  filteredExpenses.forEach((expense) => {
     if (expense.type === 'expense') {
       totalExpenses += expense.amount;
-      categoryBreakdown[expense.category] = (categoryBreakdown[expense.category] || 0) + expense.amount;
+      categoryBreakdown[expense.category] =
+        (categoryBreakdown[expense.category] || 0) + expense.amount;
     } else {
       totalIncome += expense.amount;
     }
   });
 
   // Calculate monthly data
-  const monthlyData = filteredExpenses.reduce((acc, exp) => {
-    const month = new Date(exp.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-    const existing = acc.find(item => item.month === month);
-    
-    if (existing) {
-      if (exp.type === 'expense') {
-        existing.expenses += Math.abs(exp.amount);
-      } else {
-        existing.income += exp.amount;
-      }
-    } else {
-      acc.push({
-        month,
-        expenses: exp.type === 'expense' ? Math.abs(exp.amount) : 0,
-        income: exp.type === 'income' ? exp.amount : 0,
+  const monthlyData = filteredExpenses.reduce(
+    (acc, exp) => {
+      const month = new Date(exp.date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
       });
-    }
-    
-    return acc;
-  }, [] as { month: string; expenses: number; income: number }[]);
+      const existing = acc.find((item) => item.month === month);
+
+      if (existing) {
+        if (exp.type === 'expense') {
+          existing.expenses += Math.abs(exp.amount);
+        } else {
+          existing.income += exp.amount;
+        }
+      } else {
+        acc.push({
+          month,
+          expenses: exp.type === 'expense' ? Math.abs(exp.amount) : 0,
+          income: exp.type === 'income' ? exp.amount : 0,
+        });
+      }
+
+      return acc;
+    },
+    [] as { month: string; expenses: number; income: number }[]
+  );
 
   return {
     report,
@@ -105,22 +112,20 @@ export const generateReportData = (
     totalExpenses,
     totalIncome,
     netAmount: totalIncome - totalExpenses,
-    monthlyData: monthlyData.sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime())
+    monthlyData: monthlyData.sort(
+      (a, b) => new Date(b.month).getTime() - new Date(a.month).getTime()
+    ),
   };
 };
 
-export const createReport = (
-  name: string,
-  description: string,
-  filters: ReportFilter
-): Report => {
+export const createReport = (name: string, description: string, filters: ReportFilter): Report => {
   return {
     id: generateId(),
     name,
     description,
     filters,
     createdAt: new Date().toISOString(),
-    lastModified: new Date().toISOString()
+    lastModified: new Date().toISOString(),
     // transactionCount and totalAmount are computed dynamically at runtime
   };
-}; 
+};

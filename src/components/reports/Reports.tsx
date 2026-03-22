@@ -14,7 +14,12 @@ interface ReportsProps {
   globalDateRange: DateRange;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources, globalDateRange }) => {
+export const Reports: React.FC<ReportsProps> = ({
+  expenses,
+  categories,
+  sources,
+  globalDateRange,
+}) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -62,18 +67,18 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
   // Compute report stats dynamically for each report
   const reportStats = useMemo(() => {
     const stats = new Map<string, { count: number; totalAmount: number }>();
-    
-    reports.forEach(report => {
+
+    reports.forEach((report) => {
       // Handle cases where filters might be undefined (for backward compatibility)
       const filters = report.filters || {};
       const filteredExpenses = applyReportFilters(expenses, filters);
       const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
       stats.set(report.id, {
         count: filteredExpenses.length,
-        totalAmount
+        totalAmount,
       });
     });
-    
+
     return stats;
   }, [reports, expenses]);
 
@@ -163,9 +168,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
       {reports.length === 0 ? (
         <div className="text-center py-12">
           <FileText size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No reports yet
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No reports yet</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Create your first report to start analyzing your transactions
           </p>
@@ -193,11 +196,9 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
                       {report.name}
                     </h3>
                   </div>
-                  
+
                   {report.description && (
-                    <p className="text-gray-600 dark:text-gray-400 mb-3">
-                      {report.description}
-                    </p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-3">{report.description}</p>
                   )}
 
                   <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
@@ -230,7 +231,12 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
                   title="Delete report"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
@@ -240,4 +246,4 @@ export const Reports: React.FC<ReportsProps> = ({ expenses, categories, sources,
       )}
     </div>
   );
-}; 
+};

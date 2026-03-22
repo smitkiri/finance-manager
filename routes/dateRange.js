@@ -29,7 +29,10 @@ router.get('/date-range', async (req, res) => {
     const now = new Date();
     const end = now;
     const start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-    const defaultRange = { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+    const defaultRange = {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
     res.json(defaultRange);
   } catch (error) {
     console.error('Error reading date range:', error);

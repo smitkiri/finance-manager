@@ -17,7 +17,12 @@ interface SeriesStats {
   total: number | null;
 }
 
-function computeStats(values: number[]): { min: number | null; max: number | null; avg: number | null; total: number | null } {
+function computeStats(values: number[]): {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  total: number | null;
+} {
   if (values.length === 0) return { min: null, max: null, avg: null, total: null };
   const sum = values.reduce((s, v) => s + v, 0);
   return {
@@ -31,24 +36,25 @@ function computeStats(values: number[]): { min: number | null; max: number | nul
 export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, seriesMode }) => {
   if (!legendOptions.show) return null;
 
-  const showAnyStats = legendOptions.min || legendOptions.max || legendOptions.avg || legendOptions.total;
+  const showAnyStats =
+    legendOptions.min || legendOptions.max || legendOptions.avg || legendOptions.total;
 
   const seriesList: SeriesStats[] = [];
 
   if (seriesMode === 'net_amount') {
-    const values = data.map(d => d.net).filter((v): v is number => v != null);
+    const values = data.map((d) => d.net).filter((v): v is number => v != null);
     const stats = computeStats(values);
     seriesList.push({ label: 'Net', color: '#3b82f6', ...stats });
   } else {
-    const incomeValues = data.map(d => d.income).filter((v): v is number => v != null);
-    const expenseValues = data.map(d => d.expenses).filter((v): v is number => v != null);
+    const incomeValues = data.map((d) => d.income).filter((v): v is number => v != null);
+    const expenseValues = data.map((d) => d.expenses).filter((v): v is number => v != null);
     seriesList.push({ label: 'Income', color: '#22c55e', ...computeStats(incomeValues) });
     seriesList.push({ label: 'Expenses', color: '#ef4444', ...computeStats(expenseValues) });
   }
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-2 text-xs">
-      {seriesList.map(series => (
+      {seriesList.map((series) => (
         <div key={series.label} className="flex items-center gap-1.5">
           <span
             className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
@@ -61,8 +67,12 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, s
                 legendOptions.min && series.min != null && `Min: ${formatCurrency(series.min)}`,
                 legendOptions.max && series.max != null && `Max: ${formatCurrency(series.max)}`,
                 legendOptions.avg && series.avg != null && `Avg: ${formatCurrency(series.avg)}`,
-                legendOptions.total && series.total != null && `Total: ${formatCurrency(series.total)}`,
-              ].filter(Boolean).join(' · ')}
+                legendOptions.total &&
+                  series.total != null &&
+                  `Total: ${formatCurrency(series.total)}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </span>
           )}
         </div>

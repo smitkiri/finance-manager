@@ -29,29 +29,30 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   sources,
   allLabels,
   isCompact = false,
-  onClearFilters
+  onClearFilters,
 }) => {
   const handleCategoryChange = (category: string, checked: boolean) => {
     const currentCategories = filters.categories || [];
     const newCategories = checked
       ? [...currentCategories, category]
-      : currentCategories.filter(c => c !== category);
-    onFiltersChange({ ...filters, categories: newCategories.length > 0 ? newCategories : undefined });
+      : currentCategories.filter((c) => c !== category);
+    onFiltersChange({
+      ...filters,
+      categories: newCategories.length > 0 ? newCategories : undefined,
+    });
   };
 
   const handleLabelChange = (label: string, checked: boolean) => {
     const currentLabels = filters.labels || [];
     const newLabels = checked
       ? [...currentLabels, label]
-      : currentLabels.filter(l => l !== label);
+      : currentLabels.filter((l) => l !== label);
     onFiltersChange({ ...filters, labels: newLabels.length > 0 ? newLabels : undefined });
   };
 
   const handleTypeChange = (type: 'expense' | 'income', checked: boolean) => {
     const currentTypes = filters.types || [];
-    const newTypes = checked
-      ? [...currentTypes, type]
-      : currentTypes.filter(t => t !== type);
+    const newTypes = checked ? [...currentTypes, type] : currentTypes.filter((t) => t !== type);
     onFiltersChange({ ...filters, types: newTypes.length > 0 ? newTypes : undefined });
   };
 
@@ -59,7 +60,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
     const currentSources = filters.sources || [];
     const newSources = checked
       ? [...currentSources, sourceId]
-      : currentSources.filter(s => s !== sourceId);
+      : currentSources.filter((s) => s !== sourceId);
     onFiltersChange({ ...filters, sources: newSources.length > 0 ? newSources : undefined });
   };
 
@@ -71,7 +72,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['types']));
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const next = new Set(prev);
       if (next.has(section)) {
         next.delete(section);
@@ -140,7 +141,9 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
             >
               <div className="flex items-center space-x-2">
                 <Filter size={16} className="text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Transaction Type</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Transaction Type
+                </span>
                 {filters.types?.length ? (
                   <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
                     {filters.types.length}
@@ -187,7 +190,9 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
             >
               <div className="flex items-center space-x-2">
                 <Tag size={16} className="text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Categories</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Categories
+                </span>
                 {filters.categories?.length ? (
                   <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
                     {filters.categories.length}
@@ -206,7 +211,9 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   {categories.map((category) => (
                     <button
                       key={category}
-                      onClick={() => handleCategoryChange(category, !filters.categories?.includes(category))}
+                      onClick={() =>
+                        handleCategoryChange(category, !filters.categories?.includes(category))
+                      }
                       className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                         filters.categories?.includes(category)
                           ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
@@ -293,7 +300,9 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                     {sources.map((source) => (
                       <button
                         key={source.id}
-                        onClick={() => handleSourceChange(source.id, !filters.sources?.includes(source.id))}
+                        onClick={() =>
+                          handleSourceChange(source.id, !filters.sources?.includes(source.id))
+                        }
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           filters.sources?.includes(source.id)
                             ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
@@ -317,7 +326,9 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
             >
               <div className="flex items-center space-x-2">
                 <DollarSign size={16} className="text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Amount Range</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Amount Range
+                </span>
                 {(filters.minAmount !== undefined || filters.maxAmount !== undefined) && (
                   <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
                     Set
@@ -505,4 +516,4 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
       </div>
     </div>
   );
-}; 
+};

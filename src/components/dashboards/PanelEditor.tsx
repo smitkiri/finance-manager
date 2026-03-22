@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { DashboardPanel, Dashboard, Expense, FilterGroup, LegendOptions, PanelMonthData } from '../../types';
+import {
+  DashboardPanel,
+  Dashboard,
+  Expense,
+  FilterGroup,
+  LegendOptions,
+  PanelMonthData,
+} from '../../types';
 import { LocalStorage } from '../../utils/storage';
 import { PanelChart } from './PanelChart';
 import { ChartLegend } from './ChartLegend';
@@ -20,16 +27,29 @@ interface PanelEditorProps {
 }
 
 export const PanelEditor: React.FC<PanelEditorProps> = ({
-  dashboard, panel, categories, allLabels, selectedUserId, dateRange, onSave, onCancel,
+  dashboard,
+  panel,
+  categories,
+  allLabels,
+  selectedUserId,
+  dateRange,
+  onSave,
+  onCancel,
 }) => {
   const isEdit = !!panel;
 
   const [title, setTitle] = useState(panel?.title || '');
   const [chartType, setChartType] = useState<'bar' | 'line'>(panel?.chartType || 'bar');
-  const [seriesMode, setSeriesMode] = useState<'two_series' | 'net_amount'>(panel?.seriesMode || 'two_series');
-  const [netOrientation, setNetOrientation] = useState<'income_positive' | 'expense_positive'>(panel?.netOrientation || 'income_positive');
+  const [seriesMode, setSeriesMode] = useState<'two_series' | 'net_amount'>(
+    panel?.seriesMode || 'two_series'
+  );
+  const [netOrientation, setNetOrientation] = useState<'income_positive' | 'expense_positive'>(
+    panel?.netOrientation || 'income_positive'
+  );
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>(panel?.filterGroups || []);
-  const [legendOptions, setLegendOptions] = useState<LegendOptions>(panel?.legendOptions || { show: false, min: false, max: false, avg: false, total: false });
+  const [legendOptions, setLegendOptions] = useState<LegendOptions>(
+    panel?.legendOptions || { show: false, min: false, max: false, avg: false, total: false }
+  );
 
   const [chartData, setChartData] = useState<PanelMonthData[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
@@ -45,8 +65,12 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     g.conditions
       .map((c, ci) => {
         if (c.field !== 'description' || !c.value) return null;
-        try { new RegExp(c.value as string); return null; }
-        catch (e: any) { return { gi, ci, message: e.message }; }
+        try {
+          new RegExp(c.value as string);
+          return null;
+        } catch (e: any) {
+          return { gi, ci, message: e.message };
+        }
       })
       .filter(Boolean)
   );
@@ -113,7 +137,9 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     }, 400);
   }, [filterGroups, dateRange, selectedUserId, seriesMode]);
 
-  useEffect(() => { fetchPreviewData(); }, [fetchPreviewData]);
+  useEffect(() => {
+    fetchPreviewData();
+  }, [fetchPreviewData]);
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -121,14 +147,18 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     try {
       // Strip empty groups before saving
       const cleanedGroups = filterGroups
-        .map(g => ({ ...g, conditions: g.conditions.filter(c => {
-          if (c.field === 'type') return !!c.value;
-          if (c.field === 'category' || c.field === 'labels') return Array.isArray(c.value) && c.value.length > 0;
-          if (c.field === 'amount') return c.value !== '' && c.value != null;
-          if (c.field === 'description') return !!c.value;
-          return false;
-        })}))
-        .filter(g => g.conditions.length > 0);
+        .map((g) => ({
+          ...g,
+          conditions: g.conditions.filter((c) => {
+            if (c.field === 'type') return !!c.value;
+            if (c.field === 'category' || c.field === 'labels')
+              return Array.isArray(c.value) && c.value.length > 0;
+            if (c.field === 'amount') return c.value !== '' && c.value != null;
+            if (c.field === 'description') return !!c.value;
+            return false;
+          }),
+        }))
+        .filter((g) => g.conditions.length > 0);
 
       const payload = {
         id: panel?.id || generateId(),
@@ -160,19 +190,25 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex items-center gap-1 text-sm">
+          <button
+            onClick={onCancel}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex items-center gap-1 text-sm"
+          >
             <ArrowLeft size={16} /> Back
           </button>
           <input
             type="text"
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="Untitled Panel"
             className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
           />
         </div>
         <div className="flex gap-2">
-          <button onClick={onCancel} className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          <button
+            onClick={onCancel}
+            className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
             Cancel
           </button>
           <button
@@ -190,12 +226,14 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Chart</span>
           <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
-            {(['bar', 'line'] as const).map(t => (
+            {(['bar', 'line'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setChartType(t)}
                 className={`px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                  chartType === t ? 'bg-blue-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  chartType === t
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {t}
@@ -207,15 +245,19 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Series</span>
           <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
-            {([
-              { value: 'two_series', label: 'Two Series' },
-              { value: 'net_amount', label: 'Net Amount' },
-            ] as const).map(s => (
+            {(
+              [
+                { value: 'two_series', label: 'Two Series' },
+                { value: 'net_amount', label: 'Net Amount' },
+              ] as const
+            ).map((s) => (
               <button
                 key={s.value}
                 onClick={() => setSeriesMode(s.value)}
                 className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  seriesMode === s.value ? 'bg-blue-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  seriesMode === s.value
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {s.label}
@@ -229,15 +271,19 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500 uppercase tracking-wide">Orientation</span>
               <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
-                {([
-                  { value: 'income_positive', label: 'Income \u2191' },
-                  { value: 'expense_positive', label: 'Expense \u2191' },
-                ] as const).map(o => (
+                {(
+                  [
+                    { value: 'income_positive', label: 'Income \u2191' },
+                    { value: 'expense_positive', label: 'Expense \u2191' },
+                  ] as const
+                ).map((o) => (
                   <button
                     key={o.value}
                     onClick={() => setNetOrientation(o.value)}
                     className={`px-3 py-1 text-xs font-medium transition-colors ${
-                      netOrientation === o.value ? 'bg-blue-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      netOrientation === o.value
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
                     {o.label}
@@ -251,7 +297,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Legend</span>
           <button
-            onClick={() => setLegendOptions(prev => ({ ...prev, show: !prev.show }))}
+            onClick={() => setLegendOptions((prev) => ({ ...prev, show: !prev.show }))}
             className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
               legendOptions.show
                 ? 'bg-blue-500 text-white border-blue-500'
@@ -262,12 +308,14 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
           </button>
           {legendOptions.show && (
             <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
-              {(['min', 'max', 'avg', 'total'] as const).map(stat => (
+              {(['min', 'max', 'avg', 'total'] as const).map((stat) => (
                 <button
                   key={stat}
-                  onClick={() => setLegendOptions(prev => ({ ...prev, [stat]: !prev[stat] }))}
+                  onClick={() => setLegendOptions((prev) => ({ ...prev, [stat]: !prev[stat] }))}
                   className={`px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                    legendOptions[stat] ? 'bg-blue-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    legendOptions[stat]
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
                   {stat}
@@ -279,7 +327,10 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       </div>
 
       {/* Chart area */}
-      <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ height: legendOptions.show ? 310 : 280 }}>
+      <div
+        className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+        style={{ height: legendOptions.show ? 310 : 280 }}
+      >
         <PanelChart
           data={chartData}
           chartType={chartType}
@@ -306,7 +357,9 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
         {/* Transaction preview (right) */}
         <div className="w-2/5 overflow-y-auto p-5">
-          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Matching Transactions</div>
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            Matching Transactions
+          </div>
           <TransactionPreview
             transactions={previewTransactions}
             total={previewTotal}

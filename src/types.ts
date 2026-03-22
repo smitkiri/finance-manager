@@ -73,8 +73,24 @@ export interface ExpenseStats {
 export interface DashboardStats extends ExpenseStats {
   incomeCategoryBreakdown?: { [key: string]: number };
   monthlyCategoryData?: Record<string, string | number>[];
-  topExpenses?: Array<{ id: string; date: string; description: string; category: string; amount: number; type: 'expense'; user: string }>;
-  topIncome?: Array<{ id: string; date: string; description: string; category: string; amount: number; type: 'income'; user: string }>;
+  topExpenses?: Array<{
+    id: string;
+    date: string;
+    description: string;
+    category: string;
+    amount: number;
+    type: 'expense';
+    user: string;
+  }>;
+  topIncome?: Array<{
+    id: string;
+    date: string;
+    description: string;
+    category: string;
+    amount: number;
+    type: 'income';
+    user: string;
+  }>;
 }
 
 export interface Stats {
@@ -220,7 +236,7 @@ export interface Dashboard {
   name: string;
   isDefault: boolean;
   dateRangeStart: string; // YYYY-MM-DD
-  dateRangeEnd: string;   // YYYY-MM-DD
+  dateRangeEnd: string; // YYYY-MM-DD
   panelCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -259,7 +275,7 @@ export interface DashboardPanel {
 }
 
 export interface PanelMonthData {
-  month: string;      // "YYYY-MM"
+  month: string; // "YYYY-MM"
   income?: number;
   expenses?: number;
   net?: number;

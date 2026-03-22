@@ -34,16 +34,14 @@ export const Transactions: React.FC<TransactionsProps> = ({
   categories,
   searchText = '',
   onSearchChange,
-  selectedUserId
+  selectedUserId,
 }) => {
   const displayTotal = totalCount !== undefined ? totalCount : expenses.length;
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Transactions
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {isLoading ? 'Loading...' : `${displayTotal} transaction${displayTotal !== 1 ? 's' : ''}`}
         </div>
@@ -54,7 +52,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
         <div className="flex items-center space-x-4">
           <div className="flex-1 max-w-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
               <input
                 type="text"
                 placeholder="Search transactions..."
@@ -84,4 +85,4 @@ export const Transactions: React.FC<TransactionsProps> = ({
       />
     </div>
   );
-}; 
+};

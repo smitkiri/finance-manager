@@ -4,7 +4,8 @@ function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
   const headers = parseCSVLine(lines[0]);
 
-  return lines.slice(1)
+  return lines
+    .slice(1)
     .filter((line) => {
       const values = parseCSVLine(line);
       const type = values[4] || '';
@@ -23,8 +24,8 @@ function parseCSV(csvText) {
         type: amount < 0 ? 'expense' : 'income',
         metadata: {
           sourceName: 'Manual Import',
-          importedAt: new Date().toISOString()
-        }
+          importedAt: new Date().toISOString(),
+        },
       };
     });
 }
@@ -62,11 +63,12 @@ function mergeExpenses(existing, newExpenses) {
   const added = [];
 
   for (const newExpense of newExpenses) {
-    const exists = merged.some(exp =>
-      exp.date === newExpense.date &&
-      exp.description === newExpense.description &&
-      exp.amount === newExpense.amount &&
-      exp.type === newExpense.type
+    const exists = merged.some(
+      (exp) =>
+        exp.date === newExpense.date &&
+        exp.description === newExpense.description &&
+        exp.amount === newExpense.amount &&
+        exp.type === newExpense.type
     );
 
     if (!exists) {
@@ -84,9 +86,9 @@ function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []
   const headers = parseCSVLine(lines[0]);
 
   const columnIndexMap = new Map();
-  mapping.mappings.forEach(m => {
+  mapping.mappings.forEach((m) => {
     if (m.standardColumn !== 'Ignore') {
-      const csvIndex = headers.findIndex(h => h === m.csvColumn);
+      const csvIndex = headers.findIndex((h) => h === m.csvColumn);
       if (csvIndex !== -1) {
         columnIndexMap.set(csvIndex, m.standardColumn);
       }
@@ -95,7 +97,8 @@ function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []
 
   const autoFilledCategories = [];
 
-  const expenses = lines.slice(1)
+  const expenses = lines
+    .slice(1)
     .map((line, index) => {
       const values = parseCSVLine(line);
 
@@ -122,13 +125,17 @@ function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []
         }
       });
 
-      if ((!category || category === 'Uncategorized') && description && existingTransactions.length > 0) {
+      if (
+        (!category || category === 'Uncategorized') &&
+        description &&
+        existingTransactions.length > 0
+      ) {
         const suggested = findSimilarTransactionCategory(description, existingTransactions, 100);
         if (suggested) {
           autoFilledCategories.push({
             row: index + 1,
             description,
-            suggestedCategory: suggested
+            suggestedCategory: suggested,
           });
           category = suggested;
         }
@@ -149,12 +156,12 @@ function parseCSVWithMapping(csvText, mapping, userId, existingTransactions = []
         metadata: {
           sourceId: mapping.id,
           sourceName: mapping.name,
-          importedAt: new Date().toISOString()
+          importedAt: new Date().toISOString(),
         },
-        user: userId
+        user: userId,
       };
     })
-    .filter(expense => expense.date && expense.description && expense.amount > 0);
+    .filter((expense) => expense.date && expense.description && expense.amount > 0);
 
   return { expenses, autoFilledCategories };
 }

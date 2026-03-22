@@ -29,7 +29,7 @@ const CATEGORIES = [
   'Taxes',
   'Investments',
   'Income',
-  'Other'
+  'Other',
 ];
 
 export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
@@ -37,7 +37,7 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   onClose,
   csvPreview,
   source,
-  onImport
+  onImport,
 }) => {
   const [editedRows, setEditedRows] = useState<string[][]>(csvPreview.sampleRows);
   const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
@@ -47,9 +47,9 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   if (!isOpen) return null;
 
   const getColumnIndex = (standardColumn: StandardizedColumn): number => {
-    const mappingItem = source.mappings.find(m => m.standardColumn === standardColumn);
+    const mappingItem = source.mappings.find((m) => m.standardColumn === standardColumn);
     if (!mappingItem) return -1;
-    return csvPreview.headers.findIndex(h => h === mappingItem.csvColumn);
+    return csvPreview.headers.findIndex((h) => h === mappingItem.csvColumn);
   };
 
   const getAmountIndex = () => getColumnIndex('Amount');
@@ -57,20 +57,20 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   const isValidRow = (row: string[], rowIndex: number): boolean => {
     const amountIndex = getAmountIndex();
     if (amountIndex === -1) return true; // No amount column mapped
-    
+
     const amount = row[amountIndex];
     if (!amount || amount.trim() === '') return false;
-    
+
     const numAmount = parseFloat(amount.replace(/[,$]/g, ''));
     return !isNaN(numAmount) && numAmount !== 0;
   };
 
   const handleDeleteRow = (rowIndex: number) => {
-    setDeletedRows(prev => new Set([...prev, rowIndex]));
+    setDeletedRows((prev) => new Set([...prev, rowIndex]));
   };
 
   const handleRestoreRow = (rowIndex: number) => {
-    setDeletedRows(prev => {
+    setDeletedRows((prev) => {
       const newSet = new Set(prev);
       newSet.delete(rowIndex);
       return newSet;
@@ -85,15 +85,15 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
   };
 
   const handleCategoryOverride = (rowIndex: number, category: string) => {
-    setCategoryOverrides(prev => ({
+    setCategoryOverrides((prev) => ({
       ...prev,
-      [rowIndex]: category
+      [rowIndex]: category,
     }));
   };
 
   const handleImport = () => {
-    const validRows = editedRows.filter((row, index) => 
-      !deletedRows.has(index) && isValidRow(row, index)
+    const validRows = editedRows.filter(
+      (row, index) => !deletedRows.has(index) && isValidRow(row, index)
     );
 
     // Add category column if not present
@@ -123,14 +123,17 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
 
   const getRowStatusColor = (status: string) => {
     switch (status) {
-      case 'deleted': return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
-      case 'invalid': return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
-      default: return 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800';
+      case 'deleted':
+        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+      case 'invalid':
+        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+      default:
+        return 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800';
     }
   };
 
-  const validRowsCount = editedRows.filter((row, index) => 
-    !deletedRows.has(index) && isValidRow(row, index)
+  const validRowsCount = editedRows.filter(
+    (row, index) => !deletedRows.has(index) && isValidRow(row, index)
   ).length;
 
   return (
@@ -139,9 +142,7 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Edit CSV Data
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit CSV Data</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {validRowsCount} of {editedRows.length} rows will be imported
             </p>
@@ -180,7 +181,10 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
                     Actions
                   </th>
                   {csvPreview.headers.map((header, index) => (
-                    <th key={index} className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">
+                    <th
+                      key={index}
+                      className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300"
+                    >
                       {header}
                     </th>
                   ))}
@@ -195,10 +199,10 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
                 {editedRows.map((row, rowIndex) => {
                   const status = getRowStatus(row, rowIndex);
                   const isDeleted = deletedRows.has(rowIndex);
-                  
+
                   return (
-                    <tr 
-                      key={rowIndex} 
+                    <tr
+                      key={rowIndex}
                       className={`border-b border-gray-100 dark:border-gray-800 ${getRowStatusColor(status)}`}
                     >
                       <td className="py-2 px-3">
@@ -234,14 +238,18 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
                                 if (e.key === 'Enter') setEditingCell(null);
                                 if (e.key === 'Escape') {
                                   setEditingCell(null);
-                                  handleEditCell(rowIndex, cellIndex, editedRows[rowIndex][cellIndex]);
+                                  handleEditCell(
+                                    rowIndex,
+                                    cellIndex,
+                                    editedRows[rowIndex][cellIndex]
+                                  );
                                 }
                               }}
                               className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                               autoFocus
                             />
                           ) : (
-                            <div 
+                            <div
                               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 rounded -mx-2"
                               onClick={() => setEditingCell({ row: rowIndex, col: cellIndex })}
                             >
@@ -257,7 +265,7 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
                             onChange={(e) => handleCategoryOverride(rowIndex, e.target.value)}
                             className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                           >
-                            {CATEGORIES.map(category => (
+                            {CATEGORIES.map((category) => (
                               <option key={category} value={category}>
                                 {category}
                               </option>
@@ -298,4 +306,4 @@ export const CSVPreviewEditor: React.FC<CSVPreviewEditorProps> = ({
       </div>
     </div>
   );
-}; 
+};

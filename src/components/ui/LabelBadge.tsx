@@ -21,4 +21,4 @@ export const LabelBadge: React.FC<LabelBadgeProps> = ({ label, onRemove }) => {
       </button>
     </div>
   );
-}; 
+};

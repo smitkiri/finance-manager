@@ -7,20 +7,19 @@ export const useFilters = (expenses: Expense[]) => {
   const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Start of current month
-    end: new Date() // Today
+    end: new Date(), // Today
   });
 
   // Memoize all unique labels from all expenses
-  const allLabels = useMemo(() => 
-    Array.from(new Set(
-      expenses.flatMap(expense => expense.labels || [])
-    )), [expenses]
+  const allLabels = useMemo(
+    () => Array.from(new Set(expenses.flatMap((expense) => expense.labels || []))),
+    [expenses]
   );
 
   // Memoize filtered expenses to prevent recalculation on every render
   const { dateFilteredExpenses, filteredExpenses } = useMemo(() => {
     const dateFiltered = filterExpensesByDateRange(expenses, dateRange);
-    const filtered = dateFiltered.filter(exp => {
+    const filtered = dateFiltered.filter((exp) => {
       // Type filter
       if (filter === 'all') {
         // Continue to label filter
@@ -31,14 +30,14 @@ export const useFilters = (expenses: Expense[]) => {
       } else {
         if (exp.category !== filter) return false;
       }
-      
+
       // Label filter
       if (labelFilter.length > 0) {
         const expenseLabels = exp.labels || [];
         // Show transactions that have ANY of the selected labels
-        return labelFilter.some(label => expenseLabels.includes(label));
+        return labelFilter.some((label) => expenseLabels.includes(label));
       }
-      
+
       return true;
     });
 
@@ -61,4 +60,4 @@ export const useFilters = (expenses: Expense[]) => {
     filteredExpenses,
     clearAllFilters,
   };
-}; 
+};

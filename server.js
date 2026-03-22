@@ -53,12 +53,15 @@ app.listen(PORT, '127.0.0.1', () => {
 
   // Teller integration status
   const tellerVars = {
-    FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED: process.env.FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED === 'true',
+    FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED:
+      process.env.FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED === 'true',
     FINANCE_MANAGER_TELLER_APP_ID: !!process.env.FINANCE_MANAGER_TELLER_APP_ID,
     FINANCE_MANAGER_TELLER_PRIVATE_KEY: !!process.env.FINANCE_MANAGER_TELLER_PRIVATE_KEY,
     FINANCE_MANAGER_TELLER_CERT: !!process.env.FINANCE_MANAGER_TELLER_CERT,
   };
-  const missing = Object.entries(tellerVars).filter(([, set]) => !set).map(([k]) => k);
+  const missing = Object.entries(tellerVars)
+    .filter(([, set]) => !set)
+    .map(([k]) => k);
   if (missing.length === 0) {
     console.log('Teller integration: enabled');
   } else {

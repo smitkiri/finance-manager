@@ -10,7 +10,13 @@ interface StatsCardProps {
   changeLabel?: string;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({ title, value, type, change, changeLabel }) => {
+export const StatsCard: React.FC<StatsCardProps> = ({
+  title,
+  value,
+  type,
+  change,
+  changeLabel,
+}) => {
   const getIcon = () => {
     switch (type) {
       case 'expense':
@@ -47,19 +53,16 @@ export const StatsCard: React.FC<StatsCardProps> = ({ title, value, type, change
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{title}</p>
-          <p className={`text-2xl font-bold ${getValueColor()} mb-1`}>
-            {formatCurrency(value)}
-          </p>
+          <p className={`text-2xl font-bold ${getValueColor()} mb-1`}>{formatCurrency(value)}</p>
           {change !== undefined && (
             <p className={`text-sm ${getChangeColor()}`}>
-              {change >= 0 ? '+' : ''}{formatCurrency(change)} {changeLabel}
+              {change >= 0 ? '+' : ''}
+              {formatCurrency(change)} {changeLabel}
             </p>
           )}
         </div>
-        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          {getIcon()}
-        </div>
+        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">{getIcon()}</div>
       </div>
     </div>
   );
-}; 
+};

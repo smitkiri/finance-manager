@@ -1,7 +1,15 @@
 import React from 'react';
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
 } from 'recharts';
 import { PanelMonthData } from '../../types';
 import { formatCurrency } from '../../utils';
@@ -32,7 +40,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const PanelChart: React.FC<PanelChartProps> = ({
-  data, chartType, seriesMode, netOrientation, loading, emptyMessage = 'No data for selected period', height = 220,
+  data,
+  chartType,
+  seriesMode,
+  netOrientation,
+  loading,
+  emptyMessage = 'No data for selected period',
+  height = 220,
 }) => {
   const { theme } = useTheme();
   const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';
@@ -48,7 +62,10 @@ export const PanelChart: React.FC<PanelChartProps> = ({
 
   if (!data.length) {
     return (
-      <div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400" style={{ height }}>
+      <div
+        className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+        style={{ height }}
+      >
         {emptyMessage}
       </div>
     );
@@ -66,11 +83,32 @@ export const PanelChart: React.FC<PanelChartProps> = ({
           <YAxis stroke={axisStroke} fontSize={11} tickFormatter={yFormatter} />
           <Tooltip content={<CustomTooltip />} />
           {isNet ? (
-            <Line type="monotone" dataKey="net" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Net" />
+            <Line
+              type="monotone"
+              dataKey="net"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              name="Net"
+            />
           ) : (
             <>
-              <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Income" />
-              <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Expenses" />
+              <Line
+                type="monotone"
+                dataKey="income"
+                stroke="#22c55e"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Income"
+              />
+              <Line
+                type="monotone"
+                dataKey="expenses"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Expenses"
+              />
             </>
           )}
         </LineChart>
@@ -86,7 +124,10 @@ export const PanelChart: React.FC<PanelChartProps> = ({
           fontSize={11}
           tickFormatter={yFormatter}
           reversed={netOrientation === 'expense_positive'}
-          domain={[(dataMin: number) => Math.min(0, dataMin), (dataMax: number) => Math.max(0, dataMax)]}
+          domain={[
+            (dataMin: number) => Math.min(0, dataMin),
+            (dataMax: number) => Math.max(0, dataMax),
+          ]}
         />
         <Tooltip content={<CustomTooltip />} />
         {isNet ? (

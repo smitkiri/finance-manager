@@ -18,7 +18,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   report,
   expenses,
   onBack,
-  onDelete
+  onDelete,
 }) => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +38,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
         setIsLoading(false);
       }
     };
-    
+
     generateData();
   }, [report, expenses]);
 
@@ -47,14 +47,16 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
     const csvContent = [
       ['Date', 'Description', 'Category', 'Amount', 'Type', 'Labels'].join(','),
-      ...reportData.transactions.map(expense => [
-        expense.date,
-        `"${expense.description}"`,
-        `"${expense.category}"`,
-        expense.amount.toString(),
-        expense.type,
-        `"${(expense.labels || []).join('; ')}"`
-      ].join(','))
+      ...reportData.transactions.map((expense) =>
+        [
+          expense.date,
+          `"${expense.description}"`,
+          `"${expense.category}"`,
+          expense.amount.toString(),
+          expense.type,
+          `"${(expense.labels || []).join('; ')}"`,
+        ].join(',')
+      ),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -153,39 +155,49 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <FileText size={20} className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Transactions</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Transactions
+              </span>
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {reportData.transactions.length}
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <DollarSign size={20} className="text-green-600 dark:text-green-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Income</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Total Income
+              </span>
             </div>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {formatCurrency(reportData.totalIncome)}
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <DollarSign size={20} className="text-red-600 dark:text-red-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Expenses</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Total Expenses
+              </span>
             </div>
             <div className="text-2xl font-bold text-red-600 dark:text-red-400">
               {formatCurrency(reportData.totalExpenses)}
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <DollarSign size={20} className="text-gray-600 dark:text-gray-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Net Amount</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Net Amount
+              </span>
             </div>
-            <div className={`text-2xl font-bold ${reportData.netAmount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <div
+              className={`text-2xl font-bold ${reportData.netAmount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+            >
               {formatCurrency(reportData.netAmount)}
             </div>
           </div>
@@ -210,11 +222,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       {/* Charts */}
       {reportData && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Chart
-            data={reportData.monthlyData}
-            type="line"
-            title="Monthly Overview"
-          />
+          <Chart data={reportData.monthlyData} type="line" title="Monthly Overview" />
         </div>
       )}
 
@@ -246,4 +254,4 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       </div>
     </div>
   );
-}; 
+};

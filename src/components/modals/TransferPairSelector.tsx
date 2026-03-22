@@ -26,15 +26,19 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
     if (!isOpen) return;
     let cancelled = false;
     setLoading(true);
-    LocalStorage.loadExpenses().then((loaded) => {
-      if (!cancelled) {
-        setAllTransactions(loaded);
-        setLoading(false);
-      }
-    }).catch(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
+    LocalStorage.loadExpenses()
+      .then((loaded) => {
+        if (!cancelled) {
+          setAllTransactions(loaded);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   // Reset search when opening
@@ -44,7 +48,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
 
   // Filter and sort transactions that can be paired
   const availableTransactions = useMemo(() => {
-    const filtered = allTransactions.filter(t => {
+    const filtered = allTransactions.filter((t) => {
       // Exclude the current transaction
       if (t.id === currentTransaction.id) return false;
 
@@ -145,11 +149,13 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
                 {formatDate(currentTransaction.date)} • {currentTransaction.category}
               </p>
             </div>
-            <div className={`text-lg font-bold ${
-              currentTransaction.type === 'expense'
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-green-600 dark:text-green-400'
-            }`}>
+            <div
+              className={`text-lg font-bold ${
+                currentTransaction.type === 'expense'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-green-600 dark:text-green-400'
+              }`}
+            >
               {currentTransaction.type === 'expense' ? '-' : '+'}
               {formatCurrency(currentTransaction.amount)}
             </div>
@@ -159,7 +165,10 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
         {/* Search */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
             <input
               type="text"
               placeholder="Search transactions..."
@@ -231,11 +240,13 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
                           </span>
                         </div>
                       </div>
-                      <div className={`text-lg font-bold ml-4 ${
-                        transaction.type === 'expense'
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-green-600 dark:text-green-400'
-                      }`}>
+                      <div
+                        className={`text-lg font-bold ml-4 ${
+                          transaction.type === 'expense'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-green-600 dark:text-green-400'
+                        }`}
+                      >
                         {transaction.type === 'expense' ? '-' : '+'}
                         {formatCurrency(transaction.amount)}
                       </div>

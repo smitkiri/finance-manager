@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense } = require('../helpers/queryBuilders');
+const {
+  buildExpensesWhereClause,
+  buildStatsWhereClause,
+  rowToExpense,
+} = require('../helpers/queryBuilders');
 
 router.get('/expenses', async (req, res) => {
   try {
@@ -11,7 +15,10 @@ router.get('/expenses', async (req, res) => {
     const parseList = (val) => {
       if (val == null) return undefined;
       if (Array.isArray(val)) return val.filter(Boolean);
-      return val.split(',').map(s => s.trim()).filter(Boolean);
+      return val
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     };
     const filters = {
       dateFrom: req.query.dateFrom || undefined,
@@ -23,7 +30,7 @@ router.get('/expenses', async (req, res) => {
       sources: parseList(req.query.sources),
       minAmount: req.query.minAmount,
       maxAmount: req.query.maxAmount,
-      search: req.query.search
+      search: req.query.search,
     };
 
     const { whereSql, params } = buildExpensesWhereClause(filters);
@@ -45,10 +52,7 @@ router.get('/expenses', async (req, res) => {
       return res.json({ expenses, total });
     }
 
-    const result = await db.query(
-      `SELECT * FROM transactions ${whereSql} ${orderBy}`,
-      params
-    );
+    const result = await db.query(`SELECT * FROM transactions ${whereSql} ${orderBy}`, params);
     const expenses = result.rows.map(rowToExpense);
 
     res.json(expenses);
@@ -120,48 +124,48 @@ router.get('/stats', async (req, res) => {
     const totalExpenses = parseFloat(totalResult.rows[0].total_expenses) || 0;
     const totalIncome = parseFloat(totalResult.rows[0].total_income) || 0;
     const categoryBreakdown = {};
-    categoryResult.rows.forEach(row => {
+    categoryResult.rows.forEach((row) => {
       const cat = row.category || 'Uncategorized';
       categoryBreakdown[cat] = parseFloat(row.total) || 0;
     });
     const incomeCategoryBreakdown = {};
-    incomeCategoryResult.rows.forEach(row => {
+    incomeCategoryResult.rows.forEach((row) => {
       const cat = row.category || 'Uncategorized';
       incomeCategoryBreakdown[cat] = parseFloat(row.total) || 0;
     });
-    const monthlyData = monthlyResult.rows.map(row => ({
+    const monthlyData = monthlyResult.rows.map((row) => ({
       month: row.display_month,
       expenses: parseFloat(row.expenses) || 0,
-      income: parseFloat(row.income) || 0
+      income: parseFloat(row.income) || 0,
     }));
-    const monthOrder = monthlyResult.rows.map(r => r.display_month);
+    const monthOrder = monthlyResult.rows.map((r) => r.display_month);
     const monthlyCategoryMap = new Map();
-    monthlyCategoryResult.rows.forEach(row => {
+    monthlyCategoryResult.rows.forEach((row) => {
       const key = row.display_month;
       if (!monthlyCategoryMap.has(key)) {
         monthlyCategoryMap.set(key, { month: key });
       }
       monthlyCategoryMap.get(key)[row.category || 'Uncategorized'] = parseFloat(row.total) || 0;
     });
-    const monthlyCategoryData = monthOrder.map(m => monthlyCategoryMap.get(m) || { month: m });
+    const monthlyCategoryData = monthOrder.map((m) => monthlyCategoryMap.get(m) || { month: m });
 
-    const topExpenses = topExpensesResult.rows.map(row => ({
+    const topExpenses = topExpensesResult.rows.map((row) => ({
       id: row.id,
       date: row.date,
       description: row.description,
       category: row.category,
       amount: parseFloat(row.amount),
       type: 'expense',
-      user: row.user_id || ''
+      user: row.user_id || '',
     }));
-    const topIncome = topIncomeResult.rows.map(row => ({
+    const topIncome = topIncomeResult.rows.map((row) => ({
       id: row.id,
       date: row.date,
       description: row.description,
       category: row.category,
       amount: parseFloat(row.amount),
       type: 'income',
-      user: row.user_id || ''
+      user: row.user_id || '',
     }));
 
     res.json({
@@ -173,7 +177,7 @@ router.get('/stats', async (req, res) => {
       monthlyData,
       monthlyCategoryData,
       topExpenses,
-      topIncome
+      topIncome,
     });
   } catch (error) {
     console.error('Error reading stats:', error);
@@ -289,7 +293,7 @@ router.post('/expenses', async (req, res) => {
             JSON.stringify(expense.labels || []),
             JSON.stringify(expense.metadata || {}),
             expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
-            expense.excludedFromCalculations || false
+            expense.excludedFromCalculations || false,
           ]
         );
       }

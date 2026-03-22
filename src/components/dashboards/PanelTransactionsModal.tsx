@@ -14,7 +14,11 @@ interface PanelTransactionsModalProps {
 }
 
 export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
-  panel, dashboard, dateRange, selectedUserId, onClose,
+  panel,
+  dashboard,
+  dateRange,
+  selectedUserId,
+  onClose,
 }) => {
   const [transactions, setTransactions] = useState<Expense[]>([]);
   const [total, setTotal] = useState(0);
@@ -23,26 +27,33 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
-  const fetchPage = useCallback(async (pageNum: number) => {
-    setLoading(true);
-    const result = await LocalStorage.previewPanelTransactions({
-      filterGroups: panel.filterGroups,
-      userId: selectedUserId,
-      dateFrom: dateRange.start.toISOString().slice(0, 10),
-      dateTo: dateRange.end.toISOString().slice(0, 10),
-      limit: ITEMS_PER_PAGE,
-      offset: (pageNum - 1) * ITEMS_PER_PAGE,
-    });
-    setTransactions(result.transactions);
-    setTotal(result.total);
-    setLoading(false);
-  }, [panel, dateRange, selectedUserId]);
+  const fetchPage = useCallback(
+    async (pageNum: number) => {
+      setLoading(true);
+      const result = await LocalStorage.previewPanelTransactions({
+        filterGroups: panel.filterGroups,
+        userId: selectedUserId,
+        dateFrom: dateRange.start.toISOString().slice(0, 10),
+        dateTo: dateRange.end.toISOString().slice(0, 10),
+        limit: ITEMS_PER_PAGE,
+        offset: (pageNum - 1) * ITEMS_PER_PAGE,
+      });
+      setTransactions(result.transactions);
+      setTotal(result.total);
+      setLoading(false);
+    },
+    [panel, dateRange, selectedUserId]
+  );
 
-  useEffect(() => { fetchPage(page); }, [page, fetchPage]);
+  useEffect(() => {
+    fetchPage(page);
+  }, [page, fetchPage]);
 
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
@@ -56,12 +67,14 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-3xl max-h-[80vh] flex flex-col"
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white">{panel.title}</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                {panel.title}
+              </h2>
               {!loading && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   {total} transaction{total === 1 ? '' : 's'}
@@ -90,14 +103,22 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Description</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Category</th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Amount</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Date
+                    </th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Description
+                    </th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Category
+                    </th>
+                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Amount
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {transactions.map(tx => (
+                  {transactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <td className="px-6 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                         {tx.date.toString().slice(0, 10)}
@@ -105,15 +126,16 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
                       <td className="px-6 py-3 text-gray-900 dark:text-white truncate max-w-[250px]">
                         {tx.description}
                       </td>
-                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">
-                        {tx.category}
-                      </td>
-                      <td className={`px-6 py-3 text-right font-medium whitespace-nowrap ${
-                        tx.type === 'income'
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{tx.category}</td>
+                      <td
+                        className={`px-6 py-3 text-right font-medium whitespace-nowrap ${
+                          tx.type === 'income'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`}
+                      >
+                        {tx.type === 'income' ? '+' : '-'}
+                        {formatCurrency(tx.amount)}
                       </td>
                     </tr>
                   ))}
@@ -130,14 +152,14 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded"
                 >

@@ -1,7 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { buildStatsWhereClause, buildPanelDataQuery, buildFilterGroupsWhereClause, buildMonthSeries } = require('../helpers/queryBuilders');
+const {
+  buildStatsWhereClause,
+  buildPanelDataQuery,
+  buildFilterGroupsWhereClause,
+  buildMonthSeries,
+} = require('../helpers/queryBuilders');
 
 // ─── Helper: map a DB row to the Dashboard shape ───────────────────────────
 
@@ -86,10 +91,22 @@ router.patch('/dashboards/:id', async (req, res) => {
     const params = [];
     let idx = 1;
 
-    if (name !== undefined) { fields.push(`name = $${idx++}`); params.push(name); }
-    if (isDefault !== undefined) { fields.push(`is_default = $${idx++}`); params.push(!!isDefault); }
-    if (dateRangeStart !== undefined) { fields.push(`date_range_start = $${idx++}`); params.push(dateRangeStart); }
-    if (dateRangeEnd !== undefined) { fields.push(`date_range_end = $${idx++}`); params.push(dateRangeEnd); }
+    if (name !== undefined) {
+      fields.push(`name = $${idx++}`);
+      params.push(name);
+    }
+    if (isDefault !== undefined) {
+      fields.push(`is_default = $${idx++}`);
+      params.push(!!isDefault);
+    }
+    if (dateRangeStart !== undefined) {
+      fields.push(`date_range_start = $${idx++}`);
+      params.push(dateRangeStart);
+    }
+    if (dateRangeEnd !== undefined) {
+      fields.push(`date_range_end = $${idx++}`);
+      params.push(dateRangeEnd);
+    }
     fields.push(`updated_at = NOW()`);
 
     if (fields.length === 1) return res.status(400).json({ error: 'Nothing to update' });
@@ -138,7 +155,16 @@ router.get('/dashboards/:id/panels', async (req, res) => {
 router.post('/dashboards/:id/panels', async (req, res) => {
   try {
     const { id: dashboardId } = req.params;
-    const { id, title, chartType, filterGroups, seriesMode, netOrientation, legendOptions, panelOrder } = req.body;
+    const {
+      id,
+      title,
+      chartType,
+      filterGroups,
+      seriesMode,
+      netOrientation,
+      legendOptions,
+      panelOrder,
+    } = req.body;
 
     // Enforce 15-panel limit
     const countResult = await db.query(
@@ -155,7 +181,10 @@ router.post('/dashboards/:id/panels', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
-        id, dashboardId, title, chartType,
+        id,
+        dashboardId,
+        title,
+        chartType,
         JSON.stringify(filterGroups || []),
         seriesMode || 'two_series',
         netOrientation || null,
@@ -179,17 +208,16 @@ router.post('/dashboard-panels/preview', async (req, res) => {
     let nextParam = params.length + 1;
 
     const { sql: filterSql, nextParam: updatedParam } = buildFilterGroupsWhereClause(
-      filterGroups || [], params, nextParam
+      filterGroups || [],
+      params,
+      nextParam
     );
     nextParam = updatedParam;
 
     const extraConditions = filterSql ? ` AND ${filterSql}` : '';
     const fullWhere = `${baseSql}${extraConditions}`;
 
-    const countResult = await db.query(
-      `SELECT COUNT(*) FROM transactions ${fullWhere}`,
-      params
-    );
+    const countResult = await db.query(`SELECT COUNT(*) FROM transactions ${fullWhere}`, params);
     const total = parseInt(countResult.rows[0].count);
 
     const limitParam = nextParam;
@@ -203,7 +231,7 @@ router.post('/dashboard-panels/preview', async (req, res) => {
       [...params, parseInt(limit), parseInt(offset)]
     );
 
-    const transactions = dataResult.rows.map(row => ({
+    const transactions = dataResult.rows.map((row) => ({
       id: row.id,
       date: row.date,
       description: row.description,
@@ -226,14 +254,16 @@ router.post('/dashboard-panels/chart-preview', async (req, res) => {
     const { filterGroups, userId, dateFrom, dateTo } = req.body;
 
     const { sql, params } = buildPanelDataQuery({
-      dateFrom, dateTo, userId: userId || null,
+      dateFrom,
+      dateTo,
+      userId: userId || null,
       filterGroups: filterGroups || [],
     });
 
     const result = await db.query(sql, params);
 
     const monthMap = buildMonthSeries(dateFrom, dateTo);
-    const rows = result.rows.map(row => ({
+    const rows = result.rows.map((row) => ({
       sortMonth: row.sort_month,
       month: row.month,
       type: row.type,
@@ -251,19 +281,48 @@ router.post('/dashboard-panels/chart-preview', async (req, res) => {
 router.patch('/dashboard-panels/:panelId', async (req, res) => {
   try {
     const { panelId } = req.params;
-    const { title, chartType, filterGroups, seriesMode, netOrientation, legendOptions, panelOrder } = req.body;
+    const {
+      title,
+      chartType,
+      filterGroups,
+      seriesMode,
+      netOrientation,
+      legendOptions,
+      panelOrder,
+    } = req.body;
 
     const fields = [];
     const params = [];
     let idx = 1;
 
-    if (title !== undefined) { fields.push(`title = $${idx++}`); params.push(title); }
-    if (chartType !== undefined) { fields.push(`chart_type = $${idx++}`); params.push(chartType); }
-    if (filterGroups !== undefined) { fields.push(`filter_groups = $${idx++}`); params.push(JSON.stringify(filterGroups)); }
-    if (seriesMode !== undefined) { fields.push(`series_mode = $${idx++}`); params.push(seriesMode); }
-    if (netOrientation !== undefined) { fields.push(`net_orientation = $${idx++}`); params.push(netOrientation || null); }
-    if (legendOptions !== undefined) { fields.push(`legend_options = $${idx++}`); params.push(legendOptions ? JSON.stringify(legendOptions) : null); }
-    if (panelOrder !== undefined) { fields.push(`panel_order = $${idx++}`); params.push(panelOrder); }
+    if (title !== undefined) {
+      fields.push(`title = $${idx++}`);
+      params.push(title);
+    }
+    if (chartType !== undefined) {
+      fields.push(`chart_type = $${idx++}`);
+      params.push(chartType);
+    }
+    if (filterGroups !== undefined) {
+      fields.push(`filter_groups = $${idx++}`);
+      params.push(JSON.stringify(filterGroups));
+    }
+    if (seriesMode !== undefined) {
+      fields.push(`series_mode = $${idx++}`);
+      params.push(seriesMode);
+    }
+    if (netOrientation !== undefined) {
+      fields.push(`net_orientation = $${idx++}`);
+      params.push(netOrientation || null);
+    }
+    if (legendOptions !== undefined) {
+      fields.push(`legend_options = $${idx++}`);
+      params.push(legendOptions ? JSON.stringify(legendOptions) : null);
+    }
+    if (panelOrder !== undefined) {
+      fields.push(`panel_order = $${idx++}`);
+      params.push(panelOrder);
+    }
     fields.push('updated_at = NOW()');
 
     if (fields.length === 1) return res.status(400).json({ error: 'Nothing to update' });
@@ -350,7 +409,7 @@ router.post('/dashboards/:id/data', async (req, res) => {
           const total = parseFloat(row.total);
           if (panel.seriesMode === 'net_amount') {
             const sign = row.type === 'income' ? 1 : -1;
-            monthMap[key].net = ((monthMap[key].net || 0) + sign * total);
+            monthMap[key].net = (monthMap[key].net || 0) + sign * total;
           } else {
             if (row.type === 'income') monthMap[key].income = total;
             else monthMap[key].expenses = total;

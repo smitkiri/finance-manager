@@ -9,7 +9,9 @@ router.post('/transfer-override', async (req, res) => {
   try {
     const { transactionId, includeInCalculations } = req.body;
 
-    const transactionResult = await db.query('SELECT * FROM transactions WHERE id = $1', [transactionId]);
+    const transactionResult = await db.query('SELECT * FROM transactions WHERE id = $1', [
+      transactionId,
+    ]);
     if (transactionResult.rows.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
@@ -24,13 +26,13 @@ router.post('/transfer-override', async (req, res) => {
     const updatedTransferInfo = {
       ...transferInfo,
       excludedFromCalculations: !includeInCalculations,
-      userOverride: true
+      userOverride: true,
     };
 
-    await db.query(
-      'UPDATE transactions SET transfer_info = $1 WHERE id = $2',
-      [JSON.stringify(updatedTransferInfo), transactionId]
-    );
+    await db.query('UPDATE transactions SET transfer_info = $1 WHERE id = $2', [
+      JSON.stringify(updatedTransferInfo),
+      transactionId,
+    ]);
 
     if (transferInfo.transferId) {
       const transferId = transferInfo.transferId;
@@ -51,7 +53,7 @@ router.post('/transfer-override', async (req, res) => {
 router.post('/detect-transfers', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM transactions');
-    const transactions = result.rows.map(row => ({
+    const transactions = result.rows.map((row) => ({
       id: row.id,
       date: row.date,
       description: row.description,
@@ -62,7 +64,7 @@ router.post('/detect-transfers', async (req, res) => {
       labels: row.labels || [],
       metadata: row.metadata || {},
       transferInfo: row.transfer_info,
-      excludedFromCalculations: row.excluded_from_calculations
+      excludedFromCalculations: row.excluded_from_calculations,
     }));
 
     if (transactions.length === 0) {
@@ -82,7 +84,7 @@ router.post('/detect-transfers', async (req, res) => {
           [
             expense.transferInfo ? JSON.stringify(expense.transferInfo) : null,
             expense.excludedFromCalculations || false,
-            expense.id
+            expense.id,
           ]
         );
       }
@@ -96,7 +98,7 @@ router.post('/detect-transfers', async (req, res) => {
     res.json({
       success: true,
       transfersDetected: transfers.length,
-      totalTransactions: updatedTransactions.length
+      totalTransactions: updatedTransactions.length,
     });
   } catch (error) {
     console.error('Error detecting transfers:', error);
@@ -114,7 +116,7 @@ router.post('/rerun-transfer-detection', (req, res) => {
     const data = fs.readFileSync(transactionsFile, 'utf8');
     const transactions = JSON.parse(data);
 
-    const cleanedTransactions = transactions.map(transaction => {
+    const cleanedTransactions = transactions.map((transaction) => {
       const { transferInfo, ...rest } = transaction;
       return rest;
     });
@@ -128,7 +130,7 @@ router.post('/rerun-transfer-detection', (req, res) => {
       success: true,
       totalTransactions: updatedTransactions.length,
       transfersDetected: transfers.length,
-      message: 'Transfer detection completed successfully'
+      message: 'Transfer detection completed successfully',
     });
   } catch (error) {
     console.error('Error re-running transfer detection:', error);

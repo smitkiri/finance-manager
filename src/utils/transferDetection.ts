@@ -23,8 +23,8 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
 
   // Group transactions by source
   const transactionsBySource = new Map<string, Expense[]>();
-  
-  transactions.forEach(transaction => {
+
+  transactions.forEach((transaction) => {
     const sourceId = transaction.metadata?.sourceId || 'manual';
     if (!transactionsBySource.has(sourceId)) {
       transactionsBySource.set(sourceId, []);
@@ -34,38 +34,38 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
 
   // Find potential transfer pairs
   const sourceIds = Array.from(transactionsBySource.keys());
-  
+
   // Look for transfers between different sources
   for (let i = 0; i < sourceIds.length; i++) {
     for (let j = i + 1; j < sourceIds.length; j++) {
       const source1 = sourceIds[i];
       const source2 = sourceIds[j];
-      
+
       const source1Transactions = transactionsBySource.get(source1)!;
       const source2Transactions = transactionsBySource.get(source2)!;
-      
+
       // Look for matching credit/debit pairs
       for (const t1 of source1Transactions) {
         if (processedIds.has(t1.id)) continue;
-        
+
         for (const t2 of source2Transactions) {
           if (processedIds.has(t2.id)) continue;
-          
+
           if (isTransferPair(t1, t2)) {
             const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             const confidence = calculateTransferConfidence(t1, t2);
-            
+
             // Ensure we preserve the correct user information for each transaction
             const credit = t1.type === 'income' ? t1 : t2;
             const debit = t1.type === 'expense' ? t1 : t2;
-            
+
             transfers.push({
               credit,
               debit,
               transferId,
-              confidence
+              confidence,
             });
-            
+
             processedIds.add(t1.id);
             processedIds.add(t2.id);
             break;
@@ -78,50 +78,50 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
   // Look for transfers within the same source but between different users
   for (const sourceId of sourceIds) {
     const sourceTransactions = transactionsBySource.get(sourceId)!;
-    
+
     // Group by user within this source
     const transactionsByUser = new Map<string, Expense[]>();
-    sourceTransactions.forEach(transaction => {
+    sourceTransactions.forEach((transaction) => {
       const userId = transaction.user;
       if (!transactionsByUser.has(userId)) {
         transactionsByUser.set(userId, []);
       }
       transactionsByUser.get(userId)!.push(transaction);
     });
-    
+
     const userIds = Array.from(transactionsByUser.keys());
-    
+
     // Look for transfers between different users within the same source
     for (let i = 0; i < userIds.length; i++) {
       for (let j = i + 1; j < userIds.length; j++) {
         const user1 = userIds[i];
         const user2 = userIds[j];
-        
+
         const user1Transactions = transactionsByUser.get(user1)!;
         const user2Transactions = transactionsByUser.get(user2)!;
-        
+
         // Look for matching credit/debit pairs
         for (const t1 of user1Transactions) {
           if (processedIds.has(t1.id)) continue;
-          
+
           for (const t2 of user2Transactions) {
             if (processedIds.has(t2.id)) continue;
-            
+
             if (isTransferPair(t1, t2)) {
               const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
               const confidence = calculateTransferConfidence(t1, t2);
-              
+
               // Ensure we preserve the correct user information for each transaction
               const credit = t1.type === 'income' ? t1 : t2;
               const debit = t1.type === 'expense' ? t1 : t2;
-              
+
               transfers.push({
                 credit,
                 debit,
                 transferId,
-                confidence
+                confidence,
               });
-              
+
               processedIds.add(t1.id);
               processedIds.add(t2.id);
               break;
@@ -133,15 +133,13 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
   }
 
   // Update transactions with transfer info
-  transfers.forEach(transfer => {
-    const creditIndex = updatedTransactions.findIndex(t => t.id === transfer.credit.id);
-    const debitIndex = updatedTransactions.findIndex(t => t.id === transfer.debit.id);
-    
+  transfers.forEach((transfer) => {
+    const creditIndex = updatedTransactions.findIndex((t) => t.id === transfer.credit.id);
+    const debitIndex = updatedTransactions.findIndex((t) => t.id === transfer.debit.id);
+
     // Determine transfer type based on users
     const transferType = transfer.credit.user === transfer.debit.user ? 'self' : 'user';
-    
 
-    
     if (creditIndex !== -1) {
       updatedTransactions[creditIndex] = {
         ...updatedTransactions[creditIndex],
@@ -150,11 +148,11 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
           transferId: transfer.transferId,
           transferType,
           excludedFromCalculations: true,
-          userOverride: false
-        }
+          userOverride: false,
+        },
       };
     }
-    
+
     if (debitIndex !== -1) {
       updatedTransactions[debitIndex] = {
         ...updatedTransactions[debitIndex],
@@ -163,8 +161,8 @@ export function detectTransfers(transactions: Expense[]): TransferDetectionResul
           transferId: transfer.transferId,
           transferType,
           excludedFromCalculations: true,
-          userOverride: false
-        }
+          userOverride: false,
+        },
       };
     }
   });
@@ -181,26 +179,24 @@ function isTransferPair(t1: Expense, t2: Expense): boolean {
   const source2 = t2.metadata?.sourceId || 'manual';
   const user1 = t1.user;
   const user2 = t2.user;
-  
 
-  
   // If same source, must be different users
   if (source1 === source2 && user1 === user2) return false;
-  
+
   // Must be opposite types (income vs expense)
   if (t1.type === t2.type) return false;
-  
+
   // Must have matching amounts (within small tolerance for fees)
   const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
   const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01; // 1% tolerance
   if (amountDiff > tolerance) return false;
-  
+
   // Must be within ±4 days
   const date1 = new Date(t1.date);
   const date2 = new Date(t2.date);
   const daysDiff = Math.abs(date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24);
   if (daysDiff > 4) return false;
-  
+
   return true;
 }
 
@@ -209,13 +205,13 @@ function isTransferPair(t1: Expense, t2: Expense): boolean {
  */
 function calculateTransferConfidence(t1: Expense, t2: Expense): number {
   let confidence = 0.5; // Base confidence
-  
+
   // Amount match (exact match = higher confidence)
   const amountDiff = Math.abs(Math.abs(t1.amount) - Math.abs(t2.amount));
   const tolerance = Math.max(Math.abs(t1.amount), Math.abs(t2.amount)) * 0.01;
   if (amountDiff === 0) confidence += 0.3;
   else if (amountDiff <= tolerance) confidence += 0.2;
-  
+
   // Date proximity (closer = higher confidence)
   const date1 = new Date(t1.date);
   const date2 = new Date(t2.date);
@@ -224,13 +220,13 @@ function calculateTransferConfidence(t1: Expense, t2: Expense): number {
   else if (daysDiff <= 1) confidence += 0.15;
   else if (daysDiff <= 2) confidence += 0.1;
   else if (daysDiff <= 3) confidence += 0.05;
-  
+
   // Description similarity
   const desc1 = t1.description.toLowerCase();
   const desc2 = t2.description.toLowerCase();
   if (desc1.includes('transfer') || desc2.includes('transfer')) confidence += 0.1;
   if (desc1.includes('move') || desc2.includes('move')) confidence += 0.05;
-  
+
   return Math.min(confidence, 1);
 }
 
@@ -239,18 +235,21 @@ function calculateTransferConfidence(t1: Expense, t2: Expense): number {
  * @param transactions - All transactions to filter
  * @param selectedUserId - The currently selected user ID, or null for "All users"
  */
-export function filterTransfersForCalculations(transactions: Expense[], selectedUserId: string | null = null): Expense[] {
-  return transactions.filter(transaction => {
+export function filterTransfersForCalculations(
+  transactions: Expense[],
+  selectedUserId: string | null = null
+): Expense[] {
+  return transactions.filter((transaction) => {
     // Exclude if top-level excludedFromCalculations is true (manual exclusion)
     if (transaction.excludedFromCalculations === true) return false;
-    
+
     // For transfers, check transfer-specific exclusion logic
     if (transaction.transferInfo?.isTransfer) {
       // Include if user has explicitly overridden the exclusion
       if (transaction.transferInfo.userOverride !== undefined) {
         return !transaction.transferInfo.excludedFromCalculations;
       }
-      
+
       // Handle different transfer types based on user selection
       if (transaction.transferInfo.transferType === 'user') {
         // User transfers: include when a specific user is selected, exclude when "All users" is selected
@@ -259,11 +258,11 @@ export function filterTransfersForCalculations(transactions: Expense[], selected
         // Transfer/Refunds: always exclude from calculations (they cancel each other out)
         return !transaction.transferInfo.excludedFromCalculations;
       }
-      
+
       // Default behavior: exclude transfers from calculations
       return !transaction.transferInfo.excludedFromCalculations;
     }
-    
+
     // Non-transfer transactions are included unless manually excluded
     return true;
   });
@@ -272,25 +271,28 @@ export function filterTransfersForCalculations(transactions: Expense[], selected
 /**
  * Gets the transfer pair for a given transaction
  */
-export function getTransferPair(transaction: Expense, allTransactions: Expense[]): TransferPair | null {
+export function getTransferPair(
+  transaction: Expense,
+  allTransactions: Expense[]
+): TransferPair | null {
   if (!transaction.transferInfo?.isTransfer || !transaction.transferInfo.transferId) {
     return null;
   }
-  
+
   const transferId = transaction.transferInfo.transferId;
-  const transferTransactions = allTransactions.filter(t => 
-    t.transferInfo?.transferId === transferId
+  const transferTransactions = allTransactions.filter(
+    (t) => t.transferInfo?.transferId === transferId
   );
-  
+
   if (transferTransactions.length !== 2) return null;
-  
-  const credit = transferTransactions.find(t => t.type === 'income')!;
-  const debit = transferTransactions.find(t => t.type === 'expense')!;
-  
+
+  const credit = transferTransactions.find((t) => t.type === 'income')!;
+  const debit = transferTransactions.find((t) => t.type === 'expense')!;
+
   return {
     credit,
     debit,
     transferId,
-    confidence: 0.8 // Default confidence for existing transfers
+    confidence: 0.8, // Default confidence for existing transfers
   };
-} 
+}

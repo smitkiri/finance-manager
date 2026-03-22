@@ -1,4 +1,21 @@
-import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory, ImportSession, Dashboard, DashboardPanel, PanelData, FilterGroup } from '../types';
+import {
+  Expense,
+  CSVPreview,
+  Report,
+  ReportData,
+  ExpensePageResponse,
+  DateRange,
+  DashboardStats,
+  Account,
+  AccountBalance,
+  NetWorthSummary,
+  NetWorthHistory,
+  ImportSession,
+  Dashboard,
+  DashboardPanel,
+  PanelData,
+  FilterGroup,
+} from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -17,7 +34,9 @@ export class LocalStorage {
 
   private static apiFetch(url: string, options?: RequestInit): Promise<Response> {
     const headers = {
-      ...(process.env.REACT_APP_API_SECRET ? { 'x-api-key': process.env.REACT_APP_API_SECRET } : {}),
+      ...(process.env.REACT_APP_API_SECRET
+        ? { 'x-api-key': process.env.REACT_APP_API_SECRET }
+        : {}),
       ...options?.headers,
     };
     return fetch(url, options ? { ...options, headers } : { headers });
@@ -27,12 +46,13 @@ export class LocalStorage {
     try {
       const metadata: StorageMetadata = {
         lastUpdated: new Date().toISOString(),
-        totalExpenses: expenses.filter(exp => exp.type === 'expense').length,
-        totalIncome: expenses.filter(exp => exp.type === 'income').length,
+        totalExpenses: expenses.filter((exp) => exp.type === 'expense').length,
+        totalIncome: expenses.filter((exp) => exp.type === 'income').length,
         dateRange: {
-          start: expenses.length > 0 ? expenses[expenses.length - 1].date : new Date().toISOString(),
-          end: expenses.length > 0 ? expenses[0].date : new Date().toISOString()
-        }
+          start:
+            expenses.length > 0 ? expenses[expenses.length - 1].date : new Date().toISOString(),
+          end: expenses.length > 0 ? expenses[0].date : new Date().toISOString(),
+        },
       };
 
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses`, {
@@ -59,7 +79,7 @@ export class LocalStorage {
   static async loadExpenses(): Promise<Expense[]> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load expenses from server');
       }
@@ -105,14 +125,24 @@ export class LocalStorage {
       sources,
       minAmount,
       maxAmount,
-      searchText
+      searchText,
     } = options;
 
     const params = new URLSearchParams();
     params.set('limit', String(limit));
     params.set('offset', String(offset));
-    if (dateRange?.start) params.set('dateFrom', typeof dateRange.start === 'string' ? dateRange.start : dateRange.start.toISOString().slice(0, 10));
-    if (dateRange?.end) params.set('dateTo', typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10));
+    if (dateRange?.start)
+      params.set(
+        'dateFrom',
+        typeof dateRange.start === 'string'
+          ? dateRange.start
+          : dateRange.start.toISOString().slice(0, 10)
+      );
+    if (dateRange?.end)
+      params.set(
+        'dateTo',
+        typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10)
+      );
     if (userId != null && userId !== '') params.set('userId', userId);
     if (categories?.length) params.set('categories', categories.join(','));
     if (labels?.length) params.set('labels', labels.join(','));
@@ -123,7 +153,9 @@ export class LocalStorage {
     if (searchText?.trim()) params.set('search', searchText.trim());
 
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/expenses?${params.toString()}`
+      );
       if (!response.ok) {
         throw new Error('Failed to load expenses page from server');
       }
@@ -147,8 +179,18 @@ export class LocalStorage {
   }): Promise<DashboardStats | null> {
     const { dateRange, userId } = options;
     const params = new URLSearchParams();
-    if (dateRange?.start) params.set('dateFrom', typeof dateRange.start === 'string' ? dateRange.start : dateRange.start.toISOString().slice(0, 10));
-    if (dateRange?.end) params.set('dateTo', typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10));
+    if (dateRange?.start)
+      params.set(
+        'dateFrom',
+        typeof dateRange.start === 'string'
+          ? dateRange.start
+          : dateRange.start.toISOString().slice(0, 10)
+      );
+    if (dateRange?.end)
+      params.set(
+        'dateTo',
+        typeof dateRange.end === 'string' ? dateRange.end : dateRange.end.toISOString().slice(0, 10)
+      );
     if (userId != null && userId !== '') params.set('userId', userId);
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/stats?${params.toString()}`);
@@ -161,7 +203,10 @@ export class LocalStorage {
     }
   }
 
-  static async importCSVData(csvText: string, fileName?: string): Promise<{ expenses: Expense[]; sessionId?: string }> {
+  static async importCSVData(
+    csvText: string,
+    fileName?: string
+  ): Promise<{ expenses: Expense[]; sessionId?: string }> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-csv`, {
         method: 'POST',
@@ -210,13 +255,13 @@ export class LocalStorage {
     try {
       // Load existing expenses
       const existingExpenses = await this.loadExpenses();
-      
+
       // Add new expense at the beginning (most recent first)
       const updatedExpenses = [expense, ...existingExpenses];
-      
+
       // Save updated data
       await this.saveExpenses(updatedExpenses);
-      
+
       console.log(`Added new expense, total: ${updatedExpenses.length}`);
       return updatedExpenses;
     } catch (error) {
@@ -227,13 +272,16 @@ export class LocalStorage {
 
   static async updateExpense(updatedExpense: Expense): Promise<Expense> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses/${updatedExpense.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedExpense),
-      });
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/expenses/${updatedExpense.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedExpense),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to update expense on server');
@@ -252,13 +300,13 @@ export class LocalStorage {
     try {
       // Load existing expenses
       const existingExpenses = await this.loadExpenses();
-      
+
       // Remove the expense
-      const updatedExpenses = existingExpenses.filter(exp => exp.id !== expenseId);
-      
+      const updatedExpenses = existingExpenses.filter((exp) => exp.id !== expenseId);
+
       // Save updated data
       await this.saveExpenses(updatedExpenses);
-      
+
       console.log(`Deleted expense ${expenseId}, total: ${updatedExpenses.length}`);
       return updatedExpenses;
     } catch (error) {
@@ -269,21 +317,22 @@ export class LocalStorage {
 
   static mergeExpenses(existing: Expense[], newExpenses: Expense[]): Expense[] {
     const merged = [...existing];
-    
+
     for (const newExpense of newExpenses) {
       // Check if expense already exists (same date, description, and amount)
-      const exists = merged.some(exp => 
-        exp.date === newExpense.date &&
-        exp.description === newExpense.description &&
-        exp.amount === newExpense.amount &&
-        exp.type === newExpense.type
+      const exists = merged.some(
+        (exp) =>
+          exp.date === newExpense.date &&
+          exp.description === newExpense.description &&
+          exp.amount === newExpense.amount &&
+          exp.type === newExpense.type
       );
-      
+
       if (!exists) {
         merged.push(newExpense);
       }
     }
-    
+
     // Sort by date (most recent first)
     return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
@@ -302,7 +351,7 @@ export class LocalStorage {
   static async exportData(): Promise<string> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/export-csv`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to export CSV');
       }
@@ -340,7 +389,9 @@ export class LocalStorage {
     }
   }
 
-  static async updateSource(updatedSource: import('../types').Source): Promise<import('../types').Source[]> {
+  static async updateSource(
+    updatedSource: import('../types').Source
+  ): Promise<import('../types').Source[]> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
         method: 'PUT',
@@ -355,14 +406,14 @@ export class LocalStorage {
       }
 
       console.log(`Updated source ${updatedSource.name}`);
-      
+
       // Reload all sources to get the updated list
       return await this.loadSources();
     } catch (error) {
       console.error('Error updating source:', error);
       // Fallback to localStorage
       const sources = this.getSourcesFromStorage();
-      const updatedSources = sources.map(source => 
+      const updatedSources = sources.map((source) =>
         source.id === updatedSource.id ? updatedSource : source
       );
       localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(updatedSources));
@@ -373,7 +424,7 @@ export class LocalStorage {
   static async loadSources(): Promise<import('../types').Source[]> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load sources from server');
       }
@@ -403,7 +454,8 @@ export class LocalStorage {
         columnIndexMap.set(csvIndex, m.standardColumn);
       }
     });
-    return lines.slice(1)
+    return lines
+      .slice(1)
       .map((line, index) => {
         const values = this.parseCSVLine(line);
         let date = '';
@@ -445,21 +497,21 @@ export class LocalStorage {
           metadata: {
             sourceId: mapping.id,
             sourceName: mapping.name,
-            importedAt: new Date().toISOString()
-          }
+            importedAt: new Date().toISOString(),
+          },
         };
       })
-      .filter(expense => expense.date && expense.description && expense.amount > 0);
+      .filter((expense) => expense.date && expense.description && expense.amount > 0);
   }
 
   private static parseCSVLine(line: string): string[] {
     const result: string[] = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      
+
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
           // Escaped quote
@@ -477,10 +529,10 @@ export class LocalStorage {
         current += char;
       }
     }
-    
+
     // Add the last field
     result.push(current.trim());
-    
+
     return result;
   }
 
@@ -488,11 +540,11 @@ export class LocalStorage {
     const lines = csvText.trim().split('\n');
     const headers = this.parseCSVLine(lines[0]);
     const sampleRows = lines.slice(1, 6); // Show first 5 rows as preview
-    
+
     return {
       headers,
-      sampleRows: sampleRows.map(line => this.parseCSVLine(line)),
-      totalRows: lines.length - 1
+      sampleRows: sampleRows.map((line) => this.parseCSVLine(line)),
+      totalRows: lines.length - 1,
     };
   }
 
@@ -504,9 +556,9 @@ export class LocalStorage {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           start: dateRange.start.toISOString().split('T')[0],
-          end: dateRange.end.toISOString().split('T')[0]
+          end: dateRange.end.toISOString().split('T')[0],
         }),
       });
 
@@ -518,10 +570,13 @@ export class LocalStorage {
     } catch (error) {
       console.error('Error saving date range:', error);
       // Fallback to localStorage
-      localStorage.setItem('dateRange', JSON.stringify({
-        start: dateRange.start.toISOString(),
-        end: dateRange.end.toISOString()
-      }));
+      localStorage.setItem(
+        'dateRange',
+        JSON.stringify({
+          start: dateRange.start.toISOString(),
+          end: dateRange.end.toISOString(),
+        })
+      );
     }
   }
 
@@ -539,7 +594,7 @@ export class LocalStorage {
       const dateRange = await response.json();
       return {
         start: new Date(dateRange.start),
-        end: new Date(dateRange.end)
+        end: new Date(dateRange.end),
       };
     } catch (error) {
       const stored = localStorage.getItem('dateRange');
@@ -581,7 +636,7 @@ export class LocalStorage {
   static async loadCategories(): Promise<string[]> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/categories`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load categories from server');
       }
@@ -607,7 +662,7 @@ export class LocalStorage {
         'Entertainment',
         'Personal',
         'Professional Services',
-        'Uncategorized'
+        'Uncategorized',
       ];
     }
   }
@@ -627,13 +682,13 @@ export class LocalStorage {
   static async addCategory(category: string): Promise<string[]> {
     try {
       const existingCategories = await this.loadCategories();
-      
+
       if (!existingCategories.includes(category)) {
         const updatedCategories = [...existingCategories, category];
         await this.saveCategories(updatedCategories);
         return updatedCategories;
       }
-      
+
       return existingCategories;
     } catch (error) {
       console.error('Error adding category:', error);
@@ -644,8 +699,8 @@ export class LocalStorage {
   static async deleteCategory(category: string): Promise<string[]> {
     try {
       const existingCategories = await this.loadCategories();
-      const updatedCategories = existingCategories.filter(cat => cat !== category);
-      
+      const updatedCategories = existingCategories.filter((cat) => cat !== category);
+
       await this.saveCategories(updatedCategories);
       return updatedCategories;
     } catch (error) {
@@ -657,10 +712,10 @@ export class LocalStorage {
   static async updateCategory(oldCategory: string, newCategory: string): Promise<string[]> {
     try {
       const existingCategories = await this.loadCategories();
-      const updatedCategories = existingCategories.map(cat => 
+      const updatedCategories = existingCategories.map((cat) =>
         cat === oldCategory ? newCategory : cat
       );
-      
+
       await this.saveCategories(updatedCategories);
       return updatedCategories;
     } catch (error) {
@@ -689,7 +744,7 @@ export class LocalStorage {
       console.error('Error saving report:', error);
       // Fallback to localStorage
       const reports = this.getReportsFromStorage();
-      const existingIndex = reports.findIndex(r => r.id === report.id);
+      const existingIndex = reports.findIndex((r) => r.id === report.id);
       if (existingIndex >= 0) {
         reports[existingIndex] = report;
       } else {
@@ -702,7 +757,7 @@ export class LocalStorage {
   static async loadReports(): Promise<Report[]> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load reports from server');
       }
@@ -732,20 +787,23 @@ export class LocalStorage {
       console.error('Error deleting report:', error);
       // Fallback to localStorage
       const reports = this.getReportsFromStorage();
-      const updatedReports = reports.filter(r => r.id !== reportId);
+      const updatedReports = reports.filter((r) => r.id !== reportId);
       localStorage.setItem('reports', JSON.stringify(updatedReports));
     }
   }
 
   static async saveReportData(reportData: ReportData): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportData.report.id}/data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reportData }),
-      });
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/reports/${reportData.report.id}/data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reportData }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to save report data');
@@ -763,7 +821,7 @@ export class LocalStorage {
   static async loadReportData(reportId: string): Promise<ReportData | null> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportId}/data`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load report data from server');
       }
@@ -799,7 +857,11 @@ export class LocalStorage {
   }
 
   // Alias for Source terminology
-  static parseCSVWithSource(csvText: string, source: import('../types').Source, user: string): Expense[] {
+  static parseCSVWithSource(
+    csvText: string,
+    source: import('../types').Source,
+    user: string
+  ): Expense[] {
     // Reuse the mapping logic
     return this.parseCSVWithMapping(csvText, source, user);
   }
@@ -830,7 +892,7 @@ export class LocalStorage {
   static async loadUsers(): Promise<import('../types').User[]> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/users`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load users from server');
       }
@@ -848,13 +910,13 @@ export class LocalStorage {
   static async addUser(user: import('../types').User): Promise<import('../types').User[]> {
     try {
       const existingUsers = await this.loadUsers();
-      
-      if (!existingUsers.some(u => u.name === user.name)) {
+
+      if (!existingUsers.some((u) => u.name === user.name)) {
         const updatedUsers = [...existingUsers, user];
         await this.saveUsers(updatedUsers);
         return updatedUsers;
       }
-      
+
       return existingUsers;
     } catch (error) {
       console.error('Error adding user:', error);
@@ -865,8 +927,8 @@ export class LocalStorage {
   static async deleteUser(userId: string): Promise<import('../types').User[]> {
     try {
       const existingUsers = await this.loadUsers();
-      const updatedUsers = existingUsers.filter(user => user.id !== userId);
-      
+      const updatedUsers = existingUsers.filter((user) => user.id !== userId);
+
       await this.saveUsers(updatedUsers);
       return updatedUsers;
     } catch (error) {
@@ -875,13 +937,15 @@ export class LocalStorage {
     }
   }
 
-  static async updateUser(updatedUser: import('../types').User): Promise<import('../types').User[]> {
+  static async updateUser(
+    updatedUser: import('../types').User
+  ): Promise<import('../types').User[]> {
     try {
       const existingUsers = await this.loadUsers();
-      const updatedUsers = existingUsers.map(user => 
+      const updatedUsers = existingUsers.map((user) =>
         user.id === updatedUser.id ? updatedUser : user
       );
-      
+
       await this.saveUsers(updatedUsers);
       return updatedUsers;
     } catch (error) {
@@ -895,7 +959,9 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/accounts?${params.toString()}`
+      );
       if (!response.ok) throw new Error('Failed to load accounts');
       return await response.json();
     } catch (error) {
@@ -925,23 +991,33 @@ export class LocalStorage {
   }
 
   static async deleteAccount(accountId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}`, {
+      method: 'DELETE',
+    });
     if (!response.ok) throw new Error('Failed to delete account');
   }
 
-  static async addAccountBalance(accountId: string, balance: AccountBalance): Promise<AccountBalance> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(balance),
-    });
+  static async addAccountBalance(
+    accountId: string,
+    balance: AccountBalance
+  ): Promise<AccountBalance> {
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/accounts/${accountId}/balances`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(balance),
+      }
+    );
     if (!response.ok) throw new Error('Failed to add account balance');
     return response.json();
   }
 
   static async loadAccountBalances(accountId: string): Promise<AccountBalance[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances`);
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/accounts/${accountId}/balances`
+      );
       if (!response.ok) throw new Error('Failed to load account balances');
       return response.json();
     } catch (error) {
@@ -951,7 +1027,10 @@ export class LocalStorage {
   }
 
   static async deleteAccountBalance(accountId: string, balanceId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances/${balanceId}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/accounts/${accountId}/balances/${balanceId}`,
+      { method: 'DELETE' }
+    );
     if (!response.ok) throw new Error('Failed to delete balance entry');
   }
 
@@ -959,7 +1038,9 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/net-worth/summary?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/net-worth/summary?${params.toString()}`
+      );
       if (!response.ok) return null;
       return response.json();
     } catch (error) {
@@ -972,7 +1053,9 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/net-worth/history?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/net-worth/history?${params.toString()}`
+      );
       if (!response.ok) return [];
       return response.json();
     } catch (error) {
@@ -982,7 +1065,11 @@ export class LocalStorage {
   }
 
   // Teller Integration Methods
-  static async getTellerConfig(): Promise<{ enabled: boolean; applicationId?: string; enrollments: Array<{ enrollmentId: string; institutionName?: string; connectedAt?: string }> }> {
+  static async getTellerConfig(): Promise<{
+    enabled: boolean;
+    applicationId?: string;
+    enrollments: Array<{ enrollmentId: string; institutionName?: string; connectedAt?: string }>;
+  }> {
     try {
       const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/config`);
       if (!response.ok) return { enabled: false, enrollments: [] };
@@ -992,7 +1079,9 @@ export class LocalStorage {
     }
   }
 
-  static async tellerPreviewAccounts(accessToken: string): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
+  static async tellerPreviewAccounts(
+    accessToken: string
+  ): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1007,18 +1096,32 @@ export class LocalStorage {
     userId: string,
     enrollmentId: string,
     institutionName?: string | null,
-    selectedAccounts?: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>
+    selectedAccounts?: Array<{
+      tellerAccountId: string;
+      alias: string;
+      accountType: 'asset' | 'liability';
+    }>
   ): Promise<void> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enroll`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken, userId, enrollmentId, institutionName, selectedAccounts }),
+      body: JSON.stringify({
+        accessToken,
+        userId,
+        enrollmentId,
+        institutionName,
+        selectedAccounts,
+      }),
     });
     if (!response.ok) throw new Error('Failed to enroll with Teller');
   }
 
-  static async tellerPreviewEnrollmentAccounts(enrollmentId: string): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/preview-accounts`);
+  static async tellerPreviewEnrollmentAccounts(
+    enrollmentId: string
+  ): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/teller/enrollments/${enrollmentId}/preview-accounts`
+    );
     if (!response.ok) throw new Error('Failed to fetch Teller accounts');
     return response.json();
   }
@@ -1029,11 +1132,14 @@ export class LocalStorage {
     toAdd: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>,
     toRemove: string[]
   ): Promise<{ added: number; removed: number }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollments/${enrollmentId}/manage-accounts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, toAdd, toRemove }),
-    });
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/teller/enrollments/${enrollmentId}/manage-accounts`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, toAdd, toRemove }),
+      }
+    );
     if (!response.ok) throw new Error('Failed to manage accounts');
     return response.json();
   }
@@ -1048,21 +1154,31 @@ export class LocalStorage {
   }
 
   static async getTellerEnrollmentToken(enrollmentId: string): Promise<{ accessToken: string }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollment-token/${enrollmentId}`);
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/teller/enrollment-token/${enrollmentId}`
+    );
     if (!response.ok) throw new Error('Failed to fetch enrollment token');
     return response.json();
   }
 
-  static async tellerUpdateEnrollmentToken(enrollmentId: string, accessToken: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enrollment/${enrollmentId}/token`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken }),
-    });
+  static async tellerUpdateEnrollmentToken(
+    enrollmentId: string,
+    accessToken: string
+  ): Promise<void> {
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/teller/enrollment/${enrollmentId}/token`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+      }
+    );
     if (!response.ok) throw new Error('Failed to update enrollment token');
   }
 
-  static async getTellerCategoryMappings(): Promise<{ mappings: Array<{ tellerCategory: string; userCategory: string; transactionCount: number }> }> {
+  static async getTellerCategoryMappings(): Promise<{
+    mappings: Array<{ tellerCategory: string; userCategory: string; transactionCount: number }>;
+  }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/category-mappings`);
     if (!response.ok) throw new Error('Failed to load category mappings');
     return response.json();
@@ -1083,7 +1199,11 @@ export class LocalStorage {
     accountIds: string[],
     startDate: string,
     endDate: string
-  ): Promise<{ previewToken: string; accounts: import('../types').TellerImportPreviewAccount[]; newCategories: string[] }> {
+  ): Promise<{
+    previewToken: string;
+    accounts: import('../types').TellerImportPreviewAccount[];
+    newCategories: string[];
+  }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1114,7 +1234,10 @@ export class LocalStorage {
     return response.json();
   }
 
-  static async tellerRefreshBalances(): Promise<{ refreshed: number; reconnectRequired?: string[] }> {
+  static async tellerRefreshBalances(): Promise<{
+    refreshed: number;
+    reconnectRequired?: string[];
+  }> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/refresh-balances`, {
       method: 'POST',
     });
@@ -1133,8 +1256,8 @@ export class LocalStorage {
         {
           id: 'default-user',
           name: 'Default',
-          createdAt: new Date().toISOString()
-        }
+          createdAt: new Date().toISOString(),
+        },
       ];
     } catch (error) {
       console.error('Error loading users from localStorage:', error);
@@ -1142,8 +1265,8 @@ export class LocalStorage {
         {
           id: 'default-user',
           name: 'Default',
-          createdAt: new Date().toISOString()
-        }
+          createdAt: new Date().toISOString(),
+        },
       ];
     }
   }
@@ -1161,7 +1284,9 @@ export class LocalStorage {
     }
   }
 
-  static async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'updatedAt' | 'panelCount'>): Promise<Dashboard> {
+  static async createDashboard(
+    dashboard: Omit<Dashboard, 'createdAt' | 'updatedAt' | 'panelCount'>
+  ): Promise<Dashboard> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1171,7 +1296,10 @@ export class LocalStorage {
     return response.json();
   }
 
-  static async updateDashboard(id: string, updates: Partial<Pick<Dashboard, 'name' | 'isDefault' | 'dateRangeStart' | 'dateRangeEnd'>>): Promise<Dashboard> {
+  static async updateDashboard(
+    id: string,
+    updates: Partial<Pick<Dashboard, 'name' | 'isDefault' | 'dateRangeStart' | 'dateRangeEnd'>>
+  ): Promise<Dashboard> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -1182,22 +1310,32 @@ export class LocalStorage {
   }
 
   static async deleteDashboard(id: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
+      method: 'DELETE',
+    });
     if (!response.ok) throw new Error('Failed to delete dashboard');
   }
 
   static async loadPanels(dashboardId: string): Promise<DashboardPanel[]> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`);
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/dashboards/${dashboardId}/panels`
+    );
     if (!response.ok) throw new Error('Failed to load panels');
     return response.json();
   }
 
-  static async createPanel(dashboardId: string, panel: Omit<DashboardPanel, 'dashboardId' | 'createdAt' | 'updatedAt'>): Promise<DashboardPanel> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...panel, dashboardId }),
-    });
+  static async createPanel(
+    dashboardId: string,
+    panel: Omit<DashboardPanel, 'dashboardId' | 'createdAt' | 'updatedAt'>
+  ): Promise<DashboardPanel> {
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/dashboards/${dashboardId}/panels`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...panel, dashboardId }),
+      }
+    );
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error((err as any).error || 'Failed to create panel');
@@ -1205,7 +1343,10 @@ export class LocalStorage {
     return response.json();
   }
 
-  static async updatePanel(panelId: string, updates: Partial<Omit<DashboardPanel, 'id' | 'dashboardId' | 'createdAt' | 'updatedAt'>>): Promise<DashboardPanel> {
+  static async updatePanel(
+    panelId: string,
+    updates: Partial<Omit<DashboardPanel, 'id' | 'dashboardId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<DashboardPanel> {
     const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -1216,26 +1357,37 @@ export class LocalStorage {
   }
 
   static async deletePanel(panelId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
+      method: 'DELETE',
+    });
     if (!response.ok) throw new Error('Failed to delete panel');
   }
 
   static async reorderPanels(dashboardId: string, panelIds: string[]): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panel-order`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ panelIds }),
-    });
+    const response = await LocalStorage.apiFetch(
+      `${this.API_BASE}/dashboards/${dashboardId}/panel-order`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ panelIds }),
+      }
+    );
     if (!response.ok) throw new Error('Failed to reorder panels');
   }
 
-  static async loadDashboardData(dashboardId: string, opts: { userId?: string | null; dateRangeStart: string; dateRangeEnd: string }): Promise<PanelData[]> {
+  static async loadDashboardData(
+    dashboardId: string,
+    opts: { userId?: string | null; dateRangeStart: string; dateRangeEnd: string }
+  ): Promise<PanelData[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(opts),
-      });
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/dashboards/${dashboardId}/data`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(opts),
+        }
+      );
       if (!response.ok) throw new Error('Failed to load dashboard data');
       const data = await response.json();
       return data.panels as PanelData[];
@@ -1272,13 +1424,19 @@ export class LocalStorage {
     userId?: string | null;
     dateFrom?: string;
     dateTo?: string;
-  }): Promise<{ rows: { sortMonth: string; month: string; type: string; total: number }[]; monthMap: Record<string, { month: string }> }> {
+  }): Promise<{
+    rows: { sortMonth: string; month: string; type: string; total: number }[];
+    monthMap: Record<string, { month: string }>;
+  }> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/chart-preview`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(opts),
-      });
+      const response = await LocalStorage.apiFetch(
+        `${this.API_BASE}/dashboard-panels/chart-preview`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(opts),
+        }
+      );
       if (!response.ok) throw new Error('Failed to fetch chart preview');
       return response.json();
     } catch (error) {

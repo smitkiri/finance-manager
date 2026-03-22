@@ -20,7 +20,20 @@ interface TransactionListProps {
   selectedUserId?: string | null;
 }
 
-const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, totalCount, onLoadMore, isLoading = false, onDelete, onEdit, onUpdateCategory, onAddLabel, onRemoveLabel, onViewDetails, categories, selectedUserId }) => {
+const TransactionListComponent: React.FC<TransactionListProps> = ({
+  expenses,
+  totalCount,
+  onLoadMore,
+  isLoading = false,
+  onDelete,
+  onEdit,
+  onUpdateCategory,
+  onAddLabel,
+  onRemoveLabel,
+  onViewDetails,
+  categories,
+  selectedUserId,
+}) => {
   const [visibleCount, setVisibleCount] = useState(30);
   const [labelSelectorState, setLabelSelectorState] = useState<{
     isOpen: boolean;
@@ -29,20 +42,22 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
   }>({
     isOpen: false,
     expenseId: null,
-    position: { x: 0, y: 0 }
+    position: { x: 0, y: 0 },
   });
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
-  
+
   const ITEMS_PER_PAGE = 30;
   const useServerPagination = totalCount !== undefined && onLoadMore != null;
-  
+
   const visibleExpenses = useServerPagination ? expenses : expenses.slice(0, visibleCount);
-  const hasMore = useServerPagination ? (expenses.length < totalCount!) : (visibleCount < expenses.length);
+  const hasMore = useServerPagination
+    ? expenses.length < totalCount!
+    : visibleCount < expenses.length;
 
   // Memoize category usage calculation
   const categoryUsage = useMemo(() => {
     const usage = new Map<string, number>();
-    expenses.forEach(expense => {
+    expenses.forEach((expense) => {
       const category = expense.category || 'Uncategorized';
       usage.set(category, (usage.get(category) || 0) + 1);
     });
@@ -50,23 +65,24 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
   }, [expenses]);
 
   // Memoize sorted categories
-  const sortedCategories = useMemo(() => 
-    [...categories].sort((a, b) => {
-      const aUsage = categoryUsage.get(a) || 0;
-      const bUsage = categoryUsage.get(b) || 0;
-      return bUsage - aUsage;
-    }), [categories, categoryUsage]
+  const sortedCategories = useMemo(
+    () =>
+      [...categories].sort((a, b) => {
+        const aUsage = categoryUsage.get(a) || 0;
+        const bUsage = categoryUsage.get(b) || 0;
+        return bUsage - aUsage;
+      }),
+    [categories, categoryUsage]
   );
 
   // Memoize all unique labels from all expenses
-  const allLabels = useMemo(() => 
-    Array.from(new Set(
-      expenses.flatMap(expense => expense.labels || [])
-    )), [expenses]
+  const allLabels = useMemo(
+    () => Array.from(new Set(expenses.flatMap((expense) => expense.labels || []))),
+    [expenses]
   );
 
   const toggleDropdown = useCallback((expenseId: string) => {
-    setOpenDropdowns(prev => {
+    setOpenDropdowns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(expenseId)) {
         newSet.delete(expenseId);
@@ -77,10 +93,13 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
     });
   }, []);
 
-  const handleCategorySelect = useCallback((expenseId: string, category: string) => {
-    onUpdateCategory(expenseId, category);
-    toggleDropdown(expenseId);
-  }, [onUpdateCategory, toggleDropdown]);
+  const handleCategorySelect = useCallback(
+    (expenseId: string, category: string) => {
+      onUpdateCategory(expenseId, category);
+      toggleDropdown(expenseId);
+    },
+    [onUpdateCategory, toggleDropdown]
+  );
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -99,7 +118,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
     if (useServerPagination && onLoadMore) {
       onLoadMore();
     } else {
-      setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
+      setVisibleCount((prev) => Math.min(prev + ITEMS_PER_PAGE, expenses.length));
     }
   }, [useServerPagination, onLoadMore, expenses.length]);
 
@@ -108,57 +127,65 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
     setLabelSelectorState({
       isOpen: true,
       expenseId,
-      position: { x: rect.left + rect.width / 2, y: rect.top }
+      position: { x: rect.left + rect.width / 2, y: rect.top },
     });
   }, []);
 
-  const handleAddLabel = useCallback((label: string) => {
-    if (labelSelectorState.expenseId) {
-      onAddLabel(labelSelectorState.expenseId, label);
-    }
-  }, [labelSelectorState.expenseId, onAddLabel]);
+  const handleAddLabel = useCallback(
+    (label: string) => {
+      if (labelSelectorState.expenseId) {
+        onAddLabel(labelSelectorState.expenseId, label);
+      }
+    },
+    [labelSelectorState.expenseId, onAddLabel]
+  );
 
   const handleCloseLabelSelector = useCallback(() => {
     setLabelSelectorState({
       isOpen: false,
       expenseId: null,
-      position: { x: 0, y: 0 }
+      position: { x: 0, y: 0 },
     });
   }, []);
 
   // Helper function to determine if a transaction should be visually excluded
-  const isTransactionExcluded = useCallback((expense: Expense) => {
-    // Exclude if top-level excludedFromCalculations is true (manual exclusion)
-    if (expense.excludedFromCalculations === true) return true;
-    
-    // For transfers, check transfer-specific exclusion logic
-    if (expense.transferInfo?.isTransfer) {
-      // Include if user has explicitly overridden the exclusion
-      if (expense.transferInfo.userOverride !== undefined) {
+  const isTransactionExcluded = useCallback(
+    (expense: Expense) => {
+      // Exclude if top-level excludedFromCalculations is true (manual exclusion)
+      if (expense.excludedFromCalculations === true) return true;
+
+      // For transfers, check transfer-specific exclusion logic
+      if (expense.transferInfo?.isTransfer) {
+        // Include if user has explicitly overridden the exclusion
+        if (expense.transferInfo.userOverride !== undefined) {
+          return expense.transferInfo.excludedFromCalculations;
+        }
+
+        // Handle different transfer types based on user selection
+        if (expense.transferInfo.transferType === 'user') {
+          // User transfers: exclude when "All users" is selected, include when specific user is selected
+          return selectedUserId === null;
+        } else if (expense.transferInfo.transferType === 'self') {
+          // Transfer/Refunds: always exclude from calculations (they cancel each other out)
+          return expense.transferInfo.excludedFromCalculations;
+        }
+
+        // Default behavior: exclude transfers from calculations
         return expense.transferInfo.excludedFromCalculations;
       }
-      
-      // Handle different transfer types based on user selection
-      if (expense.transferInfo.transferType === 'user') {
-        // User transfers: exclude when "All users" is selected, include when specific user is selected
-        return selectedUserId === null;
-      } else if (expense.transferInfo.transferType === 'self') {
-        // Transfer/Refunds: always exclude from calculations (they cancel each other out)
-        return expense.transferInfo.excludedFromCalculations;
-      }
-      
-      // Default behavior: exclude transfers from calculations
-      return expense.transferInfo.excludedFromCalculations;
-    }
-    
-    // Non-transfer transactions are included unless manually excluded
-    return false;
-  }, [selectedUserId]);
+
+      // Non-transfer transactions are included unless manually excluded
+      return false;
+    },
+    [selectedUserId]
+  );
 
   if (isLoading && expenses.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="animate-pulse text-gray-400 dark:text-gray-500 mb-4">Loading transactions...</div>
+        <div className="animate-pulse text-gray-400 dark:text-gray-500 mb-4">
+          Loading transactions...
+        </div>
       </div>
     );
   }
@@ -168,11 +195,20 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
       <div className="text-center py-12">
         <div className="text-gray-400 dark:text-gray-500 mb-4">
           <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No transactions yet</h3>
-        <p className="text-gray-500 dark:text-gray-400">Start by adding your first expense or income transaction.</p>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          No transactions yet
+        </h3>
+        <p className="text-gray-500 dark:text-gray-400">
+          Start by adding your first expense or income transaction.
+        </p>
       </div>
     );
   }
@@ -189,7 +225,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
           </span>
         </div>
       )}
-      
+
       {visibleExpenses.map((expense) => {
         const isUncategorized = !expense.category || expense.category === 'Uncategorized';
         const categoryClasses = isUncategorized
@@ -216,14 +252,16 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                       </p>
                       <div
                         className={`font-semibold text-sm ${
-                          expense.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                          expense.type === 'expense'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-green-600 dark:text-green-400'
                         }`}
                       >
                         {expense.type === 'expense' ? '-' : '+'}
                         {formatCurrency(expense.amount)}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2 mt-1">
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(expense.date).toLocaleDateString()}
@@ -243,7 +281,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                             <ChevronDown size={12} />
                           )}
                         </button>
-                        
+
                         {openDropdowns.has(expense.id) && (
                           <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg z-10 min-w-32 max-h-48 overflow-y-auto">
                             {sortedCategories.map((category) => (
@@ -254,8 +292,8 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                                   handleCategorySelect(expense.id, category);
                                 }}
                                 className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
-                                  expense.category === category 
-                                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+                                  expense.category === category
+                                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                                     : 'text-gray-700 dark:text-gray-300'
                                 }`}
                               >
@@ -266,12 +304,16 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                         )}
                       </div>
                       {expense.transferInfo?.isTransfer && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium ${
-                          expense.transferInfo.transferType === 'user'
-                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                            : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                        }`}>
-                          {expense.transferInfo.transferType === 'user' ? 'User Transfer' : 'Transfer/Refund'}
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium ${
+                            expense.transferInfo.transferType === 'user'
+                              ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                              : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                          }`}
+                        >
+                          {expense.transferInfo.transferType === 'user'
+                            ? 'User Transfer'
+                            : 'Transfer/Refund'}
                         </span>
                       )}
                       {expense.labels && expense.labels.length > 0 && (
@@ -289,7 +331,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-1 ml-2">
                 {/* Add Label Button */}
                 {(expense.labels?.length || 0) < 3 && (
@@ -332,7 +374,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
           </div>
         );
       })}
-      
+
       {hasMore && (
         <div className="flex justify-center pt-3">
           <button
@@ -344,7 +386,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
           </button>
         </div>
       )}
-      
+
       {!hasMore && expenses.length > 0 && (
         <div className="text-center py-3">
           <p className="text-gray-500 dark:text-gray-400 text-xs">
@@ -352,13 +394,17 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({ expenses, to
           </p>
         </div>
       )}
-      
+
       {/* Label Selector */}
       <LabelSelector
         isOpen={labelSelectorState.isOpen}
         onClose={handleCloseLabelSelector}
         onAddLabel={handleAddLabel}
-        existingLabels={labelSelectorState.expenseId ? (expenses.find(e => e.id === labelSelectorState.expenseId)?.labels || []) : []}
+        existingLabels={
+          labelSelectorState.expenseId
+            ? expenses.find((e) => e.id === labelSelectorState.expenseId)?.labels || []
+            : []
+        }
         allLabels={allLabels}
         maxLabels={3}
         position={labelSelectorState.position}

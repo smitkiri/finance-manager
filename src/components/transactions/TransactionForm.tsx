@@ -11,14 +11,21 @@ interface TransactionFormProps {
   users: { id: string; name: string }[];
 }
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCancel, isOpen, editingExpense, categories, users }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({
+  onSubmit,
+  onCancel,
+  isOpen,
+  editingExpense,
+  categories,
+  users,
+}) => {
   const [formData, setFormData] = useState<TransactionFormData>({
     date: new Date().toISOString().split('T')[0],
     description: '',
     category: '',
     amount: '',
     type: 'expense',
-    user: ''
+    user: '',
   });
 
   // Update form data when editingExpense changes
@@ -30,7 +37,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         category: editingExpense.category,
         amount: editingExpense.amount.toString(),
         type: editingExpense.type,
-        user: editingExpense.user || ''
+        user: editingExpense.user || '',
       });
     } else {
       setFormData({
@@ -39,14 +46,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         category: '',
         amount: '',
         type: 'expense',
-        user: ''
+        user: '',
       });
     }
   }, [editingExpense, isOpen, users]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.description.trim() || !formData.amount.trim() || !formData.category.trim() || !formData.user) {
+    if (
+      !formData.description.trim() ||
+      !formData.amount.trim() ||
+      !formData.category.trim() ||
+      !formData.user
+    ) {
       return;
     }
     onSubmit(formData);
@@ -56,7 +68,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
       category: '',
       amount: '',
       type: 'expense',
-      user: ''
+      user: '',
     });
   };
 
@@ -76,7 +88,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
             <X size={24} />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -178,19 +190,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
               className="input"
               required
             >
-              <option value="" disabled>Select user</option>
+              <option value="" disabled>
+                Select user
+              </option>
               {users.map((user) => (
-                <option key={user.id} value={user.id}>{user.name}</option>
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="flex space-x-4 pt-4 flex-shrink-0">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary flex-1"
-            >
+            <button type="button" onClick={onCancel} className="btn-secondary flex-1">
               Cancel
             </button>
             <button
@@ -205,4 +217,4 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
       </div>
     </div>
   );
-}; 
+};

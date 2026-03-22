@@ -13,12 +13,21 @@ interface DashboardPanelProps {
   onViewTransactions: (panel: DashboardPanelType) => void;
 }
 
-export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loading, onEdit, onDelete, onViewTransactions }) => {
+export const DashboardPanel: React.FC<DashboardPanelProps> = ({
+  panel,
+  data,
+  loading,
+  onEdit,
+  onDelete,
+  onViewTransactions,
+}) => {
   return (
     <div className="card group relative">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate pr-2">{panel.title}</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate pr-2">
+          {panel.title}
+        </h3>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onViewTransactions(panel)}
@@ -54,7 +63,11 @@ export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loa
         height={panel.legendOptions?.show ? 190 : 220}
       />
       {panel.legendOptions?.show && (
-        <ChartLegend data={data} legendOptions={panel.legendOptions} seriesMode={panel.seriesMode} />
+        <ChartLegend
+          data={data}
+          legendOptions={panel.legendOptions}
+          seriesMode={panel.seriesMode}
+        />
       )}
     </div>
   );

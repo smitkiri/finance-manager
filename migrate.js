@@ -12,16 +12,15 @@ const isMigrationComplete = async () => {
     const result = await db.query(
       "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'migrations')"
     );
-    
+
     if (!result.rows[0].exists) {
       return false;
     }
-    
-    const migrationResult = await db.query(
-      "SELECT * FROM migrations WHERE migration_name = $1",
-      ['initial_migration']
-    );
-    
+
+    const migrationResult = await db.query('SELECT * FROM migrations WHERE migration_name = $1', [
+      'initial_migration',
+    ]);
+
     return migrationResult.rows.length > 0;
   } catch (error) {
     return false;
@@ -41,10 +40,9 @@ const createSchema = async () => {
  * Mark migration as complete
  */
 const markMigrationComplete = async () => {
-  await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['initial_migration']
-  );
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'initial_migration',
+  ]);
 };
 
 /**
@@ -60,29 +58,29 @@ const getArtifactsDir = () => {
 const migrateTransactions = async () => {
   const artifactsDir = getArtifactsDir();
   const transactionsFile = path.join(artifactsDir, 'transactions.json');
-  
+
   if (!fs.existsSync(transactionsFile)) {
     console.log(`No transactions file found at ${transactionsFile}`);
     return 0;
   }
-  
+
   const data = fs.readFileSync(transactionsFile, 'utf8');
   const transactions = JSON.parse(data);
-  
+
   if (!Array.isArray(transactions) || transactions.length === 0) {
     console.log('No transactions to migrate');
     return 0;
   }
-  
+
   // Check if transactions already exist
   const existingCount = await db.query('SELECT COUNT(*) FROM transactions');
   if (parseInt(existingCount.rows[0].count) > 0) {
     console.log('Transactions already exist in database, skipping migration');
     return 0;
   }
-  
+
   console.log(`Migrating ${transactions.length} transactions...`);
-  
+
   const client = await db.beginTransaction();
   try {
     for (const transaction of transactions) {
@@ -103,11 +101,11 @@ const migrateTransactions = async () => {
           JSON.stringify(transaction.labels || []),
           JSON.stringify(transaction.metadata || {}),
           transaction.transferInfo ? JSON.stringify(transaction.transferInfo) : null,
-          transaction.excludedFromCalculations || false
+          transaction.excludedFromCalculations || false,
         ]
       );
     }
-    
+
     await db.commitTransaction(client);
     console.log(`Successfully migrated ${transactions.length} transactions`);
     return transactions.length;
@@ -123,29 +121,29 @@ const migrateTransactions = async () => {
 const migrateCategories = async () => {
   const artifactsDir = getArtifactsDir();
   const categoriesFile = path.join(artifactsDir, 'categories.json');
-  
+
   if (!fs.existsSync(categoriesFile)) {
     console.log(`No categories file found at ${categoriesFile}`);
     return 0;
   }
-  
+
   const data = fs.readFileSync(categoriesFile, 'utf8');
   const categories = JSON.parse(data);
-  
+
   if (!Array.isArray(categories) || categories.length === 0) {
     console.log('No categories to migrate');
     return 0;
   }
-  
+
   // Check if categories already exist
   const existingCount = await db.query('SELECT COUNT(*) FROM categories');
   if (parseInt(existingCount.rows[0].count) > 0) {
     console.log('Categories already exist in database, skipping migration');
     return 0;
   }
-  
+
   console.log(`Migrating ${categories.length} categories...`);
-  
+
   const client = await db.beginTransaction();
   try {
     for (const category of categories) {
@@ -154,7 +152,7 @@ const migrateCategories = async () => {
         [category]
       );
     }
-    
+
     await db.commitTransaction(client);
     console.log(`Successfully migrated ${categories.length} categories`);
     return categories.length;
@@ -170,29 +168,29 @@ const migrateCategories = async () => {
 const migrateUsers = async () => {
   const artifactsDir = getArtifactsDir();
   const usersFile = path.join(artifactsDir, 'users.json');
-  
+
   if (!fs.existsSync(usersFile)) {
     console.log(`No users file found at ${usersFile}`);
     return 0;
   }
-  
+
   const data = fs.readFileSync(usersFile, 'utf8');
   const users = JSON.parse(data);
-  
+
   if (!Array.isArray(users) || users.length === 0) {
     console.log('No users to migrate');
     return 0;
   }
-  
+
   // Check if users already exist
   const existingCount = await db.query('SELECT COUNT(*) FROM users');
   if (parseInt(existingCount.rows[0].count) > 0) {
     console.log('Users already exist in database, skipping migration');
     return 0;
   }
-  
+
   console.log(`Migrating ${users.length} users...`);
-  
+
   const client = await db.beginTransaction();
   try {
     for (const user of users) {
@@ -201,7 +199,7 @@ const migrateUsers = async () => {
         [user.id, user.name, user.createdAt || new Date().toISOString()]
       );
     }
-    
+
     await db.commitTransaction(client);
     console.log(`Successfully migrated ${users.length} users`);
     return users.length;
@@ -217,29 +215,29 @@ const migrateUsers = async () => {
 const migrateSources = async () => {
   const artifactsDir = getArtifactsDir();
   const sourcesFile = path.join(artifactsDir, 'source.json');
-  
+
   if (!fs.existsSync(sourcesFile)) {
     console.log(`No sources file found at ${sourcesFile}`);
     return 0;
   }
-  
+
   const data = fs.readFileSync(sourcesFile, 'utf8');
   const sources = JSON.parse(data);
-  
+
   if (!Array.isArray(sources) || sources.length === 0) {
     console.log('No sources to migrate');
     return 0;
   }
-  
+
   // Check if sources already exist
   const existingCount = await db.query('SELECT COUNT(*) FROM sources');
   if (parseInt(existingCount.rows[0].count) > 0) {
     console.log('Sources already exist in database, skipping migration');
     return 0;
   }
-  
+
   console.log(`Migrating ${sources.length} sources...`);
-  
+
   const client = await db.beginTransaction();
   try {
     for (const source of sources) {
@@ -252,11 +250,11 @@ const migrateSources = async () => {
           JSON.stringify(source.mappings || []),
           source.flipIncomeExpense || false,
           source.createdAt || new Date().toISOString(),
-          source.lastUsed || new Date().toISOString()
+          source.lastUsed || new Date().toISOString(),
         ]
       );
     }
-    
+
     await db.commitTransaction(client);
     console.log(`Successfully migrated ${sources.length} sources`);
     return sources.length;
@@ -272,37 +270,37 @@ const migrateSources = async () => {
 const migrateReports = async () => {
   const artifactsDir = getArtifactsDir();
   const reportsDir = path.join(artifactsDir, 'reports');
-  
+
   if (!fs.existsSync(reportsDir)) {
     console.log(`No reports directory found at ${reportsDir}`);
     return 0;
   }
-  
-  const files = fs.readdirSync(reportsDir).filter(file => 
-    file.endsWith('.json') && !file.endsWith('_data.json')
-  );
-  
+
+  const files = fs
+    .readdirSync(reportsDir)
+    .filter((file) => file.endsWith('.json') && !file.endsWith('_data.json'));
+
   if (files.length === 0) {
     console.log('No reports to migrate');
     return 0;
   }
-  
+
   // Check if reports already exist
   const existingCount = await db.query('SELECT COUNT(*) FROM reports');
   if (parseInt(existingCount.rows[0].count) > 0) {
     console.log('Reports already exist in database, skipping migration');
     return 0;
   }
-  
+
   console.log(`Migrating ${files.length} reports...`);
-  
+
   const client = await db.beginTransaction();
   try {
     for (const file of files) {
       const filePath = path.join(reportsDir, file);
       const data = fs.readFileSync(filePath, 'utf8');
       const report = JSON.parse(data);
-      
+
       await client.query(
         `INSERT INTO reports (id, name, description, filters, created_at, last_modified)
          VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
@@ -312,11 +310,11 @@ const migrateReports = async () => {
           report.description || null,
           JSON.stringify(report.filters || {}),
           report.createdAt || new Date().toISOString(),
-          report.lastModified || new Date().toISOString()
+          report.lastModified || new Date().toISOString(),
         ]
       );
     }
-    
+
     await db.commitTransaction(client);
     console.log(`Successfully migrated ${files.length} reports`);
     return files.length;
@@ -332,29 +330,29 @@ const migrateReports = async () => {
 const migrateDateRange = async () => {
   const artifactsDir = getArtifactsDir();
   const dateRangeFile = path.join(artifactsDir, 'date-range.json');
-  
+
   if (!fs.existsSync(dateRangeFile)) {
     console.log(`No date range file found at ${dateRangeFile}`);
     return 0;
   }
-  
+
   const data = fs.readFileSync(dateRangeFile, 'utf8');
   const dateRange = JSON.parse(data);
-  
+
   // Check if date range already exists
   const existingCount = await db.query('SELECT COUNT(*) FROM date_ranges');
   if (parseInt(existingCount.rows[0].count) > 0) {
     console.log('Date range already exists in database, skipping migration');
     return 0;
   }
-  
+
   console.log('Migrating date range...');
-  
+
   await db.query(
     'INSERT INTO date_ranges (start_date, end_date) VALUES ($1, $2) ON CONFLICT DO NOTHING',
     [dateRange.start, dateRange.end]
   );
-  
+
   console.log('Successfully migrated date range');
   return 1;
 };
@@ -363,10 +361,9 @@ const migrateDateRange = async () => {
  * Add net worth tables (accounts and account_balances)
  */
 const addNetWorthTables = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_net_worth_tables']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_net_worth_tables',
+  ]);
   if (alreadyRun.rows.length > 0) {
     console.log('Net worth tables migration already completed, skipping...');
     return;
@@ -394,13 +391,16 @@ const addNetWorthTables = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_account_balances_account ON account_balances(account_id)`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_account_balances_date ON account_balances(date DESC)`);
-
   await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_net_worth_tables']
+    `CREATE INDEX IF NOT EXISTS idx_account_balances_account ON account_balances(account_id)`
   );
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS idx_account_balances_date ON account_balances(date DESC)`
+  );
+
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_net_worth_tables',
+  ]);
   console.log('Net worth tables created successfully');
 };
 
@@ -408,10 +408,9 @@ const addNetWorthTables = async () => {
  * Add teller_enrollment_id column to accounts table
  */
 const addTellerEnrollmentId = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_teller_enrollment_id']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_teller_enrollment_id',
+  ]);
   if (alreadyRun.rows.length > 0) {
     console.log('Teller enrollment ID migration already completed, skipping...');
     return;
@@ -419,12 +418,13 @@ const addTellerEnrollmentId = async () => {
 
   console.log('Adding teller_enrollment_id column to accounts...');
   await db.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS teller_enrollment_id VARCHAR(255)`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_accounts_teller_enrollment_id ON accounts(teller_enrollment_id)`);
-
   await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_teller_enrollment_id']
+    `CREATE INDEX IF NOT EXISTS idx_accounts_teller_enrollment_id ON accounts(teller_enrollment_id)`
   );
+
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_teller_enrollment_id',
+  ]);
   console.log('Teller enrollment ID column added successfully');
 };
 
@@ -432,10 +432,9 @@ const addTellerEnrollmentId = async () => {
  * Add import_sessions table and import_id column to transactions
  */
 const addImportSessionsTable = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_import_sessions']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_import_sessions',
+  ]);
   if (alreadyRun.rows.length > 0) {
     console.log('Import sessions migration already completed, skipping...');
     return;
@@ -453,14 +452,19 @@ const addImportSessionsTable = async () => {
       transaction_count INTEGER NOT NULL DEFAULT 0
     )
   `);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_import_sessions_created_at ON import_sessions(created_at DESC)`);
-  await db.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS import_id VARCHAR(255) REFERENCES import_sessions(id) ON DELETE SET NULL`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_transactions_import_id ON transactions(import_id)`);
-
   await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_import_sessions']
+    `CREATE INDEX IF NOT EXISTS idx_import_sessions_created_at ON import_sessions(created_at DESC)`
   );
+  await db.query(
+    `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS import_id VARCHAR(255) REFERENCES import_sessions(id) ON DELETE SET NULL`
+  );
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS idx_transactions_import_id ON transactions(import_id)`
+  );
+
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_import_sessions',
+  ]);
   console.log('Import sessions table created successfully');
 };
 
@@ -468,10 +472,9 @@ const addImportSessionsTable = async () => {
  * Add teller_account_id column to accounts table
  */
 const addTellerAccountId = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_teller_account_id']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_teller_account_id',
+  ]);
   if (alreadyRun.rows.length > 0) {
     console.log('Teller account ID migration already completed, skipping...');
     return;
@@ -479,12 +482,13 @@ const addTellerAccountId = async () => {
 
   console.log('Adding teller_account_id column to accounts...');
   await db.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS teller_account_id VARCHAR(255)`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_accounts_teller_account_id ON accounts(teller_account_id)`);
-
   await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_teller_account_id']
+    `CREATE INDEX IF NOT EXISTS idx_accounts_teller_account_id ON accounts(teller_account_id)`
   );
+
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_teller_account_id',
+  ]);
   console.log('Teller account ID column added successfully');
 };
 
@@ -492,10 +496,9 @@ const addTellerAccountId = async () => {
  * Add dashboards and dashboard_panels tables for Personal Dashboards feature
  */
 const addPersonalDashboardsTables = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_personal_dashboards_tables']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_personal_dashboards_tables',
+  ]);
   if (alreadyRun.rows.length > 0) {
     console.log('Personal dashboards migration already completed, skipping...');
     return;
@@ -533,10 +536,9 @@ const addPersonalDashboardsTables = async () => {
     CREATE INDEX IF NOT EXISTS idx_dashboard_panels_dashboard ON dashboard_panels(dashboard_id)
   `);
 
-  await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_personal_dashboards_tables']
-  );
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_personal_dashboards_tables',
+  ]);
   console.log('Personal dashboards tables created successfully');
 };
 
@@ -544,10 +546,9 @@ const addPersonalDashboardsTables = async () => {
  * Add filter_groups JSONB column and populate from flat filter fields
  */
 const addPanelFilterGroups = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_panel_filter_groups']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_panel_filter_groups',
+  ]);
   if (alreadyRun.rows.length > 0) return;
 
   console.log('Adding filter_groups column to dashboard_panels...');
@@ -559,7 +560,9 @@ const addPanelFilterGroups = async () => {
   `);
 
   // Populate from existing flat fields
-  const panels = await db.query('SELECT id, filter_type, filter_categories, filter_regex FROM dashboard_panels');
+  const panels = await db.query(
+    'SELECT id, filter_type, filter_categories, filter_regex FROM dashboard_panels'
+  );
   for (const row of panels.rows) {
     const conditions = [];
     if (row.filter_type && row.filter_type !== 'both') {
@@ -573,16 +576,15 @@ const addPanelFilterGroups = async () => {
       conditions.push({ field: 'description', operator: 'matches', value: row.filter_regex });
     }
     const filterGroups = conditions.length > 0 ? [{ conditions }] : [];
-    await db.query(
-      'UPDATE dashboard_panels SET filter_groups = $1 WHERE id = $2',
-      [JSON.stringify(filterGroups), row.id]
-    );
+    await db.query('UPDATE dashboard_panels SET filter_groups = $1 WHERE id = $2', [
+      JSON.stringify(filterGroups),
+      row.id,
+    ]);
   }
 
-  await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_panel_filter_groups']
-  );
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_panel_filter_groups',
+  ]);
   console.log('Panel filter_groups column added and populated successfully');
 };
 
@@ -592,10 +594,9 @@ const addPanelFilterGroups = async () => {
  * code path is confirmed working in production.
  */
 const dropOldPanelFilterColumns = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['drop_old_panel_filter_columns']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'drop_old_panel_filter_columns',
+  ]);
   if (alreadyRun.rows.length > 0) return;
 
   console.log('Dropping old panel filter columns...');
@@ -604,10 +605,9 @@ const dropOldPanelFilterColumns = async () => {
   await db.query(`ALTER TABLE dashboard_panels DROP COLUMN IF EXISTS filter_labels`);
   await db.query(`ALTER TABLE dashboard_panels DROP COLUMN IF EXISTS filter_regex`);
 
-  await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['drop_old_panel_filter_columns']
-  );
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'drop_old_panel_filter_columns',
+  ]);
   console.log('Old panel filter columns dropped successfully');
 };
 
@@ -615,19 +615,17 @@ const dropOldPanelFilterColumns = async () => {
  * Add legend_options JSONB column to dashboard_panels
  */
 const addPanelLegendOptions = async () => {
-  const alreadyRun = await db.query(
-    "SELECT 1 FROM migrations WHERE migration_name = $1",
-    ['add_panel_legend_options']
-  );
+  const alreadyRun = await db.query('SELECT 1 FROM migrations WHERE migration_name = $1', [
+    'add_panel_legend_options',
+  ]);
   if (alreadyRun.rows.length > 0) return;
 
   console.log('Adding legend_options column to dashboard_panels...');
   await db.query(`ALTER TABLE dashboard_panels ADD COLUMN IF NOT EXISTS legend_options JSONB`);
 
-  await db.query(
-    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
-    ['add_panel_legend_options']
-  );
+  await db.query('INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING', [
+    'add_panel_legend_options',
+  ]);
   console.log('Panel legend_options column added successfully');
 };
 
@@ -680,7 +678,6 @@ const runMigration = async () => {
     await addPanelLegendOptions();
 
     console.log('\nAll migrations completed successfully!');
-    
   } catch (error) {
     console.error('Migration failed:', error);
     throw error;

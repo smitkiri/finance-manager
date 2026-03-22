@@ -5,7 +5,7 @@ function detectTransfers(transactions) {
 
   const transactionsBySource = new Map();
 
-  transactions.forEach(transaction => {
+  transactions.forEach((transaction) => {
     const sourceId = transaction.metadata?.sourceId || 'manual';
     if (!transactionsBySource.has(sourceId)) {
       transactionsBySource.set(sourceId, []);
@@ -38,7 +38,7 @@ function detectTransfers(transactions) {
               credit: t1.type === 'income' ? t1 : t2,
               debit: t1.type === 'expense' ? t1 : t2,
               transferId,
-              confidence
+              confidence,
             });
 
             processedIds.add(t1.id);
@@ -55,7 +55,7 @@ function detectTransfers(transactions) {
     const sourceTransactions = transactionsBySource.get(sourceId);
 
     const transactionsByUser = new Map();
-    sourceTransactions.forEach(transaction => {
+    sourceTransactions.forEach((transaction) => {
       const userId = transaction.user;
       if (!transactionsByUser.has(userId)) {
         transactionsByUser.set(userId, []);
@@ -87,7 +87,7 @@ function detectTransfers(transactions) {
                 credit: t1.type === 'income' ? t1 : t2,
                 debit: t1.type === 'expense' ? t1 : t2,
                 transferId,
-                confidence
+                confidence,
               });
 
               processedIds.add(t1.id);
@@ -101,9 +101,9 @@ function detectTransfers(transactions) {
   }
 
   // Update transactions with transfer info
-  transfers.forEach(transfer => {
-    const creditIndex = updatedTransactions.findIndex(t => t.id === transfer.credit.id);
-    const debitIndex = updatedTransactions.findIndex(t => t.id === transfer.debit.id);
+  transfers.forEach((transfer) => {
+    const creditIndex = updatedTransactions.findIndex((t) => t.id === transfer.credit.id);
+    const debitIndex = updatedTransactions.findIndex((t) => t.id === transfer.debit.id);
 
     const transferType = transfer.credit.user === transfer.debit.user ? 'self' : 'user';
 
@@ -115,8 +115,8 @@ function detectTransfers(transactions) {
           transferId: transfer.transferId,
           transferType,
           excludedFromCalculations: true,
-          userOverride: false
-        }
+          userOverride: false,
+        },
       };
     }
 
@@ -128,8 +128,8 @@ function detectTransfers(transactions) {
           transferId: transfer.transferId,
           transferType,
           excludedFromCalculations: true,
-          userOverride: false
-        }
+          userOverride: false,
+        },
       };
     }
   });

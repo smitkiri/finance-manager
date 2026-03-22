@@ -14,7 +14,7 @@ export const useCategories = () => {
         console.error('Error loading categories:', error);
       }
     };
-    
+
     loadCategories();
   }, []);
 
@@ -57,4 +57,4 @@ export const useCategories = () => {
     deleteCategory,
     updateCategoryName,
   };
-}; 
+};
