@@ -58,3 +58,4 @@ npm run docker:down    # Stop PostgreSQL container
 - `cancelled` flag pattern in useEffect for cleanup on unmount
 - Toast notifications (react-toastify) for user feedback
 - Dark mode via Tailwind `dark:` prefix with system preference detection
+- Commit messages follow Conventional Commits: `feat:`, `fix:`, `chore:`, etc.

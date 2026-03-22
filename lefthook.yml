@@ -22,6 +22,11 @@ pre-commit:
       run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
       stage_fixed: true
 
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}
+
 pre-push:
   parallel: true
   commands:
