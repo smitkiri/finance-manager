@@ -1,4 +1,4 @@
-import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory, ImportSession, Dashboard, DashboardPanel, PanelData } from '../types';
+import { Expense, CSVPreview, Report, ReportData, ExpensePageResponse, DateRange, DashboardStats, Account, AccountBalance, NetWorthSummary, NetWorthHistory, ImportSession, Dashboard, DashboardPanel, PanelData, FilterGroup } from '../types';
 
 interface StorageMetadata {
   lastUpdated: string;
@@ -1234,31 +1234,44 @@ export class LocalStorage {
   }
 
   static async previewPanelTransactions(opts: {
-    types?: string[];
-    categories?: string[];
-    regex?: string | null;
+    filterGroups?: FilterGroup[];
     userId?: string | null;
     dateFrom?: string;
     dateTo?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ transactions: Expense[]; total: number }> {
-    const params = new URLSearchParams();
-    if (opts.types?.length) params.set('types', opts.types.join(','));
-    if (opts.categories?.length) params.set('categories', opts.categories.join(','));
-    if (opts.regex) params.set('regex', opts.regex);
-    if (opts.userId) params.set('userId', opts.userId);
-    if (opts.dateFrom) params.set('dateFrom', opts.dateFrom);
-    if (opts.dateTo) params.set('dateTo', opts.dateTo);
-    if (opts.limit) params.set('limit', String(opts.limit));
-    if (opts.offset) params.set('offset', String(opts.offset));
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/preview?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      });
       if (!response.ok) throw new Error('Failed to preview transactions');
       return response.json();
     } catch (error) {
       console.error('Error previewing transactions:', error);
       return { transactions: [], total: 0 };
+    }
+  }
+
+  static async chartPreview(opts: {
+    filterGroups?: FilterGroup[];
+    userId?: string | null;
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<{ rows: { sortMonth: string; month: string; type: string; total: number }[] }> {
+    try {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/chart-preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      });
+      if (!response.ok) throw new Error('Failed to fetch chart preview');
+      return response.json();
+    } catch (error) {
+      console.error('Error fetching chart preview:', error);
+      return { rows: [] };
     }
   }
 }

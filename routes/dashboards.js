@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { buildExpensesWhereClause, buildPanelDataQuery } = require('../helpers/queryBuilders');
+const { buildStatsWhereClause, buildPanelDataQuery, buildFilterGroupsWhereClause } = require('../helpers/queryBuilders');
 
 // ─── Helper: map a DB row to the Dashboard shape ───────────────────────────
 
@@ -24,11 +24,9 @@ function rowToPanel(row) {
     dashboardId: row.dashboard_id,
     title: row.title,
     chartType: row.chart_type,
-    filterType: row.filter_type,
-    filterCategories: row.filter_categories || [],
-    filterRegex: row.filter_regex || null,
     seriesMode: row.series_mode,
     netOrientation: row.net_orientation || null,
+    filterGroups: row.filter_groups || [],
     panelOrder: row.panel_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -139,7 +137,7 @@ router.get('/dashboards/:id/panels', async (req, res) => {
 router.post('/dashboards/:id/panels', async (req, res) => {
   try {
     const { id: dashboardId } = req.params;
-    const { id, title, chartType, filterType, filterCategories, filterRegex, seriesMode, netOrientation, panelOrder } = req.body;
+    const { id, title, chartType, filterGroups, seriesMode, netOrientation, panelOrder } = req.body;
 
     // Enforce 15-panel limit
     const countResult = await db.query(
@@ -152,14 +150,12 @@ router.post('/dashboards/:id/panels', async (req, res) => {
 
     const result = await db.query(
       `INSERT INTO dashboard_panels
-         (id, dashboard_id, title, chart_type, filter_type, filter_categories, filter_regex, series_mode, net_orientation, panel_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         (id, dashboard_id, title, chart_type, filter_groups, series_mode, net_orientation, panel_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         id, dashboardId, title, chartType,
-        filterType || 'both',
-        JSON.stringify(filterCategories || []),
-        filterRegex || null,
+        JSON.stringify(filterGroups || []),
         seriesMode || 'two_series',
         netOrientation || null,
         panelOrder || 0,
@@ -172,34 +168,24 @@ router.post('/dashboards/:id/panels', async (req, res) => {
   }
 });
 
-// GET /api/dashboard-panels/preview — MUST be before /:panelId
-router.get('/dashboard-panels/preview', async (req, res) => {
+// POST /api/dashboard-panels/preview — MUST be before /:panelId
+router.post('/dashboard-panels/preview', async (req, res) => {
   try {
-    const { types, categories, regex, userId, dateFrom, dateTo, limit = '10', offset = '0' } = req.query;
+    const { filterGroups, userId, dateFrom, dateTo, limit = 10, offset = 0 } = req.body;
 
-    const parsedCategories = categories ? categories.split(',').filter(Boolean) : [];
-    const parsedTypes = types ? types.split(',').filter(Boolean) : [];
-
-    const query = {
-      dateFrom: dateFrom || null,
-      dateTo: dateTo || null,
-      userId: userId || null,
-      categories: parsedCategories,
-      types: parsedTypes,
-    };
-
-    let { whereSql, params } = buildExpensesWhereClause(query);
+    const { whereSql: baseSql, params } = buildStatsWhereClause(dateFrom, dateTo, userId);
     let nextParam = params.length + 1;
 
-    if (regex) {
-      const andOrWhere = whereSql ? ' AND' : ' WHERE';
-      whereSql += `${andOrWhere} description ~* $${nextParam}`;
-      params.push(regex);
-      nextParam++;
-    }
+    const { sql: filterSql, nextParam: updatedParam } = buildFilterGroupsWhereClause(
+      filterGroups || [], params, nextParam
+    );
+    nextParam = updatedParam;
+
+    const extraConditions = filterSql ? ` AND ${filterSql}` : '';
+    const fullWhere = `${baseSql}${extraConditions}`;
 
     const countResult = await db.query(
-      `SELECT COUNT(*) FROM transactions ${whereSql}`,
+      `SELECT COUNT(*) FROM transactions ${fullWhere}`,
       params
     );
     const total = parseInt(countResult.rows[0].count);
@@ -209,7 +195,7 @@ router.get('/dashboard-panels/preview', async (req, res) => {
     const dataResult = await db.query(
       `SELECT id, date, description, category, amount, type, user_id
        FROM transactions
-       ${whereSql}
+       ${fullWhere}
        ORDER BY date DESC
        LIMIT $${limitParam} OFFSET $${offsetParam}`,
       [...params, parseInt(limit), parseInt(offset)]
@@ -232,11 +218,37 @@ router.get('/dashboard-panels/preview', async (req, res) => {
   }
 });
 
+// POST /api/dashboard-panels/chart-preview — monthly aggregates for filter preview
+router.post('/dashboard-panels/chart-preview', async (req, res) => {
+  try {
+    const { filterGroups, userId, dateFrom, dateTo } = req.body;
+
+    const { sql, params } = buildPanelDataQuery({
+      dateFrom, dateTo, userId: userId || null,
+      filterGroups: filterGroups || [],
+    });
+
+    const result = await db.query(sql, params);
+
+    const rows = result.rows.map(row => ({
+      sortMonth: row.sort_month,
+      month: row.month,
+      type: row.type,
+      total: parseFloat(row.total),
+    }));
+
+    res.json({ rows });
+  } catch (err) {
+    console.error('Error generating chart preview:', err);
+    res.status(500).json({ error: 'Failed to generate chart preview' });
+  }
+});
+
 // PATCH /api/dashboard-panels/:panelId — update panel config
 router.patch('/dashboard-panels/:panelId', async (req, res) => {
   try {
     const { panelId } = req.params;
-    const { title, chartType, filterType, filterCategories, filterRegex, seriesMode, netOrientation, panelOrder } = req.body;
+    const { title, chartType, filterGroups, seriesMode, netOrientation, panelOrder } = req.body;
 
     const fields = [];
     const params = [];
@@ -244,9 +256,7 @@ router.patch('/dashboard-panels/:panelId', async (req, res) => {
 
     if (title !== undefined) { fields.push(`title = $${idx++}`); params.push(title); }
     if (chartType !== undefined) { fields.push(`chart_type = $${idx++}`); params.push(chartType); }
-    if (filterType !== undefined) { fields.push(`filter_type = $${idx++}`); params.push(filterType); }
-    if (filterCategories !== undefined) { fields.push(`filter_categories = $${idx++}`); params.push(JSON.stringify(filterCategories)); }
-    if (filterRegex !== undefined) { fields.push(`filter_regex = $${idx++}`); params.push(filterRegex || null); }
+    if (filterGroups !== undefined) { fields.push(`filter_groups = $${idx++}`); params.push(JSON.stringify(filterGroups)); }
     if (seriesMode !== undefined) { fields.push(`series_mode = $${idx++}`); params.push(seriesMode); }
     if (netOrientation !== undefined) { fields.push(`net_orientation = $${idx++}`); params.push(netOrientation || null); }
     if (panelOrder !== undefined) { fields.push(`panel_order = $${idx++}`); params.push(panelOrder); }
@@ -322,9 +332,7 @@ router.post('/dashboards/:id/data', async (req, res) => {
           dateFrom: dateRangeStart,
           dateTo: dateRangeEnd,
           userId: userId || null,
-          filterType: panel.filterType,
-          filterCategories: panel.filterCategories,
-          filterRegex: panel.filterRegex,
+          filterGroups: panel.filterGroups,
         });
 
         const result = await db.query(sql, params);

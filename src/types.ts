@@ -226,16 +226,24 @@ export interface Dashboard {
   updatedAt: string;
 }
 
+export interface FilterCondition {
+  field: 'type' | 'category' | 'labels' | 'description' | 'amount';
+  operator: string; // 'is' | 'is_not' | 'includes' | 'excludes' | 'matches' | 'gte' | 'lte'
+  value: string | string[] | number;
+}
+
+export interface FilterGroup {
+  conditions: FilterCondition[];
+}
+
 export interface DashboardPanel {
   id: string;
   dashboardId: string;
   title: string;
   chartType: 'bar' | 'line';
-  filterType: 'expense' | 'income' | 'both';
-  filterCategories: string[];
-  filterRegex: string | null;
   seriesMode: 'two_series' | 'net_amount';
   netOrientation: 'income_positive' | 'expense_positive' | null;
+  filterGroups: FilterGroup[];
   panelOrder: number;
   createdAt: string;
   updatedAt: string;

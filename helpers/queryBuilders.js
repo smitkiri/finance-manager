@@ -108,41 +108,109 @@ function rowToExpense(row) {
 }
 
 /**
- * Build the monthly aggregate SQL query for a single dashboard panel.
- * Extends buildStatsWhereClause with panel-specific filters.
+ * Build a WHERE clause fragment from filter_groups JSONB.
+ * Groups are OR'd; conditions within a group are AND'd.
+ * Appends to an existing parameterized query.
  *
- * @param {object} opts
- * @param {string|null} opts.dateFrom  - YYYY-MM-DD
- * @param {string|null} opts.dateTo    - YYYY-MM-DD
- * @param {string|null} opts.userId
- * @param {string}      opts.filterType  - 'expense' | 'income' | 'both'
- * @param {string[]}    opts.filterCategories - [] means all
- * @param {string|null} opts.filterRegex - POSIX regex or null
- * @returns {{ sql: string, params: any[] }}
+ * @param {Array} filterGroups - parsed filter_groups JSONB
+ * @param {any[]} params - existing params array (mutated in place)
+ * @param {number} startParam - next $N index
+ * @returns {{ sql: string, nextParam: number }} - SQL fragment (without leading AND/OR) and updated param index
  */
-function buildPanelDataQuery({ dateFrom, dateTo, userId, filterType, filterCategories, filterRegex }) {
+function buildFilterGroupsWhereClause(filterGroups, params, startParam) {
+  if (!filterGroups || filterGroups.length === 0) {
+    return { sql: '', nextParam: startParam };
+  }
+
+  let nextParam = startParam;
+  const groupSqls = [];
+
+  for (const group of filterGroups) {
+    if (!group.conditions || group.conditions.length === 0) continue;
+
+    const condSqls = [];
+    for (const cond of group.conditions) {
+      switch (cond.field) {
+        case 'type':
+          if (cond.operator === 'is' && cond.value) {
+            condSqls.push(`type = $${nextParam}`);
+            params.push(cond.value);
+            nextParam++;
+          }
+          break;
+        case 'category':
+          if (Array.isArray(cond.value) && cond.value.length > 0) {
+            if (cond.operator === 'is') {
+              condSqls.push(`category = ANY($${nextParam}::text[])`);
+            } else {
+              condSqls.push(`category != ALL($${nextParam}::text[])`);
+            }
+            params.push(cond.value);
+            nextParam++;
+          }
+          break;
+        case 'labels':
+          if (Array.isArray(cond.value) && cond.value.length > 0) {
+            const exists = cond.operator === 'excludes' ? 'NOT EXISTS' : 'EXISTS';
+            condSqls.push(`${exists} (
+              SELECT 1 FROM jsonb_array_elements_text(COALESCE(labels, '[]'::jsonb)) AS lbl
+              WHERE lbl = ANY($${nextParam}::text[])
+            )`);
+            params.push(cond.value);
+            nextParam++;
+          }
+          break;
+        case 'description':
+          if (cond.operator === 'matches' && cond.value) {
+            condSqls.push(`description ~* $${nextParam}`);
+            params.push(cond.value);
+            nextParam++;
+          }
+          break;
+        case 'amount':
+          if (cond.value != null && cond.value !== '') {
+            if (cond.operator === 'gte') {
+              condSqls.push(`amount >= $${nextParam}`);
+            } else {
+              condSqls.push(`amount <= $${nextParam}`);
+            }
+            params.push(parseFloat(cond.value));
+            nextParam++;
+          }
+          break;
+      }
+    }
+
+    if (condSqls.length > 0) {
+      groupSqls.push(`(${condSqls.join(' AND ')})`);
+    }
+  }
+
+  if (groupSqls.length === 0) {
+    return { sql: '', nextParam };
+  }
+
+  const sql = groupSqls.length === 1
+    ? groupSqls[0]
+    : `(${groupSqls.join(' OR ')})`;
+
+  return { sql, nextParam };
+}
+
+/**
+ * Build the monthly aggregate SQL query for a single dashboard panel.
+ * Extends buildStatsWhereClause with filter groups.
+ */
+function buildPanelDataQuery({ dateFrom, dateTo, userId, filterGroups }) {
   const { whereSql, params } = buildStatsWhereClause(dateFrom, dateTo, userId);
-  // params already has $1, $2, $3 for dateFrom, dateTo, userId
   let nextParam = params.length + 1;
-  let extraConditions = '';
 
-  if (filterType !== 'both') {
-    extraConditions += ` AND type = $${nextParam}`;
-    params.push(filterType);
-    nextParam++;
-  }
+  const { sql: filterSql, nextParam: updatedParam } = buildFilterGroupsWhereClause(
+    filterGroups, params, nextParam
+  );
+  nextParam = updatedParam;
 
-  if (filterCategories && filterCategories.length > 0) {
-    extraConditions += ` AND category = ANY($${nextParam}::text[])`;
-    params.push(filterCategories);
-    nextParam++;
-  }
-
-  if (filterRegex) {
-    extraConditions += ` AND description ~* $${nextParam}`;
-    params.push(filterRegex);
-    nextParam++;
-  }
+  const extraConditions = filterSql ? ` AND ${filterSql}` : '';
 
   const sql = `
     SELECT
@@ -159,4 +227,4 @@ function buildPanelDataQuery({ dateFrom, dateTo, userId, filterType, filterCateg
   return { sql, params };
 }
 
-module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense, buildPanelDataQuery };
+module.exports = { buildExpensesWhereClause, buildStatsWhereClause, rowToExpense, buildPanelDataQuery, buildFilterGroupsWhereClause };
