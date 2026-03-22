@@ -236,6 +236,13 @@ export interface FilterGroup {
   conditions: FilterCondition[];
 }
 
+export interface LegendOptions {
+  show: boolean;
+  min: boolean;
+  max: boolean;
+  avg: boolean;
+}
+
 export interface DashboardPanel {
   id: string;
   dashboardId: string;
@@ -243,6 +250,7 @@ export interface DashboardPanel {
   chartType: 'bar' | 'line';
   seriesMode: 'two_series' | 'net_amount';
   netOrientation: 'income_positive' | 'expense_positive' | null;
+  legendOptions: LegendOptions | null;
   filterGroups: FilterGroup[];
   panelOrder: number;
   createdAt: string;

@@ -4,8 +4,9 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import { DashboardPanel, Dashboard, Expense, FilterGroup, PanelMonthData } from '../../types';
+import { DashboardPanel, Dashboard, Expense, FilterGroup, LegendOptions, PanelMonthData } from '../../types';
 import { LocalStorage } from '../../utils/storage';
+import { ChartLegend } from './ChartLegend';
 import { TransactionPreview } from './TransactionPreview';
 import { FilterBuilder } from './FilterBuilder';
 import { formatCurrency, generateId } from '../../utils';
@@ -47,6 +48,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   const [seriesMode, setSeriesMode] = useState<'two_series' | 'net_amount'>(panel?.seriesMode || 'two_series');
   const [netOrientation, setNetOrientation] = useState<'income_positive' | 'expense_positive'>(panel?.netOrientation || 'income_positive');
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>(panel?.filterGroups || []);
+  const [legendOptions, setLegendOptions] = useState<LegendOptions>(panel?.legendOptions || { show: false, min: false, max: false, avg: false });
 
   const [chartData, setChartData] = useState<PanelMonthData[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
@@ -151,6 +153,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         chartType,
         seriesMode,
         netOrientation: seriesMode === 'net_amount' ? netOrientation : null,
+        legendOptions: legendOptions.show ? legendOptions : null,
         filterGroups: cleanedGroups,
         panelOrder: panel?.panelOrder ?? 0,
       };
@@ -322,13 +325,43 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             </div>
           </>
         )}
+        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 uppercase tracking-wide">Legend</span>
+          <button
+            onClick={() => setLegendOptions(prev => ({ ...prev, show: !prev.show }))}
+            className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
+              legendOptions.show
+                ? 'bg-blue-500 text-white border-blue-500'
+                : 'text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            {legendOptions.show ? 'On' : 'Off'}
+          </button>
+          {legendOptions.show && (
+            <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+              {(['min', 'max', 'avg'] as const).map(stat => (
+                <button
+                  key={stat}
+                  onClick={() => setLegendOptions(prev => ({ ...prev, [stat]: !prev[stat] }))}
+                  className={`px-3 py-1 text-xs font-medium capitalize transition-colors ${
+                    legendOptions[stat] ? 'bg-blue-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {stat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Chart area */}
-      <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ height: 280 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ height: legendOptions.show ? 310 : 280 }}>
+        <ResponsiveContainer width="100%" height={legendOptions.show ? '85%' : '100%'}>
           {renderChart() as React.ReactElement}
         </ResponsiveContainer>
+        <ChartLegend data={chartData} legendOptions={legendOptions} seriesMode={seriesMode} />
       </div>
 
       {/* Bottom section: Filters + Preview */}

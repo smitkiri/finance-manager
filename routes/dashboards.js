@@ -26,6 +26,7 @@ function rowToPanel(row) {
     chartType: row.chart_type,
     seriesMode: row.series_mode,
     netOrientation: row.net_orientation || null,
+    legendOptions: row.legend_options || null,
     filterGroups: row.filter_groups || [],
     panelOrder: row.panel_order,
     createdAt: row.created_at,
@@ -137,7 +138,7 @@ router.get('/dashboards/:id/panels', async (req, res) => {
 router.post('/dashboards/:id/panels', async (req, res) => {
   try {
     const { id: dashboardId } = req.params;
-    const { id, title, chartType, filterGroups, seriesMode, netOrientation, panelOrder } = req.body;
+    const { id, title, chartType, filterGroups, seriesMode, netOrientation, legendOptions, panelOrder } = req.body;
 
     // Enforce 15-panel limit
     const countResult = await db.query(
@@ -150,14 +151,15 @@ router.post('/dashboards/:id/panels', async (req, res) => {
 
     const result = await db.query(
       `INSERT INTO dashboard_panels
-         (id, dashboard_id, title, chart_type, filter_groups, series_mode, net_orientation, panel_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (id, dashboard_id, title, chart_type, filter_groups, series_mode, net_orientation, legend_options, panel_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         id, dashboardId, title, chartType,
         JSON.stringify(filterGroups || []),
         seriesMode || 'two_series',
         netOrientation || null,
+        legendOptions ? JSON.stringify(legendOptions) : null,
         panelOrder || 0,
       ]
     );
@@ -248,7 +250,7 @@ router.post('/dashboard-panels/chart-preview', async (req, res) => {
 router.patch('/dashboard-panels/:panelId', async (req, res) => {
   try {
     const { panelId } = req.params;
-    const { title, chartType, filterGroups, seriesMode, netOrientation, panelOrder } = req.body;
+    const { title, chartType, filterGroups, seriesMode, netOrientation, legendOptions, panelOrder } = req.body;
 
     const fields = [];
     const params = [];
@@ -259,6 +261,7 @@ router.patch('/dashboard-panels/:panelId', async (req, res) => {
     if (filterGroups !== undefined) { fields.push(`filter_groups = $${idx++}`); params.push(JSON.stringify(filterGroups)); }
     if (seriesMode !== undefined) { fields.push(`series_mode = $${idx++}`); params.push(seriesMode); }
     if (netOrientation !== undefined) { fields.push(`net_orientation = $${idx++}`); params.push(netOrientation || null); }
+    if (legendOptions !== undefined) { fields.push(`legend_options = $${idx++}`); params.push(legendOptions ? JSON.stringify(legendOptions) : null); }
     if (panelOrder !== undefined) { fields.push(`panel_order = $${idx++}`); params.push(panelOrder); }
     fields.push('updated_at = NOW()');
 

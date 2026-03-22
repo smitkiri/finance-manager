@@ -7,6 +7,7 @@ import {
 import { DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
 import { formatCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
+import { ChartLegend } from './ChartLegend';
 
 interface DashboardPanelProps {
   panel: DashboardPanelType;
@@ -134,9 +135,12 @@ export const DashboardPanel: React.FC<DashboardPanelProps> = ({ panel, data, loa
       </div>
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={220}>
+      <ResponsiveContainer width="100%" height={panel.legendOptions?.show ? 190 : 220}>
         {renderChart() as React.ReactElement}
       </ResponsiveContainer>
+      {panel.legendOptions?.show && (
+        <ChartLegend data={data} legendOptions={panel.legendOptions} seriesMode={panel.seriesMode} />
+      )}
     </div>
   );
 };

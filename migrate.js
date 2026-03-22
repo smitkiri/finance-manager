@@ -612,6 +612,26 @@ const dropOldPanelFilterColumns = async () => {
 };
 
 /**
+ * Add legend_options JSONB column to dashboard_panels
+ */
+const addPanelLegendOptions = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_panel_legend_options']
+  );
+  if (alreadyRun.rows.length > 0) return;
+
+  console.log('Adding legend_options column to dashboard_panels...');
+  await db.query(`ALTER TABLE dashboard_panels ADD COLUMN IF NOT EXISTS legend_options JSONB`);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_panel_legend_options']
+  );
+  console.log('Panel legend_options column added successfully');
+};
+
+/**
  * Main migration function
  */
 const runMigration = async () => {
@@ -657,6 +677,7 @@ const runMigration = async () => {
     await addImportSessionsTable();
     await addPersonalDashboardsTables();
     await addPanelFilterGroups();
+    await addPanelLegendOptions();
 
     console.log('\nAll migrations completed successfully!');
     
