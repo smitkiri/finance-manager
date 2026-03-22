@@ -123,6 +123,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const handleDeletePanel = async (panelId: string) => {
+    if (!window.confirm('Delete this panel?')) return;
     await LocalStorage.deletePanel(panelId);
     setPanels(prev => prev.filter(p => p.id !== panelId));
     setPanelDataMap(prev => { const n = { ...prev }; delete n[panelId]; return n; });
