@@ -1140,7 +1140,7 @@ export class LocalStorage {
 
   static async loadDashboards(): Promise<Dashboard[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/dashboards`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards`);
       if (!response.ok) throw new Error('Failed to load dashboards');
       return response.json();
     } catch (error) {
@@ -1150,7 +1150,7 @@ export class LocalStorage {
   }
 
   static async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'updatedAt' | 'panelCount'>): Promise<Dashboard> {
-    const response = await fetch(`${this.API_BASE}/dashboards`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dashboard),
@@ -1160,7 +1160,7 @@ export class LocalStorage {
   }
 
   static async updateDashboard(id: string, updates: Partial<Pick<Dashboard, 'name' | 'isDefault' | 'dateRangeStart' | 'dateRangeEnd'>>): Promise<Dashboard> {
-    const response = await fetch(`${this.API_BASE}/dashboards/${id}`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -1170,12 +1170,18 @@ export class LocalStorage {
   }
 
   static async deleteDashboard(id: string): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/dashboards/${id}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete dashboard');
   }
 
+  static async loadPanels(dashboardId: string): Promise<DashboardPanel[]> {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`);
+    if (!response.ok) throw new Error('Failed to load panels');
+    return response.json();
+  }
+
   static async createPanel(dashboardId: string, panel: Omit<DashboardPanel, 'dashboardId' | 'createdAt' | 'updatedAt'>): Promise<DashboardPanel> {
-    const response = await fetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...panel, dashboardId }),
@@ -1188,7 +1194,7 @@ export class LocalStorage {
   }
 
   static async updatePanel(panelId: string, updates: Partial<Omit<DashboardPanel, 'id' | 'dashboardId' | 'createdAt' | 'updatedAt'>>): Promise<DashboardPanel> {
-    const response = await fetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -1198,12 +1204,12 @@ export class LocalStorage {
   }
 
   static async deletePanel(panelId: string): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/dashboard-panels/${panelId}`, { method: 'DELETE' });
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete panel');
   }
 
   static async reorderPanels(dashboardId: string, panelIds: string[]): Promise<void> {
-    const response = await fetch(`${this.API_BASE}/dashboards/${dashboardId}/panel-order`, {
+    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panel-order`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ panelIds }),
@@ -1213,7 +1219,7 @@ export class LocalStorage {
 
   static async loadDashboardData(dashboardId: string, opts: { userId?: string | null; dateRangeStart: string; dateRangeEnd: string }): Promise<PanelData[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/dashboards/${dashboardId}/data`, {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(opts),
@@ -1247,7 +1253,7 @@ export class LocalStorage {
     if (opts.limit) params.set('limit', String(opts.limit));
     if (opts.offset) params.set('offset', String(opts.offset));
     try {
-      const response = await fetch(`${this.API_BASE}/dashboard-panels/preview?${params.toString()}`);
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/preview?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to preview transactions');
       return response.json();
     } catch (error) {

@@ -91,9 +91,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`http://localhost:3001/api/dashboards/${dashboard.id}/panels`);
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
+        const data = await LocalStorage.loadPanels(dashboard.id);
         if (!cancelled) setPanels(data);
       } catch { /* ignore */ }
     };
