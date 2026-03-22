@@ -541,6 +541,77 @@ const addPersonalDashboardsTables = async () => {
 };
 
 /**
+ * Add filter_groups JSONB column and populate from flat filter fields
+ */
+const addPanelFilterGroups = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['add_panel_filter_groups']
+  );
+  if (alreadyRun.rows.length > 0) return;
+
+  console.log('Adding filter_groups column to dashboard_panels...');
+
+  // Add the new column
+  await db.query(`
+    ALTER TABLE dashboard_panels
+    ADD COLUMN IF NOT EXISTS filter_groups JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+
+  // Populate from existing flat fields
+  const panels = await db.query('SELECT id, filter_type, filter_categories, filter_regex FROM dashboard_panels');
+  for (const row of panels.rows) {
+    const conditions = [];
+    if (row.filter_type && row.filter_type !== 'both') {
+      conditions.push({ field: 'type', operator: 'is', value: row.filter_type });
+    }
+    const categories = row.filter_categories || [];
+    if (categories.length > 0) {
+      conditions.push({ field: 'category', operator: 'is', value: categories });
+    }
+    if (row.filter_regex) {
+      conditions.push({ field: 'description', operator: 'matches', value: row.filter_regex });
+    }
+    const filterGroups = conditions.length > 0 ? [{ conditions }] : [];
+    await db.query(
+      'UPDATE dashboard_panels SET filter_groups = $1 WHERE id = $2',
+      [JSON.stringify(filterGroups), row.id]
+    );
+  }
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['add_panel_filter_groups']
+  );
+  console.log('Panel filter_groups column added and populated successfully');
+};
+
+/**
+ * Drop old flat filter columns now that filter_groups is in use.
+ * NOTE: Register this in runMigration() only AFTER the new filter_groups
+ * code path is confirmed working in production.
+ */
+const dropOldPanelFilterColumns = async () => {
+  const alreadyRun = await db.query(
+    "SELECT 1 FROM migrations WHERE migration_name = $1",
+    ['drop_old_panel_filter_columns']
+  );
+  if (alreadyRun.rows.length > 0) return;
+
+  console.log('Dropping old panel filter columns...');
+  await db.query(`ALTER TABLE dashboard_panels DROP COLUMN IF EXISTS filter_type`);
+  await db.query(`ALTER TABLE dashboard_panels DROP COLUMN IF EXISTS filter_categories`);
+  await db.query(`ALTER TABLE dashboard_panels DROP COLUMN IF EXISTS filter_labels`);
+  await db.query(`ALTER TABLE dashboard_panels DROP COLUMN IF EXISTS filter_regex`);
+
+  await db.query(
+    "INSERT INTO migrations (migration_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    ['drop_old_panel_filter_columns']
+  );
+  console.log('Old panel filter columns dropped successfully');
+};
+
+/**
  * Main migration function
  */
 const runMigration = async () => {
@@ -585,6 +656,7 @@ const runMigration = async () => {
     await addTellerEnrollmentId();
     await addImportSessionsTable();
     await addPersonalDashboardsTables();
+    await addPanelFilterGroups();
 
     console.log('\nAll migrations completed successfully!');
     
