@@ -48,53 +48,6 @@ npm run docker:down    # Stop PostgreSQL container
 3. Backend builds dynamic SQL queries with parameterized WHERE clauses
 4. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
 
-### Routing
-
-Uses react-router-dom v7 with `BrowserRouter`. All pages are route-based:
-- `/` — Dashboard (catch-all `*` route)
-- `/transactions` — Transactions list with filters sidebar
-- `/reports` — Reports page
-- `/settings` — Settings page (converted from modal, supports `asPage` prop)
-
-Sidebar (`src/components/Sidebar.tsx`) uses `useNavigate`/`useLocation` for all navigation. Data-loading useEffects in App.tsx trigger based on `location.pathname`.
-
-### Frontend organization
-
-- `src/App.tsx` — Main state holder, routes, and top-level logic
-- `src/components/` — Feature-grouped: `transactions/`, `modals/`, `reports/`, `charts/`, `ui/`
-- `src/hooks/` — `useCategories`, `useFilters` for shared logic
-- `src/services/csvService.ts` — CSV import/export parsing
-- `src/utils/` — `storage.ts` (API wrapper), `reportUtils.ts`, `transferDetection.ts`
-- `src/types.ts` — All TypeScript interfaces (`Expense`, `User`, `Category`, `Source`, `Report`)
-- `src/constants/index.ts` — App-wide constants (ITEMS_PER_PAGE=30, colors, storage keys)
-
-### Backend organization
-
-- `server.js` — Entry point: middleware, DB init, route mounting
-- `routes/` — Express Router modules, one per domain:
-  - `expenses.js` — GET/POST/PATCH `/api/expenses`, GET `/api/stats`
-  - `categories.js` — GET/POST `/api/categories`
-  - `users.js` — GET/POST `/api/users`
-  - `sources.js` — GET/POST/PUT/DELETE `/api/sources`
-  - `reports.js` — GET/POST/DELETE `/api/reports`, report data endpoints
-  - `import.js` — `/api/import-csv`, `/api/import-with-mapping`, `/api/export-csv`, `/api/column-mappings`
-  - `dateRange.js` — GET/POST `/api/date-range`
-  - `transfers.js` — `/api/detect-transfers`, `/api/transfer-override`, `/api/rerun-transfer-detection`
-  - `backup.js` — GET `/api/backup`, POST `/api/restore`
-  - `data.js` — DELETE `/api/delete-all`, POST `/api/delete-selected`, POST `/api/undo-import`
-- `helpers/` — Pure function modules (no Express dependency):
-  - `queryBuilders.js` — `buildExpensesWhereClause`, `buildStatsWhereClause`, `rowToExpense`
-  - `csvParser.js` — `parseCSV`, `parseCSVLine`, `parseCSVWithMapping`, `mergeExpenses`
-  - `transferDetection.js` — `detectTransfers`, `isTransferPair`, `calculateTransferConfidence`
-  - `categoryMatcher.js` — `findSimilarTransactionCategory`, `calculateDescriptionSimilarity`
-  - `fileUtils.js` — `getArtifactsDir`, `getFilePath`, `ensureArtifactsDir`
-
-Each route file exports an Express Router. All routes are mounted under `/api` in `server.js`. Server-side pagination (limit/offset), filtering, and search. No authentication layer.
-
-### Database tables
-
-`transactions` (main records), `categories`, `users`, `sources` (CSV import mappings), `reports` (saved report configs), `metadata` (key-value store), `migrations`.
-
 ## Conventions
 
 - Frontend components are PascalCase `.tsx` files; utilities are camelCase `.ts`
