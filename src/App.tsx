@@ -39,6 +39,7 @@ function AppContent() {
   const location = useLocation();
   const isSettingsRoute = location.pathname === '/settings';
   const [categories, setCategories] = useState<string[]>([]);
+  const [allLabels, setAllLabels] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sources, setSources] = useState<Source[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<Expense | null>(null);
@@ -77,16 +78,18 @@ function AppContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedSources, loadedDateRange, loadedCategories, loadedUsers, loadedAccounts, tellerConfig] = await Promise.all([
+        const [loadedSources, loadedDateRange, loadedCategories, loadedUsers, loadedAccounts, tellerConfig, loadedLabels] = await Promise.all([
           LocalStorage.loadSources(),
           LocalStorage.loadDateRange(),
           LocalStorage.loadCategories(),
           LocalStorage.loadUsers(),
           LocalStorage.loadAccounts(),
-          LocalStorage.getTellerConfig()
+          LocalStorage.getTellerConfig(),
+          LocalStorage.loadLabels()
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
+        setAllLabels(loadedLabels);
         setUsers(loadedUsers);
         setAccounts(loadedAccounts);
         setTellerEnabled(tellerConfig.enabled);
@@ -644,11 +647,6 @@ function AppContent() {
     }
   };
 
-  // Get all unique labels from all expenses
-  const allLabels = Array.from(new Set(
-    expenses.flatMap(expense => expense.labels || [])
-  ));
-
   // Apply all filters using the new filter system
   const filteredExpenses = expenses.filter(exp => {
     // Date range filter - always use global date range
@@ -994,16 +992,18 @@ function AppContent() {
               onDeleteUser={handleDeleteUser}
               onUpdateUser={handleUpdateUser}
               onRefreshData={async () => {
-                const [loadedExpenses, loadedSources, loadedCategories, loadedUsers] = await Promise.all([
+                const [loadedExpenses, loadedSources, loadedCategories, loadedUsers, loadedLabels] = await Promise.all([
                   LocalStorage.loadExpenses(),
                   LocalStorage.loadSources(),
                   LocalStorage.loadCategories(),
-                  LocalStorage.loadUsers()
+                  LocalStorage.loadUsers(),
+                  LocalStorage.loadLabels()
                 ]);
                 setExpenses(loadedExpenses);
                 setSources(loadedSources);
                 setCategories(loadedCategories);
                 setUsers(loadedUsers);
+                setAllLabels(loadedLabels);
                 bumpTransactionListVersion();
               }}
               onExportCSV={handleExportCSV}

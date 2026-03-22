@@ -59,4 +59,18 @@ router.post('/categories', async (req, res) => {
   }
 });
 
+router.get('/labels', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT DISTINCT lbl
+      FROM transactions, jsonb_array_elements_text(COALESCE(labels, '[]'::jsonb)) AS lbl
+      ORDER BY lbl
+    `);
+    res.json({ labels: result.rows.map(row => row.lbl) });
+  } catch (error) {
+    console.error('Error reading labels:', error);
+    res.status(500).json({ error: 'Failed to read labels' });
+  }
+});
+
 module.exports = router;

@@ -612,6 +612,18 @@ export class LocalStorage {
     }
   }
 
+  static async loadLabels(): Promise<string[]> {
+    try {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/labels`);
+      if (!response.ok) throw new Error('Failed to load labels from server');
+      const result = await response.json();
+      return result.labels;
+    } catch (error) {
+      console.error('Error loading labels:', error);
+      return [];
+    }
+  }
+
   static async addCategory(category: string): Promise<string[]> {
     try {
       const existingCategories = await this.loadCategories();
