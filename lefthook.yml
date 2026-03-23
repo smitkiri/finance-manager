@@ -36,4 +36,4 @@ pre-push:
       run: npx tsc --noEmit
     related-tests:
       glob: '*.{ts,tsx,js}'
-      run: npx jest --bail --findRelatedTests {push_files}
+      run: npx jest --bail --passWithNoTests --findRelatedTests {push_files}
