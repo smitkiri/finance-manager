@@ -34,6 +34,9 @@ pre-push:
   commands:
     typecheck:
       run: npx tsc --noEmit
-    related-tests:
-      glob: '*.{ts,tsx,js}'
+    related-frontend-tests:
+      glob: 'src/**/*.{ts,tsx}'
       run: npx jest --bail --passWithNoTests --findRelatedTests {push_files}
+    related-backend-tests:
+      glob: '{routes,helpers,tests}/**/*.js'
+      run: NODE_ENV=test DB_NAME=expense_tracker_test DB_PORT=5433 npx jest --config jest.backend.config.js --bail --passWithNoTests --findRelatedTests {push_files}
