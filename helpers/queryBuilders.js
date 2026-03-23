@@ -28,12 +28,12 @@ function buildExpensesWhereClause(query) {
     params.push(Array.isArray(query.types) ? query.types : [query.types]);
     paramIndex++;
   }
-  if (query.minAmount !== null && query.minAmount !== '') {
+  if (query.minAmount !== null && query.minAmount !== undefined && query.minAmount !== '') {
     conditions.push(`amount >= $${paramIndex}`);
     params.push(parseFloat(query.minAmount));
     paramIndex++;
   }
-  if (query.maxAmount !== null && query.maxAmount !== '') {
+  if (query.maxAmount !== null && query.maxAmount !== undefined && query.maxAmount !== '') {
     conditions.push(`amount <= $${paramIndex}`);
     params.push(parseFloat(query.maxAmount));
     paramIndex++;

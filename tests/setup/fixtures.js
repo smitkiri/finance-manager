@@ -114,8 +114,8 @@ const makeAccountBalance = (accountId, overrides = {}) => ({
 const insertTransaction = async (pool, overrides = {}) => {
   const txn = makeTransaction(overrides);
   await pool.query(
-    `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    `INSERT INTO transactions (id, date, description, category, amount, type, user_id, labels, metadata, transfer_info, excluded_from_calculations, import_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       txn.id,
       txn.date,
@@ -128,6 +128,7 @@ const insertTransaction = async (pool, overrides = {}) => {
       txn.metadata,
       txn.transfer_info,
       txn.excluded_from_calculations,
+      txn.import_id || null,
     ]
   );
   return txn;
@@ -163,6 +164,108 @@ const insertSource = async (pool, overrides = {}) => {
   return src;
 };
 
+/**
+ * Insert a report directly into the test database.
+ */
+const insertReport = async (pool, overrides = {}) => {
+  const rpt = makeReport(overrides);
+  await pool.query(
+    `INSERT INTO reports (id, name, description, filters)
+     VALUES ($1, $2, $3, $4)`,
+    [rpt.id, rpt.name, rpt.description, rpt.filters]
+  );
+  return rpt;
+};
+
+/**
+ * Insert a dashboard directly into the test database.
+ */
+const insertDashboard = async (pool, overrides = {}) => {
+  const dash = makeDashboard(overrides);
+  await pool.query(
+    `INSERT INTO dashboards (id, name, is_default, date_range_start, date_range_end)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [dash.id, dash.name, dash.is_default, dash.date_range_start, dash.date_range_end]
+  );
+  return dash;
+};
+
+/**
+ * Insert a dashboard panel directly into the test database.
+ */
+const insertDashboardPanel = async (pool, dashboardId, overrides = {}) => {
+  const panel = makeDashboardPanel(dashboardId, overrides);
+  await pool.query(
+    `INSERT INTO dashboard_panels (id, dashboard_id, title, chart_type, filter_groups, series_mode, net_orientation, panel_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      panel.id,
+      panel.dashboard_id,
+      panel.title,
+      panel.chart_type,
+      panel.filter_groups,
+      panel.series_mode,
+      panel.net_orientation,
+      panel.panel_order,
+    ]
+  );
+  return panel;
+};
+
+/**
+ * Insert an account directly into the test database.
+ */
+const insertAccount = async (pool, overrides = {}) => {
+  const acct = makeAccount(overrides);
+  await pool.query('INSERT INTO accounts (id, user_id, name, type) VALUES ($1, $2, $3, $4)', [
+    acct.id,
+    acct.user_id,
+    acct.name,
+    acct.type,
+  ]);
+  return acct;
+};
+
+/**
+ * Insert an account balance directly into the test database.
+ */
+const insertAccountBalance = async (pool, accountId, overrides = {}) => {
+  const bal = makeAccountBalance(accountId, overrides);
+  await pool.query(
+    'INSERT INTO account_balances (id, account_id, balance, date, note) VALUES ($1, $2, $3, $4, $5)',
+    [bal.id, bal.account_id, bal.balance, bal.date, bal.note]
+  );
+  return bal;
+};
+
+/**
+ * Insert an import session directly into the test database.
+ */
+const insertImportSession = async (pool, overrides = {}) => {
+  const session = {
+    id: uniqueId('session'),
+    user_id: 'user-1',
+    source_id: null,
+    source_name: 'Test Source',
+    file_name: 'test.csv',
+    transaction_count: 0,
+    ...overrides,
+  };
+  await pool.query(
+    `INSERT INTO import_sessions (id, user_id, source_id, source_name, file_name, transaction_count)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      session.id,
+      session.user_id,
+      session.source_id,
+      session.source_name,
+      session.file_name,
+      session.transaction_count,
+    ]
+  );
+  return session;
+};
+
 module.exports = {
   uniqueId,
   makeTransaction,
@@ -178,4 +281,10 @@ module.exports = {
   insertUser,
   insertCategory,
   insertSource,
+  insertReport,
+  insertDashboard,
+  insertDashboardPanel,
+  insertAccount,
+  insertAccountBalance,
+  insertImportSession,
 };
