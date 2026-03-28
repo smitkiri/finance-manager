@@ -503,18 +503,21 @@ function AppContent() {
         // Call backend API to import with source (which adds metadata and detects transfers)
         const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)
           ?.files?.[0];
-        const response = await fetch('http://localhost:3001/api/import-with-mapping', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            csvText,
-            mapping: source,
-            userId,
-            fileName: csvFile?.name,
-          }),
-        });
+        const response = await LocalStorage.apiFetch(
+          `${LocalStorage.getApiBase()}/import-with-mapping`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              csvText,
+              mapping: source,
+              userId,
+              fileName: csvFile?.name,
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error('Failed to import CSV with source');
@@ -588,18 +591,21 @@ function AppContent() {
       const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)
         ?.files?.[0];
       // Call backend API to import with source (which adds metadata)
-      const response = await fetch('http://localhost:3001/api/import-with-mapping', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          csvText,
-          mapping: source,
-          userId,
-          fileName: csvFile?.name,
-        }),
-      });
+      const response = await LocalStorage.apiFetch(
+        `${LocalStorage.getApiBase()}/import-with-mapping`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            csvText,
+            mapping: source,
+            userId,
+            fileName: csvFile?.name,
+          }),
+        }
+      );
       if (!response.ok) {
         throw new Error('Failed to import CSV with source');
       }
@@ -667,7 +673,7 @@ function AppContent() {
 
   const handleUndoImport = async (sessionId: string) => {
     try {
-      const response = await fetch('http://localhost:3001/api/undo-import', {
+      const response = await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/undo-import`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -820,7 +826,9 @@ function AppContent() {
 
   const handleDeleteSource = async (id: string) => {
     try {
-      await fetch(`http://localhost:3001/api/sources/${id}`, { method: 'DELETE' });
+      await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/sources/${id}`, {
+        method: 'DELETE',
+      });
       setSources((prev) => prev.filter((source) => source.id !== id));
     } catch (error) {
       console.error('Error deleting source:', error);
@@ -843,16 +851,19 @@ function AppContent() {
 
   const handleTransferOverride = async (transactionId: string, includeInCalculations: boolean) => {
     try {
-      const response = await fetch('http://localhost:3001/api/transfer-override', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactionId,
-          includeInCalculations,
-        }),
-      });
+      const response = await LocalStorage.apiFetch(
+        `${LocalStorage.getApiBase()}/transfer-override`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            transactionId,
+            includeInCalculations,
+          }),
+        }
+      );
 
       if (response.ok) {
         // Reload expenses to get updated transfer info

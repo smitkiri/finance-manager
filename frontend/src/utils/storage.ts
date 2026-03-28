@@ -30,9 +30,13 @@ interface StorageMetadata {
 const SOURCES_STORAGE_KEY = 'sources';
 
 export class LocalStorage {
-  private static API_BASE = 'http://localhost:3001/api';
+  private static API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
 
-  private static apiFetch(url: string, options?: RequestInit): Promise<Response> {
+  static getApiBase(): string {
+    return LocalStorage.API_BASE;
+  }
+
+  static apiFetch(url: string, options?: RequestInit): Promise<Response> {
     const headers = {
       ...(process.env.REACT_APP_API_SECRET
         ? { 'x-api-key': process.env.REACT_APP_API_SECRET }

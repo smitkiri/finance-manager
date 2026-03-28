@@ -640,7 +640,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleDeleteAll = async () => {
     setIsDeleting(true);
-    await fetch('http://localhost:3001/api/delete-all', { method: 'DELETE' });
+    await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/delete-all`, { method: 'DELETE' });
     setIsDeleting(false);
     setShowDeleteAllConfirm(false);
     onRefreshData();
@@ -649,7 +649,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleDeleteSelected = async () => {
     setIsDeleting(true);
-    await fetch('http://localhost:3001/api/delete-selected', {
+    await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/delete-selected`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

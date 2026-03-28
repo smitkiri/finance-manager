@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DateRange, DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { LocalStorage } from '../../utils/storage';
 
 type Notification = {
   message: string;
@@ -29,7 +30,7 @@ export const BackupManager: React.FC = () => {
     setIsLoading(true);
     setNotification(null);
     try {
-      let url = 'http://localhost:3001/api/backup';
+      let url = `${LocalStorage.getApiBase()}/backup`;
       if (backupOption === 'range' && dateRange?.from && dateRange?.to) {
         const params = new URLSearchParams({
           dateFrom: dateRange.from.toISOString().split('T')[0],
@@ -38,7 +39,7 @@ export const BackupManager: React.FC = () => {
         url += `?${params.toString()}`;
       }
 
-      const response = await fetch(url);
+      const response = await LocalStorage.apiFetch(url);
       if (!response.ok) {
         throw new Error('Failed to download backup.');
       }
@@ -75,7 +76,7 @@ export const BackupManager: React.FC = () => {
     formData.append('backupFile', file);
 
     try {
-      const response = await fetch('http://localhost:3001/api/restore', {
+      const response = await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/restore`, {
         method: 'POST',
         body: formData,
       });
