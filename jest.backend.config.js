@@ -2,8 +2,8 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: [
     '<rootDir>/tests/**/*.test.js',
-    '<rootDir>/helpers/**/*.test.js',
-    '<rootDir>/routes/**/*.test.js',
+    '<rootDir>/legacy/helpers/**/*.test.js',
+    '<rootDir>/legacy/routes/**/*.test.js',
   ],
   globalSetup: '<rootDir>/tests/setup/globalSetup.js',
   globalTeardown: '<rootDir>/tests/setup/globalTeardown.js',

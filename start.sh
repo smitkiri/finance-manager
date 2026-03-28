@@ -22,30 +22,30 @@ echo "✅ Docker is installed and running."
 # Install dependencies
 echo
 echo "STEP 2: Installing npm dependencies..."
-if [ -d "node_modules" ]; then
-  echo "--> 'node_modules' directory already exists, skipping 'npm install'."
+if [ -d "node_modules" ] && [ -d "frontend/node_modules" ] && [ -d "legacy/node_modules" ]; then
+  echo "--> All 'node_modules' directories already exist, skipping install."
 else
   npm install
+  cd frontend && npm install && cd ..
+  cd legacy && npm install && cd ..
   echo "✅ Dependencies installed."
 fi
 
 # Start PostgreSQL container
 echo
 echo "STEP 3: Starting PostgreSQL database with Docker..."
-# The 'docker-compose up -d' command is idempotent. It will only start the container if it's not already running.
 npm run docker:up
 echo "✅ PostgreSQL container is running or was already running."
 
 # Wait for DB to be ready
 echo
 echo "STEP 4: Waiting for the database to initialize..."
-sleep 5 # Give the container a few seconds to initialize properly
+sleep 5
 echo "✅ Database is likely ready."
 
 # Run database migrations
 echo
 echo "STEP 5: Running database migrations..."
-# The migrate.js script is idempotent and will automatically skip if the database is already migrated.
 npm run migrate
 echo "✅ Migrations completed or were already up-to-date."
 

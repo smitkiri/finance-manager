@@ -33,10 +33,10 @@ pre-push:
   parallel: true
   commands:
     typecheck:
-      run: npx tsc --noEmit
+      run: cd frontend && npx tsc --noEmit
     related-frontend-tests:
-      glob: 'src/**/*.{ts,tsx}'
-      run: npx react-scripts test --bail --watchAll=false --findRelatedTests {push_files}
+      glob: 'frontend/src/**/*.{ts,tsx}'
+      run: cd frontend && npx react-scripts test --bail --watchAll=false --findRelatedTests {push_files}
     related-backend-tests:
-      glob: '{routes,helpers,tests}/**/*.js'
+      glob: 'legacy/{routes,helpers}/**/*.js'
       run: NODE_ENV=test DB_NAME=expense_tracker_test DB_PORT=5433 npx jest --config jest.backend.config.js --bail --findRelatedTests {push_files}
