@@ -23,6 +23,17 @@ pre-commit:
       glob: '*.js'
       run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
       stage_fixed: true
+    ruff-format:
+      glob: '*.py'
+      run: cd backend && /opt/homebrew/bin/uv run ruff format {staged_files} && git add {staged_files}
+      stage_fixed: true
+    ruff-lint:
+      glob: '*.py'
+      run: cd backend && /opt/homebrew/bin/uv run ruff check --fix {staged_files} && git add {staged_files}
+      stage_fixed: true
+    ty:
+      glob: '*.py'
+      run: cd backend && /opt/homebrew/bin/uv run ty check
 
 commit-msg:
   commands:
@@ -40,3 +51,9 @@ pre-push:
     related-backend-tests:
       glob: 'legacy/{routes,helpers}/**/*.js'
       run: NODE_ENV=test DB_NAME=expense_tracker_test DB_PORT=5433 npx jest --config jest.backend.config.js --bail --findRelatedTests {push_files}
+    ruff-check:
+      glob: 'backend/**/*.py'
+      run: cd backend && /opt/homebrew/bin/uv run ruff check
+    ty-check:
+      glob: 'backend/**/*.py'
+      run: cd backend && /opt/homebrew/bin/uv run ty check
