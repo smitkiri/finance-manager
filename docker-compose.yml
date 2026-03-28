@@ -9,17 +9,27 @@ services:
       POSTGRES_PASSWORD: expense_tracker_password
       POSTGRES_DB: expense_tracker
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U expense_tracker"]
+      test: ['CMD-SHELL', 'pg_isready -U expense_tracker']
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
+  nginx:
+    image: nginx:alpine
+    container_name: expense_tracker_nginx
+    ports:
+      - '3002:80'
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
-

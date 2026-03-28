@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack expense tracking application with a React/TypeScript frontend and Express.js/PostgreSQL backend. Multi-user support, CSV import, smart transfer detection, reports, and dark mode.
+Full-stack expense tracking application with a React/TypeScript frontend, Express.js legacy backend (being migrated to FastAPI), and a new Python/FastAPI backend. Multi-user support, CSV import, smart transfer detection, reports, and dark mode.
 
 ## Repository Structure
 
@@ -22,53 +22,78 @@ finance-manager/
 │   ├── routes/        # API route handlers
 │   ├── helpers/       # Shared utilities
 │   └── package.json   # Backend dependencies
+├── backend/           # FastAPI backend (new, migrated routes)
+│   ├── app/           # Application code
+│   │   ├── main.py    # FastAPI app, middleware, router mounting
+│   │   ├── config.py  # Settings via pydantic-settings
+│   │   ├── database.py # Async SQLAlchemy engine + session
+│   │   ├── models/    # SQLAlchemy ORM models
+│   │   ├── schemas/   # Pydantic request/response schemas
+│   │   ├── routes/    # FastAPI route handlers
+│   │   └── utils/     # Shared utilities
+│   ├── tests/         # pytest + httpx async tests
+│   └── pyproject.toml # Python project config (uv)
+├── nginx.conf         # Reverse proxy config
 ├── package.json       # Root orchestrator scripts
-├── docker-compose.yml # PostgreSQL service
+├── docker-compose.yml # PostgreSQL + nginx services
 └── start.sh           # Full setup script
 ```
 
 ## Development Commands
 
 ```bash
-# Full setup (idempotent - installs deps, starts Docker, migrates, launches dev servers)
+# Full setup (idempotent - installs deps, starts Docker, migrates, launches all servers)
 ./start.sh
 
-# Install all dependencies (root + frontend + legacy)
+# Install all dependencies (root + frontend + legacy + backend)
 npm run install:all
 
 # Manual development
-npm run docker:up      # Start PostgreSQL container
+npm run docker:up      # Start PostgreSQL + nginx containers
 npm run migrate        # Run database migrations (legacy/migrate.js)
-npm run dev            # Start frontend (port 3000) + backend (port 3001) concurrently
+npm run dev            # Start frontend (3000) + Express (3001) + FastAPI (8000) concurrently
 
 # Individual servers
 npm run frontend       # Frontend only (port 3000, via cd frontend && npm start)
-npm run server         # Backend only (port 3001, via node legacy/server.js)
+npm run server         # Express backend only (port 3001, via node legacy/server.js)
+npm run fastapi        # FastAPI backend only (port 8000, via uvicorn)
 
 # Build & test
 npm run build          # Production build (cd frontend && npm run build)
 npm test               # Frontend tests (cd frontend && npm test)
-npm run test:backend   # Backend integration tests
+npm run test:backend   # Legacy backend integration tests
+npm run test:python    # Python backend tests (cd backend && uv run pytest)
 
 # Database
-npm run docker:up      # Start PostgreSQL 15 container
-npm run docker:down    # Stop PostgreSQL container
+npm run docker:up      # Start PostgreSQL 15 + nginx containers
+npm run docker:down    # Stop all Docker containers
 ```
 
 ## Architecture
 
 **Frontend** (`frontend/src/`): React 18 + TypeScript, built with Create React App (react-scripts). Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
 
-**Legacy Backend** (`legacy/server.js` + `legacy/routes/` + `legacy/helpers/`): Express.js server serving RESTful API at `/api/*`. Uses `pg` connection pool from `legacy/database.js`. `server.js` is a slim entry point (~40 lines) that sets up middleware and mounts route modules.
+**Legacy Backend** (`legacy/server.js` + `legacy/routes/` + `legacy/helpers/`): Express.js server serving RESTful API at `/api/*`. Uses `pg` connection pool from `legacy/database.js`. `server.js` is a slim entry point (~40 lines) that sets up middleware and mounts route modules. Being migrated route-by-route to FastAPI.
 
-**Database**: PostgreSQL 15 via Docker Compose. Schema in `legacy/schema.sql`, migrations tracked in `migrations` table and run via `legacy/migrate.js`.
+**FastAPI Backend** (`backend/app/`): Python 3.12+ with FastAPI, async SQLAlchemy ORM, Pydantic v2 schemas. Managed by uv. Migrated routes are served here and routed via nginx.
+
+**nginx** (`nginx.conf`): Reverse proxy on port 3002. Routes migrated endpoints to FastAPI (port 8000), everything else to Express (port 3001). Frontend points at nginx via `REACT_APP_API_BASE_URL`.
+
+**Database**: PostgreSQL 15 via Docker Compose. Schema in `legacy/schema.sql`, migrations tracked in `migrations` table and run via `legacy/migrate.js`. Both Express and FastAPI share the same database.
+
+### Traffic flow
+
+```
+Browser → Frontend (3000) → nginx (3002) → FastAPI (8000) or Express (3001) → PostgreSQL (5432)
+```
 
 ### Key data flow
 
 1. Frontend `LocalStorage` class (`frontend/src/utils/storage.ts`) wraps all API calls via configurable `REACT_APP_API_BASE_URL` (default: `http://localhost:3002/api`)
 2. Falls back to browser localStorage if backend is unavailable
-3. Backend builds dynamic SQL queries with parameterized WHERE clauses
-4. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
+3. nginx routes migrated endpoints to FastAPI, all others to Express
+4. Both backends build SQL queries against the same PostgreSQL database
+5. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
 
 ## Conventions
 
@@ -81,3 +106,5 @@ npm run docker:down    # Stop PostgreSQL container
 - Toast notifications (react-toastify) for user feedback
 - Dark mode via Tailwind `dark:` prefix with system preference detection
 - Commit messages follow Conventional Commits: `feat:`, `fix:`, `chore:`, etc.
+- Python backend uses async/await throughout, Pydantic v2 schemas with camelCase field aliases to match Express JSON responses
+- FastAPI routes mirror Express response shapes exactly for frontend compatibility

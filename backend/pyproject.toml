@@ -21,6 +21,9 @@ dev = [
     "ty>=0.0.1a11",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.ruff]
 line-length = 88
 target-version = "py314"
