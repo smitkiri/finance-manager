@@ -46,7 +46,7 @@ class AccountBalance(Base):
         String(255), ForeignKey("accounts.id", ondelete="CASCADE")
     )
     balance: Mapped[Decimal] = mapped_column(Numeric(15, 2))
-    date: Mapped[date] = mapped_column(Date)
+    date: Mapped[date] = mapped_column(Date)  # ty: ignore[invalid-type-form]
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.current_timestamp()

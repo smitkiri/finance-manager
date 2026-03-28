@@ -5,35 +5,38 @@ pre-commit:
       run: gitleaks git --staged --verbose
     prettier-ts:
       glob: '*.{ts,tsx}'
-      run: npx prettier --write {staged_files} && git add {staged_files}
+      run: npx prettier --write {staged_files}
       stage_fixed: true
     prettier-js:
       glob: '*.js'
-      run: npx prettier --write {staged_files} && git add {staged_files}
+      run: npx prettier --write {staged_files}
       stage_fixed: true
     prettier-other:
       glob: '*.{json,css,md,html,yml,yaml}'
-      run: npx prettier --write {staged_files} && git add {staged_files}
+      run: npx prettier --write {staged_files}
       stage_fixed: true
     eslint-ts:
       glob: '*.{ts,tsx}'
-      run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
+      run: npx eslint --fix --max-warnings 0 {staged_files}
       stage_fixed: true
     eslint-js:
       glob: '*.js'
-      run: npx eslint --fix --max-warnings 0 {staged_files} && git add {staged_files}
+      run: npx eslint --fix --max-warnings 0 {staged_files}
       stage_fixed: true
     ruff-format:
-      glob: '*.py'
-      run: cd backend && /opt/homebrew/bin/uv run ruff format {staged_files} && git add {staged_files}
+      glob: 'backend/**/*.py'
+      root: 'backend/'
+      run: /opt/homebrew/bin/uv run ruff format {staged_files}
       stage_fixed: true
     ruff-lint:
-      glob: '*.py'
-      run: cd backend && /opt/homebrew/bin/uv run ruff check --fix {staged_files} && git add {staged_files}
+      glob: 'backend/**/*.py'
+      root: 'backend/'
+      run: /opt/homebrew/bin/uv run ruff check --fix {staged_files}
       stage_fixed: true
     ty:
-      glob: '*.py'
-      run: cd backend && /opt/homebrew/bin/uv run ty check
+      glob: 'backend/**/*.py'
+      root: 'backend/'
+      run: /opt/homebrew/bin/uv run ty check
 
 commit-msg:
   commands:
@@ -53,7 +56,9 @@ pre-push:
       run: NODE_ENV=test DB_NAME=expense_tracker_test DB_PORT=5433 npx jest --config jest.backend.config.js --bail --findRelatedTests {push_files}
     ruff-check:
       glob: 'backend/**/*.py'
-      run: cd backend && /opt/homebrew/bin/uv run ruff check
+      root: 'backend/'
+      run: /opt/homebrew/bin/uv run ruff check
     ty-check:
       glob: 'backend/**/*.py'
-      run: cd backend && /opt/homebrew/bin/uv run ty check
+      root: 'backend/'
+      run: /opt/homebrew/bin/uv run ty check

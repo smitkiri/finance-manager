@@ -46,7 +46,9 @@ class DashboardPanel(TimestampMixin, Base):
     filter_regex: Mapped[str | None] = mapped_column(Text)
     # Active filter columns
     filter_groups: Mapped[Any] = mapped_column(JSONB, server_default="'[]'")
-    series_mode: Mapped[str | None] = mapped_column(String(20), server_default="'two_series'")
+    series_mode: Mapped[str | None] = mapped_column(
+        String(20), server_default="'two_series'"
+    )
     net_orientation: Mapped[str | None] = mapped_column(String(20))
     legend_options: Mapped[Any | None] = mapped_column(JSONB)
     panel_order: Mapped[int] = mapped_column(Integer, server_default="0")

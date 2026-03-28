@@ -23,7 +23,7 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    date: Mapped[date] = mapped_column(Date)
+    date: Mapped[date] = mapped_column(Date)  # ty: ignore[invalid-type-form]
     description: Mapped[str] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String(255))
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
@@ -48,7 +48,9 @@ class Transaction(Base):
     import_session = relationship("ImportSession", back_populates="transactions")
 
     __table_args__ = (
-        CheckConstraint("type IN ('expense', 'income')", name="transactions_type_check"),
+        CheckConstraint(
+            "type IN ('expense', 'income')", name="transactions_type_check"
+        ),
         Index("idx_transactions_date", date.desc()),
         Index("idx_transactions_user", "user_id"),
         Index("idx_transactions_category", "category"),
