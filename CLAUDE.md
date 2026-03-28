@@ -6,27 +6,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full-stack expense tracking application with a React/TypeScript frontend and Express.js/PostgreSQL backend. Multi-user support, CSV import, smart transfer detection, reports, and dark mode.
 
+## Repository Structure
+
+```
+finance-manager/
+├── frontend/          # React/TypeScript frontend (CRA)
+│   ├── src/           # Source code
+│   ├── public/        # Static assets
+│   └── package.json   # Frontend dependencies
+├── legacy/            # Express.js backend (being migrated to FastAPI)
+│   ├── server.js      # Express entry point
+│   ├── database.js    # pg connection pool
+│   ├── migrate.js     # Database migrations
+│   ├── schema.sql     # Initial schema
+│   ├── routes/        # API route handlers
+│   ├── helpers/       # Shared utilities
+│   └── package.json   # Backend dependencies
+├── package.json       # Root orchestrator scripts
+├── docker-compose.yml # PostgreSQL service
+└── start.sh           # Full setup script
+```
+
 ## Development Commands
 
 ```bash
 # Full setup (idempotent - installs deps, starts Docker, migrates, launches dev servers)
 ./start.sh
 
+# Install all dependencies (root + frontend + legacy)
+npm run install:all
+
 # Manual development
 npm run docker:up      # Start PostgreSQL container
-npm run migrate        # Run database migrations
+npm run migrate        # Run database migrations (legacy/migrate.js)
 npm run dev            # Start frontend (port 3000) + backend (port 3001) concurrently
 
 # Individual servers
-npm start              # Frontend only (port 3000)
-npm run server         # Backend only (port 3001)
+npm run frontend       # Frontend only (port 3000, via cd frontend && npm start)
+npm run server         # Backend only (port 3001, via node legacy/server.js)
 
-# Build & production
-npm run build          # Production build to build/
-npm run serve-prod     # Serve production build on port 3001
-
-# Tests
-npm test               # Jest via react-scripts (interactive watch mode)
+# Build & test
+npm run build          # Production build (cd frontend && npm run build)
+npm test               # Frontend tests (cd frontend && npm test)
+npm run test:backend   # Backend integration tests
 
 # Database
 npm run docker:up      # Start PostgreSQL 15 container
@@ -35,15 +57,15 @@ npm run docker:down    # Stop PostgreSQL container
 
 ## Architecture
 
-**Frontend** (`src/`): React 18 + TypeScript, built with Create React App (react-scripts). Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
+**Frontend** (`frontend/src/`): React 18 + TypeScript, built with Create React App (react-scripts). Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
 
-**Backend** (`server.js` + `routes/` + `helpers/`): Express.js server serving RESTful API at `/api/*`. Uses `pg` connection pool from `database.js`. `server.js` is a slim entry point (~40 lines) that sets up middleware and mounts route modules.
+**Legacy Backend** (`legacy/server.js` + `legacy/routes/` + `legacy/helpers/`): Express.js server serving RESTful API at `/api/*`. Uses `pg` connection pool from `legacy/database.js`. `server.js` is a slim entry point (~40 lines) that sets up middleware and mounts route modules.
 
-**Database**: PostgreSQL 15 via Docker Compose. Schema in `schema.sql`, migrations tracked in `migrations` table and run via `migrate.js`.
+**Database**: PostgreSQL 15 via Docker Compose. Schema in `legacy/schema.sql`, migrations tracked in `migrations` table and run via `legacy/migrate.js`.
 
 ### Key data flow
 
-1. Frontend `LocalStorage` class (`src/utils/storage.ts`) wraps all API calls to `http://localhost:3001/api/*`
+1. Frontend `LocalStorage` class (`frontend/src/utils/storage.ts`) wraps all API calls via configurable `REACT_APP_API_BASE_URL` (default: `http://localhost:3002/api`)
 2. Falls back to browser localStorage if backend is unavailable
 3. Backend builds dynamic SQL queries with parameterized WHERE clauses
 4. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
