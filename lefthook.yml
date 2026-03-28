@@ -26,17 +26,17 @@ pre-commit:
     ruff-format:
       glob: 'backend/**/*.py'
       root: 'backend/'
-      run: /opt/homebrew/bin/uv run ruff format {staged_files}
+      run: uv run ruff format {staged_files}
       stage_fixed: true
     ruff-lint:
       glob: 'backend/**/*.py'
       root: 'backend/'
-      run: /opt/homebrew/bin/uv run ruff check --fix {staged_files}
+      run: uv run ruff check --fix {staged_files}
       stage_fixed: true
     ty:
       glob: 'backend/**/*.py'
       root: 'backend/'
-      run: /opt/homebrew/bin/uv run ty check
+      run: uv run ty check
 
 commit-msg:
   commands:
@@ -57,8 +57,8 @@ pre-push:
     ruff-check:
       glob: 'backend/**/*.py'
       root: 'backend/'
-      run: /opt/homebrew/bin/uv run ruff check
+      run: uv run ruff check
     ty-check:
       glob: 'backend/**/*.py'
       root: 'backend/'
-      run: /opt/homebrew/bin/uv run ty check
+      run: uv run ty check
