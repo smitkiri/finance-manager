@@ -49,9 +49,20 @@ echo "STEP 5: Running database migrations..."
 npm run migrate
 echo "✅ Migrations completed or were already up-to-date."
 
+# Sync REACT_APP_* vars from root .env to frontend/.env
+echo
+echo "STEP 6: Syncing frontend environment..."
+if [ -f .env ]; then
+  {
+    echo "REACT_APP_API_BASE_URL=http://localhost:3001/api"
+    grep "^REACT_APP_" .env
+  } > frontend/.env
+  echo "✅ frontend/.env updated from root .env"
+fi
+
 # Start the application
 echo
-echo "STEP 6: Starting the development server..."
+echo "STEP 7: Starting the development server..."
 echo "The application will be available at http://localhost:3000"
 echo "Press Ctrl+C to stop the server."
 npm run dev

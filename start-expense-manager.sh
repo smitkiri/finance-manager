@@ -39,5 +39,14 @@ else
   rm -f "$BACKUP_FILE"
 fi
 
+# Sync REACT_APP_* vars from root .env to frontend/.env
+cd "$PROJECT_DIR"
+if [ -f .env ]; then
+  {
+    echo "REACT_APP_API_BASE_URL=http://localhost:3001/api"
+    grep "^REACT_APP_" .env
+  } > frontend/.env
+fi
+
 # Start the app
-cd "$PROJECT_DIR" && BROWSER=firefox npm run dev
+BROWSER=firefox npm run dev
