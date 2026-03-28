@@ -48,25 +48,30 @@ src/
 ## Key Improvements
 
 ### 1. **Custom Hooks**
+
 - **`useTransactions`**: Manages all transaction-related state and operations
 - **`useCategories`**: Handles category management
 - **`useFilters`**: Manages filtering logic and state
 
 ### 2. **Component Organization**
+
 - **`transactions/`**: All transaction-related components (`TransactionList`, `TransactionForm`, `Transactions`)
 - **`ui/`**: Reusable UI components (`LabelBadge`, `LabelSelector`, `StatsCard`)
 - **`modals/`**: Modal components (`CSVMappingModal`, `CSVPreviewEditor`, `Settings`)
 - **`charts/`**: Visualization components (`Chart`, `CategoryTable`)
 
 ### 3. **Services Layer**
+
 - **`csvService`**: Handles CSV import/export operations
 - Centralizes API calls and external service interactions
 
 ### 4. **Constants**
+
 - Centralized configuration values
 - Easy to maintain and update
 
 ### 5. **Index Files**
+
 - Clean imports with barrel exports
 - Easier to manage dependencies
 
@@ -82,6 +87,7 @@ src/
 ## Usage Examples
 
 ### Importing Components
+
 ```typescript
 // Before
 import { TransactionList } from './components/TransactionList';
@@ -98,6 +104,7 @@ import { TransactionList, LabelBadge, CSVMappingModal } from './components';
 ```
 
 ### Using Custom Hooks
+
 ```typescript
 import { useTransactions, useCategories, useFilters } from './hooks';
 
@@ -110,6 +117,7 @@ function MyComponent() {
 ```
 
 ### Using Services
+
 ```typescript
 import { csvService } from './services/csvService';
 
@@ -123,18 +131,22 @@ await csvService.exportData();
 ## Troubleshooting After Refactoring
 
 ### 1. **Import Path Errors**
+
 - If you see errors like `Module not found: Error: Can't resolve './components/TransactionForm'`, update your import paths to match the new structure (e.g., `./components/transactions/TransactionForm`).
 - Use relative paths that reflect the new folder locations.
 
 ### 2. **Build Errors**
+
 - After moving files, always run `npm run build` to catch any broken imports or missing files.
 - Fix any import errors as described above.
 
 ### 3. **ESLint Warnings**
+
 - You may see warnings about unused variables (e.g., `isCalendarOpen is assigned a value but never used`).
 - These are not fatal, but you can clean them up for a tidier codebase.
 
 ### 4. **Component Not Rendering**
+
 - Double-check that you are importing from the correct path and that the component is exported from its new location.
 
 ## Migration Notes
@@ -142,4 +154,4 @@ await csvService.exportData();
 - All existing functionality remains the same
 - Components are now better organized and easier to find
 - Custom hooks reduce code duplication in App.tsx
-- Services provide a clean API for external operations 
+- Services provide a clean API for external operations

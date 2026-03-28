@@ -10,6 +10,7 @@ lerna-debug.log*
 /build
 /dist
 /out
+frontend/build/
 
 # Runtime data
 pids
@@ -87,7 +88,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# public (disabled — conflicts with frontend/public)
 
 # Vuepress build output
 .vuepress/dist
