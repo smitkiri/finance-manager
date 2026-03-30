@@ -2,33 +2,60 @@ from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from testcontainers.postgres import PostgresContainer
 
 from app.database import get_db
 from app.main import app
 from app.models.base import Base
 
-# Use test database (same as docker-compose.test.yml)
-TEST_DATABASE_URL = "postgresql+asyncpg://expense_tracker:expense_tracker_password@localhost:5433/expense_tracker_test"
+# Module-level container (started once, reused across tests)
+_container = None
+_async_url = None
+_tables_created = False
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-test_session_factory = async_sessionmaker(test_engine, expire_on_commit=False)
+
+def get_test_db_url():
+    global _container, _async_url
+    if _container is None:
+        _container = PostgresContainer(
+            image="postgres:15",
+            username="test",
+            password="test",
+            dbname="test",
+        )
+        _container.start()
+        url = _container.get_connection_url()
+        _async_url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+    return _async_url
 
 
-@pytest.fixture(autouse=True)
-async def setup_db():
-    """Create tables before each test, drop after."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+def pytest_sessionfinish(session, exitstatus):
+    global _container
+    if _container is not None:
+        _container.stop()
+        _container = None
 
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession]:
-    async with test_session_factory() as session:
+    global _tables_created
+    url = get_test_db_url()
+    engine = create_async_engine(url, echo=False)
+
+    if not _tables_created:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        _tables_created = True
+
+    async with engine.connect() as connection:
+        transaction = await connection.begin()
+        session = AsyncSession(bind=connection, expire_on_commit=False)
         yield session
+        await session.close()
+        await transaction.rollback()
+
+    await engine.dispose()
 
 
 @pytest.fixture

@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -42,10 +43,14 @@ class DashboardPanel(TimestampMixin, Base):
     chart_type: Mapped[str] = mapped_column(String(10))
     # Legacy filter columns (frozen, not used by new code)
     filter_type: Mapped[str | None] = mapped_column(String(10))
-    filter_categories: Mapped[Any | None] = mapped_column(JSONB, server_default="'[]'")
+    filter_categories: Mapped[Any | None] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
     filter_regex: Mapped[str | None] = mapped_column(Text)
     # Active filter columns
-    filter_groups: Mapped[Any] = mapped_column(JSONB, server_default="'[]'")
+    filter_groups: Mapped[Any] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
     series_mode: Mapped[str | None] = mapped_column(
         String(20), server_default="'two_series'"
     )

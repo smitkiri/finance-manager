@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -29,8 +30,10 @@ class Transaction(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     type: Mapped[str] = mapped_column(String(10))
     user_id: Mapped[str] = mapped_column(String(255))
-    labels: Mapped[Any] = mapped_column(JSONB, server_default="'[]'")
-    metadata_: Mapped[Any] = mapped_column("metadata", JSONB, server_default="'{}'")
+    labels: Mapped[Any] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    metadata_: Mapped[Any] = mapped_column(
+        "metadata", JSONB, server_default=text("'{}'::jsonb")
+    )
     transfer_info: Mapped[Any | None] = mapped_column(JSONB)
     excluded_from_calculations: Mapped[bool] = mapped_column(
         Boolean, server_default="false"
