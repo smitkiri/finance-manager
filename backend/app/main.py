@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.routes.categories import router as categories_router
 from app.routes.users import router as users_router
 
 app = FastAPI(title="Finance Manager API")
@@ -24,6 +25,7 @@ async def api_key_auth(request: Request, call_next):
     return await call_next(request)
 
 
+app.include_router(categories_router)
 app.include_router(users_router)
 
 
