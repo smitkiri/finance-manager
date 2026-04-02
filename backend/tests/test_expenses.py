@@ -267,3 +267,168 @@ async def test_get_stats_response_shape(client: AsyncClient, db_session: AsyncSe
         "topIncome",
     }
     assert required_keys.issubset(set(data.keys()))
+
+
+# --- PATCH tests ---
+
+
+@pytest.mark.asyncio
+async def test_patch_expense_update_fields(
+    client: AsyncClient, db_session: AsyncSession
+):
+    await _seed(db_session)
+    response = await client.patch(
+        "/api/expenses/t1",
+        json={"description": "Updated groceries", "amount": 55.00},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["description"] == "Updated groceries"
+    assert data["amount"] == pytest.approx(55.0)
+    assert data["id"] == "t1"
+
+
+@pytest.mark.asyncio
+async def test_patch_expense_not_found(client: AsyncClient, db_session: AsyncSession):
+    response = await client.patch(
+        "/api/expenses/nonexistent",
+        json={"description": "X"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_patch_expense_no_fields(client: AsyncClient, db_session: AsyncSession):
+    await _seed(db_session)
+    response = await client.patch("/api/expenses/t1", json={})
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_patch_expense_update_labels(
+    client: AsyncClient, db_session: AsyncSession
+):
+    await _seed(db_session)
+    response = await client.patch(
+        "/api/expenses/t1",
+        json={"labels": ["groceries", "weekly"]},
+    )
+    assert response.status_code == 200
+    assert response.json()["labels"] == ["groceries", "weekly"]
+
+
+@pytest.mark.asyncio
+async def test_patch_expense_update_transfer_info(
+    client: AsyncClient, db_session: AsyncSession
+):
+    await _seed(db_session)
+    ti = {
+        "isTransfer": True,
+        "transferId": "tf1",
+        "transferType": "self",
+        "excludedFromCalculations": True,
+        "userOverride": False,
+    }
+    response = await client.patch(
+        "/api/expenses/t1",
+        json={"transferInfo": ti},
+    )
+    assert response.status_code == 200
+    assert response.json()["transferInfo"]["isTransfer"] is True
+
+
+@pytest.mark.asyncio
+async def test_patch_expense_update_excluded(
+    client: AsyncClient, db_session: AsyncSession
+):
+    await _seed(db_session)
+    response = await client.patch(
+        "/api/expenses/t1",
+        json={"excludedFromCalculations": True},
+    )
+    assert response.status_code == 200
+    assert response.json()["excludedFromCalculations"] is True
+
+
+# --- POST (bulk save) tests ---
+
+
+@pytest.mark.asyncio
+async def test_post_expenses_bulk_save(client: AsyncClient, db_session: AsyncSession):
+    payload = {
+        "expenses": [
+            {
+                "id": "new1",
+                "date": "2024-06-01",
+                "description": "Test 1",
+                "category": "Food",
+                "amount": 10.0,
+                "type": "expense",
+                "user": "alice",
+            },
+            {
+                "id": "new2",
+                "date": "2024-06-02",
+                "description": "Test 2",
+                "category": "Food",
+                "amount": 20.0,
+                "type": "expense",
+                "user": "alice",
+            },
+        ]
+    }
+    response = await client.post("/api/expenses", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_post_expenses_replaces_existing(
+    client: AsyncClient, db_session: AsyncSession
+):
+    await _seed(db_session)
+    # Seed has 3 transactions. Post replaces them all.
+    payload = {
+        "expenses": [
+            {
+                "id": "only1",
+                "date": "2024-06-01",
+                "description": "Only",
+                "category": "Food",
+                "amount": 10.0,
+                "type": "expense",
+                "user": "alice",
+            },
+        ]
+    }
+    response = await client.post("/api/expenses", json=payload)
+    assert response.status_code == 200
+
+    # Verify only 1 transaction remains
+    list_response = await client.get("/api/expenses")
+    assert len(list_response.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_post_expenses_with_metadata(
+    client: AsyncClient, db_session: AsyncSession
+):
+    payload = {
+        "expenses": [
+            {
+                "id": "m1",
+                "date": "2024-06-01",
+                "description": "Test",
+                "category": "Food",
+                "amount": 10.0,
+                "type": "expense",
+                "user": "alice",
+            },
+        ],
+        "metadata": {"lastImport": "2024-06-01"},
+    }
+    response = await client.post("/api/expenses", json=payload)
+    assert response.status_code == 200
+    assert response.json()["success"] is True

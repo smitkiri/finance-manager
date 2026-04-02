@@ -1,10 +1,20 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import case, func, select, text
+from datetime import date as date_type
+from decimal import Decimal
+
+from fastapi import APIRouter, Body, Depends, Query
+from fastapi.responses import JSONResponse
+from sqlalchemy import case, delete, func, select, text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.metadata import Metadata
 from app.models.transaction import Transaction
-from app.schemas.transaction import TransactionOut
+from app.schemas.transaction import (
+    ExpenseBulkSaveRequest,
+    TransactionOut,
+    TransactionUpdate,
+)
 from app.utils.query_builder import build_expenses_filter, build_stats_filter
 
 router = APIRouter(prefix="/api", tags=["expenses"])
@@ -273,3 +283,94 @@ async def get_stats(
         "topExpenses": top_expenses,
         "topIncome": top_income,
     }
+
+
+@router.patch("/expenses/{expense_id}")
+async def update_expense(
+    expense_id: str,
+    body: TransactionUpdate = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Transaction).where(Transaction.id == expense_id))
+    txn = result.scalar_one_or_none()
+    if not txn:
+        return JSONResponse(status_code=404, content={"error": "Transaction not found"})
+
+    updated = False
+    if body.date is not None:
+        txn.date = body.date
+        updated = True
+    if body.description is not None:
+        txn.description = body.description
+        updated = True
+    if body.category is not None:
+        txn.category = body.category
+        updated = True
+    if body.amount is not None:
+        txn.amount = Decimal(str(body.amount))
+        updated = True
+    if body.type is not None:
+        txn.type = body.type
+        updated = True
+    if body.user is not None:
+        txn.user_id = body.user
+        updated = True
+    if body.labels is not None:
+        txn.labels = body.labels
+        updated = True
+    if body.excludedFromCalculations is not None:
+        txn.excluded_from_calculations = body.excludedFromCalculations
+        updated = True
+    if body.transferInfo is not None:
+        txn.transfer_info = body.transferInfo
+        updated = True
+
+    if not updated:
+        return JSONResponse(status_code=400, content={"error": "No fields to update"})
+
+    await db.commit()
+    await db.refresh(txn)
+
+    return TransactionOut.from_orm_model(txn).model_dump()
+
+
+@router.post("/expenses")
+async def bulk_save_expenses(
+    body: ExpenseBulkSaveRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    # Delete all existing transactions
+    await db.execute(delete(Transaction))
+
+    # Insert new transactions
+    for exp in body.expenses:
+        txn = Transaction(
+            id=exp.id,
+            date=date_type.fromisoformat(str(exp.date)[:10]),
+            description=exp.description,
+            category=exp.category or "Uncategorized",
+            amount=exp.amount,
+            type=exp.type,
+            user_id=exp.user,
+            labels=exp.labels or [],
+            metadata_=exp.metadata or {},
+            transfer_info=exp.transferInfo,
+            excluded_from_calculations=exp.excludedFromCalculations or False,
+        )
+        db.add(txn)
+
+    # Store metadata if provided
+    if body.metadata:
+        stmt = (
+            insert(Metadata)
+            .values(key="storage_metadata", value=body.metadata)
+            .on_conflict_do_update(
+                index_elements=[Metadata.key],
+                set_={"value": body.metadata},
+            )
+        )
+        await db.execute(stmt)
+
+    await db.commit()
+
+    return {"success": True, "count": len(body.expenses)}
