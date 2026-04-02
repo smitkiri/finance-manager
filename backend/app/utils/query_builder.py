@@ -173,3 +173,110 @@ def build_stats_filter(
     )
 
     return filters
+
+
+def build_filter_groups_clause(filter_groups: list[dict] | None):
+    """Build SQLAlchemy filter clause from filter groups.
+
+    Groups are OR'd together; conditions within a group are AND'd.
+    Returns a single SQLAlchemy clause element, or None if no filters.
+
+    Mirrors buildFilterGroupsWhereClause() in legacy/helpers/queryBuilders.js.
+    """
+    if not filter_groups:
+        return None
+
+    group_clauses = []
+
+    for group in filter_groups:
+        conditions = group.get("conditions", [])
+        if not conditions:
+            continue
+
+        cond_clauses = []
+        for cond in conditions:
+            field = cond.get("field")
+            operator = cond.get("operator")
+            value = cond.get("value")
+
+            if field == "type" and operator == "is" and value:
+                cond_clauses.append(Transaction.type == value)
+
+            elif field == "category" and isinstance(value, list) and len(value) > 0:
+                if operator == "is":
+                    cond_clauses.append(Transaction.category.in_(value))
+                else:  # "not"
+                    cond_clauses.append(Transaction.category.not_in(value))
+
+            elif field == "labels" and isinstance(value, list) and len(value) > 0:
+                label_subq = (
+                    select(text("1"))
+                    .select_from(
+                        func.jsonb_array_elements_text(
+                            func.coalesce(Transaction.labels, cast("[]", JSONB))
+                        ).alias("lbl")
+                    )
+                    .where(cast(text("lbl"), Text).in_(value))
+                    .correlate(Transaction)
+                )
+                if operator == "excludes":
+                    cond_clauses.append(~exists(label_subq))
+                else:  # "includes"
+                    cond_clauses.append(exists(label_subq))
+
+            elif field == "description" and operator == "matches" and value:
+                cond_clauses.append(Transaction.description.regexp_match(value, "i"))
+
+            elif field == "amount" and value is not None and value != "":
+                if operator == "gte":
+                    cond_clauses.append(Transaction.amount >= float(value))
+                else:  # "lte"
+                    cond_clauses.append(Transaction.amount <= float(value))
+
+        if cond_clauses:
+            group_clauses.append(and_(*cond_clauses))
+
+    if not group_clauses:
+        return None
+
+    if len(group_clauses) == 1:
+        return group_clauses[0]
+    return or_(*group_clauses)
+
+
+def build_month_series(date_from: str, date_to: str) -> dict[str, dict]:
+    """Generate a month map pre-populated with every month in [date_from, date_to].
+
+    Keys are "YYYY-MM", values are {"month": "Mon YYYY"}.
+    Mirrors buildMonthSeries() in legacy/helpers/queryBuilders.js.
+    """
+    month_names = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ]
+
+    start = date_type.fromisoformat(date_from[:10]).replace(day=1)
+    end = date_type.fromisoformat(date_to[:10]).replace(day=1)
+
+    result = {}
+    current = start
+    while current <= end:
+        key = current.strftime("%Y-%m")
+        display = f"{month_names[current.month - 1]} {current.year}"
+        result[key] = {"month": display}
+        if current.month == 12:
+            current = current.replace(year=current.year + 1, month=1)
+        else:
+            current = current.replace(month=current.month + 1)
+
+    return result

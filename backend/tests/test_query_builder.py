@@ -6,7 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import Transaction
-from app.utils.query_builder import build_expenses_filter, build_stats_filter
+from app.utils.query_builder import (
+    build_expenses_filter,
+    build_filter_groups_clause,
+    build_month_series,
+    build_stats_filter,
+)
 
 
 async def _seed_transactions(db: AsyncSession):
@@ -357,3 +362,167 @@ async def test_stats_filter_user_type_transfer_with_userid(db_session: AsyncSess
     ids = {r.id for r in rows}
     # s6 is user-type transfer with userId specified — should be included
     assert "s6" in ids
+
+
+# --- Filter groups tests ---
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_type_condition(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {"conditions": [{"field": "type", "operator": "is", "value": "income"}]}
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert len(rows) == 1
+    assert rows[0].id == "t2"
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_category_is(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {"conditions": [{"field": "category", "operator": "is", "value": ["Food"]}]}
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert len(rows) == 2
+    assert {r.id for r in rows} == {"t1", "t4"}
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_category_not(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {"conditions": [{"field": "category", "operator": "not", "value": ["Food"]}]}
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert {r.id for r in rows} == {"t2", "t3"}
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_labels_includes(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {
+            "conditions": [
+                {
+                    "field": "labels",
+                    "operator": "includes",
+                    "value": ["essential"],
+                }
+            ]
+        }
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert len(rows) == 1
+    assert rows[0].id == "t1"
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_description_matches(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {
+            "conditions": [
+                {
+                    "field": "description",
+                    "operator": "matches",
+                    "value": "(?i)coffee",
+                }
+            ]
+        }
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert len(rows) == 1
+    assert rows[0].id == "t4"
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_amount_gte_lte(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {
+            "conditions": [
+                {"field": "amount", "operator": "gte", "value": "10"},
+                {"field": "amount", "operator": "lte", "value": "100"},
+            ]
+        }
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert len(rows) == 1
+    assert rows[0].id == "t1"
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_or_logic(db_session: AsyncSession):
+    """Multiple groups are OR'd together."""
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {"conditions": [{"field": "type", "operator": "is", "value": "income"}]},
+        {
+            "conditions": [
+                {"field": "category", "operator": "is", "value": ["Transfer"]}
+            ]
+        },
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert {r.id for r in rows} == {"t2", "t3"}
+
+
+@pytest.mark.asyncio
+async def test_filter_groups_empty_returns_none(db_session: AsyncSession):
+    clause = build_filter_groups_clause([])
+    assert clause is None
+    clause = build_filter_groups_clause(None)
+    assert clause is None
+
+
+def test_build_month_series():
+    result = build_month_series("2024-01-15", "2024-03-20")
+    assert "2024-01" in result
+    assert "2024-02" in result
+    assert "2024-03" in result
+    assert len(result) == 3
+    assert result["2024-01"]["month"] == "Jan 2024"
+    assert result["2024-03"]["month"] == "Mar 2024"
+
+
+def test_build_month_series_single_month():
+    result = build_month_series("2024-06-01", "2024-06-30")
+    assert len(result) == 1
+    assert result["2024-06"]["month"] == "Jun 2024"
