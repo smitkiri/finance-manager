@@ -6,7 +6,9 @@ from app.config import settings
 from app.routes.categories import router as categories_router
 from app.routes.date_range import router as date_range_router
 from app.routes.expenses import router as expenses_router
+from app.routes.reports import router as reports_router
 from app.routes.sources import router as sources_router
+from app.routes.transfers import router as transfers_router
 from app.routes.users import router as users_router
 
 app = FastAPI(title="Finance Manager API")
@@ -31,7 +33,9 @@ async def api_key_auth(request: Request, call_next):
 app.include_router(categories_router)
 app.include_router(date_range_router)
 app.include_router(expenses_router)
+app.include_router(reports_router)
 app.include_router(sources_router)
+app.include_router(transfers_router)
 app.include_router(users_router)
 
 
