@@ -111,3 +111,95 @@ async def test_delete_account(client: AsyncClient, db_session: AsyncSession):
 async def test_delete_account_not_found(client: AsyncClient):
     response = await client.delete("/api/accounts/nonexistent")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_add_balance(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/accounts/a1/balances",
+        json={
+            "id": "b1",
+            "balance": 1500.50,
+            "date": "2024-06-01",
+            "note": "June balance",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == "b1"
+    assert data["accountId"] == "a1"
+    assert data["balance"] == 1500.50
+    assert data["date"] == "2024-06-01"
+    assert data["note"] == "June balance"
+
+
+@pytest.mark.asyncio
+async def test_add_balance_account_not_found(client: AsyncClient):
+    response = await client.post(
+        "/api/accounts/nonexistent/balances",
+        json={"id": "b1", "balance": 100, "date": "2024-06-01"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_balances(
+    client: AsyncClient, db_session: AsyncSession
+):
+    from datetime import date
+
+    from app.models.account import AccountBalance
+
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    await db_session.flush()
+    db_session.add(
+        AccountBalance(id="b1", account_id="a1", balance=1000, date=date(2024, 5, 1))
+    )
+    db_session.add(
+        AccountBalance(id="b2", account_id="a1", balance=1500, date=date(2024, 6, 1))
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/accounts/a1/balances")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    # Ordered by date DESC
+    assert data[0]["balance"] == 1500.0
+    assert data[1]["balance"] == 1000.0
+
+
+@pytest.mark.asyncio
+async def test_delete_balance(
+    client: AsyncClient, db_session: AsyncSession
+):
+    from datetime import date
+
+    from app.models.account import AccountBalance
+
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    await db_session.flush()
+    db_session.add(
+        AccountBalance(id="b1", account_id="a1", balance=1000, date=date(2024, 5, 1))
+    )
+    await db_session.flush()
+
+    response = await client.delete("/api/accounts/a1/balances/b1")
+    assert response.status_code == 200
+    assert response.json() == {"success": True}
+
+
+@pytest.mark.asyncio
+async def test_delete_balance_not_found(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    await db_session.flush()
+
+    response = await client.delete("/api/accounts/a1/balances/nonexistent")
+    assert response.status_code == 404
