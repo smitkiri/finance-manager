@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.routes.backup import router as backup_router
 from app.routes.categories import router as categories_router
+from app.routes.dashboards import router as dashboards_router
 from app.routes.data import router as data_router
 from app.routes.date_range import router as date_range_router
 from app.routes.expenses import router as expenses_router
@@ -47,6 +48,7 @@ app.include_router(data_router)
 app.include_router(backup_router)
 app.include_router(transfers_router)
 app.include_router(users_router)
+app.include_router(dashboards_router)
 
 
 @app.get("/api/health")
