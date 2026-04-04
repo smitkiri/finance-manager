@@ -189,3 +189,111 @@ async def test_delete_balance_not_found(client: AsyncClient, db_session: AsyncSe
 
     response = await client.delete("/api/accounts/a1/balances/nonexistent")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_net_worth_summary_empty(client: AsyncClient):
+    response = await client.get("/api/net-worth/summary")
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"totalAssets": 0, "totalLiabilities": 0, "netWorth": 0}
+
+
+@pytest.mark.asyncio
+async def test_net_worth_summary(client: AsyncClient, db_session: AsyncSession):
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(Account(id="a2", user_id="u1", name="Credit Card", type="liability"))
+    await db_session.flush()
+    db_session.add(
+        AccountBalance(id="b1", account_id="a1", balance=5000, date=date(2024, 6, 1))
+    )
+    db_session.add(
+        AccountBalance(id="b2", account_id="a2", balance=1200, date=date(2024, 6, 1))
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/net-worth/summary")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["totalAssets"] == 5000.0
+    assert data["totalLiabilities"] == 1200.0
+    assert data["netWorth"] == 3800.0
+
+
+@pytest.mark.asyncio
+async def test_net_worth_summary_filtered_by_user(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(Account(id="a2", user_id="u2", name="Savings", type="asset"))
+    await db_session.flush()
+    db_session.add(
+        AccountBalance(id="b1", account_id="a1", balance=5000, date=date(2024, 6, 1))
+    )
+    db_session.add(
+        AccountBalance(id="b2", account_id="a2", balance=3000, date=date(2024, 6, 1))
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/net-worth/summary", params={"userId": "u1"})
+    data = response.json()
+    assert data["totalAssets"] == 5000.0
+    assert data["netWorth"] == 5000.0
+
+
+@pytest.mark.asyncio
+async def test_net_worth_summary_uses_latest_balance(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Summary should use the most recent balance per account, not sum all balances."""
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    await db_session.flush()
+    db_session.add(
+        AccountBalance(id="b1", account_id="a1", balance=1000, date=date(2024, 5, 1))
+    )
+    db_session.add(
+        AccountBalance(id="b2", account_id="a1", balance=2000, date=date(2024, 6, 1))
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/net-worth/summary")
+    data = response.json()
+    assert data["totalAssets"] == 2000.0
+
+
+@pytest.mark.asyncio
+async def test_net_worth_history(client: AsyncClient, db_session: AsyncSession):
+    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(Account(id="a2", user_id="u1", name="Loan", type="liability"))
+    await db_session.flush()
+    db_session.add(
+        AccountBalance(id="b1", account_id="a1", balance=3000, date=date(2024, 5, 1))
+    )
+    db_session.add(
+        AccountBalance(id="b2", account_id="a1", balance=5000, date=date(2024, 6, 1))
+    )
+    db_session.add(
+        AccountBalance(id="b3", account_id="a2", balance=1000, date=date(2024, 6, 1))
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/net-worth/history")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 2
+    # First date: only asset has data
+    assert data[0]["date"] == "2024-05-01"
+    assert data[0]["totalAssets"] == 3000.0
+    assert data[0]["totalLiabilities"] == 0
+    # Second date: both have data
+    assert data[1]["date"] == "2024-06-01"
+    assert data[1]["totalAssets"] == 5000.0
+    assert data[1]["totalLiabilities"] == 1000.0
+    assert data[1]["netWorth"] == 4000.0
+
+
+@pytest.mark.asyncio
+async def test_net_worth_history_empty(client: AsyncClient):
+    response = await client.get("/api/net-worth/history")
+    assert response.status_code == 200
+    assert response.json() == []

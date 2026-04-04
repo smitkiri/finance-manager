@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -13,6 +13,8 @@ from app.schemas.net_worth import (
     AccountOut,
     AccountUpdateRequest,
     BalanceCreateRequest,
+    NetWorthHistoryPoint,
+    NetWorthSummary,
 )
 
 router = APIRouter(prefix="/api", tags=["net_worth"])
@@ -154,3 +156,107 @@ async def delete_balance(
     )
     await db.commit()
     return {"success": True}
+
+
+@router.get("/net-worth/summary")
+async def net_worth_summary(
+    userId: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(Account)
+    if userId:
+        stmt = stmt.where(Account.user_id == userId)
+    result = await db.execute(stmt)
+    accounts = result.scalars().all()
+
+    total_assets = 0.0
+    total_liabilities = 0.0
+
+    for account in accounts:
+        bal_stmt = (
+            select(AccountBalance.balance)
+            .where(AccountBalance.account_id == account.id)
+            .order_by(
+                AccountBalance.date.desc(),
+                AccountBalance.created_at.desc(),
+            )
+            .limit(1)
+        )
+        bal_result = await db.execute(bal_stmt)
+        row = bal_result.scalar_one_or_none()
+        bal = float(row) if row is not None else 0.0
+
+        if account.type == "asset":
+            total_assets += bal
+        else:
+            total_liabilities += bal
+
+    return NetWorthSummary(
+        totalAssets=total_assets,
+        totalLiabilities=total_liabilities,
+        netWorth=total_assets - total_liabilities,
+    )
+
+
+@router.get("/net-worth/history")
+async def net_worth_history(
+    userId: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    account_filter = "WHERE 1=1"
+    params: dict[str, str] = {}
+    if userId:
+        account_filter += " AND a.user_id = :user_id"
+        params["user_id"] = userId
+
+    sql = text(f"""
+        WITH relevant_accounts AS (
+            SELECT a.id, a.type
+            FROM accounts a
+            {account_filter}
+        ),
+        all_dates AS (
+            SELECT DISTINCT ab.date
+            FROM account_balances ab
+            JOIN relevant_accounts ra ON ra.id = ab.account_id
+            ORDER BY ab.date
+        ),
+        account_date_balances AS (
+            SELECT
+                d.date,
+                ra.id AS account_id,
+                ra.type,
+                (SELECT ab2.balance FROM account_balances ab2
+                 WHERE ab2.account_id = ra.id AND ab2.date <= d.date
+                 ORDER BY ab2.date DESC, ab2.created_at DESC LIMIT 1
+                ) AS balance
+            FROM all_dates d
+            CROSS JOIN relevant_accounts ra
+        )
+        SELECT
+            date,
+            COALESCE(SUM(
+                CASE WHEN type = 'asset' AND balance IS NOT NULL
+                THEN balance ELSE 0 END
+            ), 0) AS total_assets,
+            COALESCE(SUM(
+                CASE WHEN type = 'liability' AND balance IS NOT NULL
+                THEN balance ELSE 0 END
+            ), 0) AS total_liabilities
+        FROM account_date_balances
+        GROUP BY date
+        ORDER BY date
+    """)
+
+    result = await db.execute(sql, params)
+    rows = result.all()
+
+    return [
+        NetWorthHistoryPoint(
+            date=str(row.date),
+            totalAssets=float(row.total_assets),
+            totalLiabilities=float(row.total_liabilities),
+            netWorth=float(row.total_assets) - float(row.total_liabilities),
+        )
+        for row in rows
+    ]
