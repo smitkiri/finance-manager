@@ -1,8 +1,10 @@
+from datetime import date
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.account import Account
+from app.models.account import Account, AccountBalance
 
 
 @pytest.mark.asyncio
@@ -114,9 +116,7 @@ async def test_delete_account_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_add_balance(
-    client: AsyncClient, db_session: AsyncSession
-):
+async def test_add_balance(client: AsyncClient, db_session: AsyncSession):
     db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
     await db_session.flush()
 
@@ -148,13 +148,7 @@ async def test_add_balance_account_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_balances(
-    client: AsyncClient, db_session: AsyncSession
-):
-    from datetime import date
-
-    from app.models.account import AccountBalance
-
+async def test_get_balances(client: AsyncClient, db_session: AsyncSession):
     db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
     await db_session.flush()
     db_session.add(
@@ -175,13 +169,7 @@ async def test_get_balances(
 
 
 @pytest.mark.asyncio
-async def test_delete_balance(
-    client: AsyncClient, db_session: AsyncSession
-):
-    from datetime import date
-
-    from app.models.account import AccountBalance
-
+async def test_delete_balance(client: AsyncClient, db_session: AsyncSession):
     db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
     await db_session.flush()
     db_session.add(
@@ -195,9 +183,7 @@ async def test_delete_balance(
 
 
 @pytest.mark.asyncio
-async def test_delete_balance_not_found(
-    client: AsyncClient, db_session: AsyncSession
-):
+async def test_delete_balance_not_found(client: AsyncClient, db_session: AsyncSession):
     db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
     await db_session.flush()
 

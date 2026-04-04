@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
@@ -100,13 +100,11 @@ async def add_balance(
     if not result.scalar_one_or_none():
         return JSONResponse(status_code=404, content={"error": "Account not found"})
 
-    from datetime import date as date_type
-
     balance = AccountBalance(
         id=body.id,
         account_id=account_id,
         balance=body.balance,
-        date=date_type.fromisoformat(body.date),
+        date=date.fromisoformat(body.date),
         note=body.note,
     )
     db.add(balance)
