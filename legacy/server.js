@@ -1,9 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const db = require('./database');
-const { runMigration } = require('./migrate');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,37 +17,22 @@ app.use('/api', (req, res, next) => {
   res.status(401).json({ error: 'Unauthorized' });
 });
 
-// Initialize database and run migration on startup
+// Wait for database before starting
 (async () => {
   try {
     await db.waitForDatabase();
-    await runMigration(false);
-    console.log('Database initialized and migration completed');
+    console.log('Database connection established');
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    console.error('Failed to connect to database:', error);
     process.exit(1);
   }
 })();
 
-// Mount route modules
-app.use('/api', require('./routes/expenses'));
-app.use('/api', require('./routes/categories'));
-app.use('/api', require('./routes/users'));
-app.use('/api', require('./routes/sources'));
-app.use('/api', require('./routes/reports'));
-app.use('/api', require('./routes/import'));
-app.use('/api', require('./routes/dateRange'));
-app.use('/api', require('./routes/transfers'));
-app.use('/api', require('./routes/backup'));
-app.use('/api', require('./routes/data'));
-app.use('/api', require('./routes/importSessions'));
-app.use('/api', require('./routes/netWorth'));
+// Mount Teller routes (only remaining Express route)
 app.use('/api', require('./routes/teller'));
-app.use('/api', require('./routes/dashboards'));
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Artifacts directory: ${path.resolve('.artifacts')}`);
+  console.log(`Express server running on http://localhost:${PORT} (Teller only)`);
 
   // Teller integration status
   const tellerVars = {
