@@ -6,12 +6,12 @@ up:
 	docker-compose up -d
 	@echo "Waiting for database to be ready..."
 	@until docker exec expense_tracker_db pg_isready -U expense_tracker > /dev/null 2>&1; do sleep 1; done
-	@echo "Running database migrations..."
-	npm run migrate
+	@echo "Running database migrations (Alembic)..."
+	cd backend && uv run alembic upgrade head
 	@echo ""
 	@echo "Starting dev servers..."
 	@echo "  Frontend:  http://localhost:3000"
-	@echo "  Express:   http://localhost:3001"
+	@echo "  Express:   http://localhost:3001 (Teller only)"
 	@echo "  FastAPI:   http://localhost:8000"
 	@echo "  nginx:     http://localhost:3002 (proxy)"
 	@echo ""
