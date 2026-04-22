@@ -10,6 +10,7 @@ from app.utils.query_builder import (
     build_expenses_filter,
     build_filter_groups_clause,
     build_month_series,
+    build_panel_data_query,
     build_stats_filter,
 )
 
@@ -526,3 +527,50 @@ def test_build_month_series_single_month():
     result = build_month_series("2024-06-01", "2024-06-30")
     assert len(result) == 1
     assert result["2024-06"]["month"] == "Jun 2024"
+
+
+# --- Panel data query tests ---
+
+
+class TestBuildPanelDataQuery:
+    def test_returns_query_and_filters(self):
+        stmt, filters = build_panel_data_query(
+            date_from="2024-01-01",
+            date_to="2024-06-30",
+            user_id=None,
+            filter_groups=[],
+        )
+        assert stmt is not None
+        assert isinstance(filters, list)
+
+    def test_with_filter_groups(self):
+        groups = [
+            {"conditions": [{"field": "type", "operator": "is", "value": "expense"}]}
+        ]
+        stmt, filters = build_panel_data_query(
+            date_from="2024-01-01",
+            date_to="2024-06-30",
+            user_id=None,
+            filter_groups=groups,
+        )
+        assert stmt is not None
+        assert len(filters) > 0
+
+    @pytest.mark.asyncio
+    async def test_executes_and_returns_rows(self, db_session: AsyncSession):
+        await _seed_transactions(db_session)
+        stmt, _ = build_panel_data_query(
+            date_from="2024-01-01",
+            date_to="2024-03-31",
+            user_id=None,
+            filter_groups=[],
+        )
+        result = await db_session.execute(stmt)
+        rows = result.all()
+        assert len(rows) > 0
+        # Each row should have sort_month, month, type, total
+        row = rows[0]
+        assert hasattr(row, "sort_month")
+        assert hasattr(row, "month")
+        assert hasattr(row, "type")
+        assert hasattr(row, "total")

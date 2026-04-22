@@ -8,14 +8,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.dashboard import Dashboard, DashboardPanel
+from app.models.transaction import Transaction
 from app.schemas.dashboard import (
+    ChartPreviewRequest,
     DashboardCreateRequest,
+    DashboardDataRequest,
     DashboardOut,
     DashboardUpdateRequest,
     PanelCreateRequest,
     PanelOrderRequest,
     PanelOut,
+    PanelPreviewRequest,
     PanelUpdateRequest,
+)
+from app.utils.query_builder import (
+    build_filter_groups_clause,
+    build_month_series,
+    build_panel_data_query,
+    build_stats_filter,
 )
 
 router = APIRouter(prefix="/api", tags=["dashboards"])
@@ -236,3 +246,131 @@ async def reorder_panels(
         )
     await db.commit()
     return {"success": True}
+
+
+@router.post("/dashboard-panels/preview")
+async def panel_preview(
+    body: PanelPreviewRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    filters = build_stats_filter(body.dateFrom, body.dateTo, body.userId)
+
+    fg_clause = build_filter_groups_clause(body.filterGroups)
+    if fg_clause is not None:
+        filters.append(fg_clause)
+
+    count_stmt = select(func.count()).select_from(Transaction).where(*filters)
+    count_result = await db.execute(count_stmt)
+    total = count_result.scalar()
+
+    data_stmt = (
+        select(
+            Transaction.id,
+            Transaction.date,
+            Transaction.description,
+            Transaction.category,
+            Transaction.amount,
+            Transaction.type,
+            Transaction.user_id,
+        )
+        .where(*filters)
+        .order_by(Transaction.date.desc())
+        .limit(body.limit)
+        .offset(body.offset)
+    )
+    data_result = await db.execute(data_stmt)
+    transactions = [
+        {
+            "id": row.id,
+            "date": str(row.date),
+            "description": row.description,
+            "category": row.category,
+            "amount": float(row.amount),
+            "type": row.type,
+            "user": row.user_id,
+        }
+        for row in data_result.all()
+    ]
+
+    return {"transactions": transactions, "total": total}
+
+
+@router.post("/dashboard-panels/chart-preview")
+async def chart_preview(
+    body: ChartPreviewRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    stmt, _ = build_panel_data_query(
+        date_from=body.dateFrom,
+        date_to=body.dateTo,
+        user_id=body.userId,
+        filter_groups=body.filterGroups,
+    )
+
+    result = await db.execute(stmt)
+    month_map = build_month_series(body.dateFrom or "", body.dateTo or "")
+
+    rows = [
+        {
+            "sortMonth": row.sort_month,
+            "month": row.month,
+            "type": row.type,
+            "total": float(row.total),
+        }
+        for row in result.all()
+    ]
+
+    return {"rows": rows, "monthMap": month_map}
+
+
+@router.post("/dashboards/{dashboard_id}/data")
+async def dashboard_data(
+    dashboard_id: str,
+    body: DashboardDataRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    panel_result = await db.execute(
+        select(DashboardPanel)
+        .where(DashboardPanel.dashboard_id == dashboard_id)
+        .order_by(DashboardPanel.panel_order.asc())
+    )
+    panels = [PanelOut.from_orm_model(p) for p in panel_result.scalars().all()]
+
+    panel_data_results = []
+    for panel in panels:
+        stmt, _ = build_panel_data_query(
+            date_from=body.dateRangeStart,
+            date_to=body.dateRangeEnd,
+            user_id=body.userId,
+            filter_groups=panel.filterGroups,
+        )
+
+        result = await db.execute(stmt)
+        month_map = build_month_series(
+            body.dateRangeStart or "", body.dateRangeEnd or ""
+        )
+
+        for row in result.all():
+            key = row.sort_month
+            if key not in month_map:
+                month_map[key] = {"month": row.month}
+            total = float(row.total)
+            if panel.seriesMode == "net_amount":
+                sign = 1 if row.type == "income" else -1
+                month_map[key]["net"] = month_map[key].get("net", 0) + sign * total
+            else:
+                if row.type == "income":
+                    month_map[key]["income"] = total
+                else:
+                    month_map[key]["expenses"] = total
+
+        sorted_data = [v for _, v in sorted(month_map.items(), key=lambda x: x[0])]
+
+        panel_data_results.append(
+            {
+                "panelId": panel.id,
+                "data": sorted_data,
+            }
+        )
+
+    return {"panels": panel_data_results}

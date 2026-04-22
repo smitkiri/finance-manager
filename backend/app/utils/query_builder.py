@@ -13,6 +13,47 @@ from sqlalchemy.dialects.postgresql import JSONB
 from app.models.transaction import Transaction
 
 
+def build_panel_data_query(
+    date_from: str | None,
+    date_to: str | None,
+    user_id: str | None,
+    filter_groups: list[dict] | None,
+):
+    """Build a monthly aggregate query for a dashboard panel.
+
+    Combines build_stats_filter + build_filter_groups_clause into a query
+    that groups transactions by month and type, summing amounts.
+
+    Returns (statement, filters) where statement is a select() for
+    sort_month, month display name, type, and total amount.
+    """
+    filters = build_stats_filter(date_from, date_to, user_id)
+
+    fg_clause = build_filter_groups_clause(filter_groups)
+    if fg_clause is not None:
+        filters.append(fg_clause)
+
+    stmt = (
+        select(
+            func.to_char(func.date_trunc("month", Transaction.date), "YYYY-MM").label(
+                "sort_month"
+            ),
+            func.to_char(Transaction.date, "Mon YYYY").label("month"),
+            Transaction.type,
+            func.sum(Transaction.amount).label("total"),
+        )
+        .where(*filters)
+        .group_by(
+            text("sort_month"),
+            text("month"),
+            Transaction.type,
+        )
+        .order_by(text("sort_month"))
+    )
+
+    return stmt, filters
+
+
 def _parse_date(d: str) -> date_type:
     return date_type.fromisoformat(str(d)[:10])
 

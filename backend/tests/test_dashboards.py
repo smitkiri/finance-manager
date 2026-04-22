@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dashboard import Dashboard, DashboardPanel
+from app.models.transaction import Transaction
 
 
 @pytest.mark.asyncio
@@ -415,3 +416,237 @@ async def test_reorder_panels(client: AsyncClient, db_session: AsyncSession):
     assert data[0]["panelOrder"] == 0
     assert data[1]["id"] == "p1"
     assert data[1]["panelOrder"] == 1
+
+
+@pytest.mark.asyncio
+async def test_panel_preview(client: AsyncClient, db_session: AsyncSession):
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date(2024, 3, 15),
+            description="Groceries",
+            category="Food",
+            amount=50.00,
+            type="expense",
+            user_id="u1",
+        )
+    )
+    db_session.add(
+        Transaction(
+            id="t2",
+            date=date(2024, 3, 20),
+            description="Salary",
+            category="Income",
+            amount=3000.00,
+            type="income",
+            user_id="u1",
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/dashboard-panels/preview",
+        json={
+            "filterGroups": [
+                {
+                    "conditions": [
+                        {"field": "type", "operator": "is", "value": "expense"}
+                    ]
+                }
+            ],
+            "dateFrom": "2024-01-01",
+            "dateTo": "2024-12-31",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert len(data["transactions"]) == 1
+    assert data["transactions"][0]["description"] == "Groceries"
+
+
+@pytest.mark.asyncio
+async def test_panel_preview_pagination(client: AsyncClient, db_session: AsyncSession):
+    for i in range(5):
+        db_session.add(
+            Transaction(
+                id=f"t{i}",
+                date=date(2024, 3, 15 + i),
+                description=f"Item {i}",
+                category="Food",
+                amount=10.00,
+                type="expense",
+                user_id="u1",
+            )
+        )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/dashboard-panels/preview",
+        json={
+            "filterGroups": [],
+            "dateFrom": "2024-01-01",
+            "dateTo": "2024-12-31",
+            "limit": 2,
+            "offset": 0,
+        },
+    )
+    data = response.json()
+    assert data["total"] == 5
+    assert len(data["transactions"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_chart_preview(client: AsyncClient, db_session: AsyncSession):
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date(2024, 3, 15),
+            description="Groceries",
+            category="Food",
+            amount=50.00,
+            type="expense",
+            user_id="u1",
+        )
+    )
+    db_session.add(
+        Transaction(
+            id="t2",
+            date=date(2024, 4, 10),
+            description="Salary",
+            category="Income",
+            amount=3000.00,
+            type="income",
+            user_id="u1",
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/dashboard-panels/chart-preview",
+        json={
+            "filterGroups": [],
+            "dateFrom": "2024-03-01",
+            "dateTo": "2024-04-30",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "rows" in data
+    assert "monthMap" in data
+    assert len(data["rows"]) >= 2
+
+
+@pytest.mark.asyncio
+async def test_dashboard_data(client: AsyncClient, db_session: AsyncSession):
+    db_session.add(
+        Dashboard(
+            id="d1",
+            name="Test",
+            is_default=False,
+            date_range_start=date(2024, 1, 1),
+            date_range_end=date(2024, 12, 31),
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        DashboardPanel(
+            id="p1",
+            dashboard_id="d1",
+            title="Expenses",
+            chart_type="bar",
+            filter_groups=[],
+            series_mode="two_series",
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date(2024, 3, 15),
+            description="Groceries",
+            category="Food",
+            amount=50.00,
+            type="expense",
+            user_id="u1",
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/dashboards/d1/data",
+        json={
+            "dateRangeStart": "2024-01-01",
+            "dateRangeEnd": "2024-12-31",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "panels" in data
+    assert len(data["panels"]) == 1
+    assert data["panels"][0]["panelId"] == "p1"
+    assert isinstance(data["panels"][0]["data"], list)
+
+
+@pytest.mark.asyncio
+async def test_dashboard_data_net_amount_mode(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(
+        Dashboard(
+            id="d1",
+            name="Test",
+            is_default=False,
+            date_range_start=date(2024, 1, 1),
+            date_range_end=date(2024, 12, 31),
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        DashboardPanel(
+            id="p1",
+            dashboard_id="d1",
+            title="Net",
+            chart_type="line",
+            filter_groups=[],
+            series_mode="net_amount",
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date(2024, 3, 15),
+            description="Food",
+            category="Food",
+            amount=50.00,
+            type="expense",
+            user_id="u1",
+        )
+    )
+    db_session.add(
+        Transaction(
+            id="t2",
+            date=date(2024, 3, 20),
+            description="Salary",
+            category="Income",
+            amount=3000.00,
+            type="income",
+            user_id="u1",
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/dashboards/d1/data",
+        json={
+            "dateRangeStart": "2024-03-01",
+            "dateRangeEnd": "2024-03-31",
+        },
+    )
+    data = response.json()
+    panel_data = data["panels"][0]["data"]
+    march_entry = [d for d in panel_data if d.get("month", "").startswith("Mar")]
+    assert len(march_entry) == 1
+    assert "net" in march_entry[0]
+    assert march_entry[0]["net"] == 2950.0
