@@ -29,6 +29,6 @@ class TellerClient:
             )
             try:
                 data = response.json()
-            except ValueError, UnicodeDecodeError:
+            except Exception:
                 data = response.text
             return response.status_code, data
