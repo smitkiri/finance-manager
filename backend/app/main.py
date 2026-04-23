@@ -14,6 +14,7 @@ from app.routes.imports import router as imports_router
 from app.routes.net_worth import router as net_worth_router
 from app.routes.reports import router as reports_router
 from app.routes.sources import router as sources_router
+from app.routes.teller import router as teller_router
 from app.routes.transfers import router as transfers_router
 from app.routes.users import router as users_router
 
@@ -49,6 +50,7 @@ app.include_router(backup_router)
 app.include_router(transfers_router)
 app.include_router(users_router)
 app.include_router(dashboards_router)
+app.include_router(teller_router)
 
 
 @app.get("/api/health")
