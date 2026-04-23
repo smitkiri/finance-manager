@@ -2,10 +2,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
+from app.models.account import Account
 from app.models.metadata import Metadata
+from app.models.user import User
 from app.utils.teller_client import TellerClient
 
 
@@ -154,3 +157,98 @@ async def test_update_token_not_found(client: AsyncClient, db_session: AsyncSess
         json={"accessToken": "new-token"},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_preview_accounts_disabled(client: AsyncClient):
+    response = await client.post(
+        "/api/teller/preview-accounts", json={"accessToken": "tok"}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "Teller integration not enabled"
+
+
+@pytest.mark.asyncio
+async def test_enroll_creates_accounts(client: AsyncClient, db_session: AsyncSession):
+    """Enroll should save enrollment and create account records."""
+    db_session.add(User(id="u1", name="Test User"))
+    await db_session.flush()
+
+    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/teller/enroll",
+        json={
+            "accessToken": "tok-123",
+            "userId": "u1",
+            "enrollmentId": "enr_1",
+            "institutionName": "Test Bank",
+            "selectedAccounts": [
+                {
+                    "tellerAccountId": "tel_acc_1",
+                    "alias": "My Checking",
+                    "accountType": "asset",
+                }
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+    # Verify enrollment was saved
+    result = await db_session.execute(
+        select(Metadata).where(Metadata.key == "teller_enrollments")
+    )
+    meta = result.scalar_one()
+    assert len(meta.value) == 1
+    assert meta.value[0]["enrollmentId"] == "enr_1"
+
+    # Verify account was created
+    result = await db_session.execute(
+        select(Account).where(Account.teller_account_id == "tel_acc_1")
+    )
+    account = result.scalar_one()
+    assert account.name == "My Checking"
+    assert account.user_id == "u1"
+
+
+@pytest.mark.asyncio
+async def test_disconnect_removes_enrollment_and_accounts(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(User(id="u1", name="Test User"))
+    enrollment = {
+        "accessToken": "tok",
+        "userId": "u1",
+        "enrollmentId": "enr_1",
+        "institutionName": "Test Bank",
+        "connectedAt": "2026-01-01T00:00:00Z",
+    }
+    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    db_session.add(
+        Account(
+            id="a1",
+            user_id="u1",
+            name="Checking",
+            type="asset",
+            teller_account_id="tel_1",
+            teller_enrollment_id="enr_1",
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/teller/disconnect", json={"enrollmentId": "enr_1"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["accountsDeleted"] == 1
+
+    # Verify enrollment removed
+    result = await db_session.execute(
+        select(Metadata).where(Metadata.key == "teller_enrollments")
+    )
+    meta = result.scalar_one()
+    assert len(meta.value) == 0

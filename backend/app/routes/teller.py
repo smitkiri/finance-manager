@@ -4,6 +4,7 @@ Ports legacy/routes/teller.js to FastAPI. All endpoints maintain
 identical URL paths and JSON response shapes for frontend compatibility.
 """
 
+import secrets
 import time
 from datetime import UTC, datetime
 
@@ -14,9 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.models.account import Account
 from app.models.metadata import Metadata
 from app.models.user import User
 from app.schemas.teller import (
+    DisconnectRequest,
+    EnrollRequest,
+    PreviewAccountsRequest,
     UpdateTokenRequest,
 )
 from app.utils.teller_client import TellerClient
@@ -213,4 +218,125 @@ async def update_enrollment_token(
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to update enrollment token"},
+        )
+
+
+@router.post("/preview-accounts")
+async def preview_accounts(
+    body: PreviewAccountsRequest, db: AsyncSession = Depends(get_db)
+):
+    if not settings.is_teller_enabled:
+        return JSONResponse(
+            status_code=400, content={"error": "Teller integration not enabled"}
+        )
+    try:
+        teller = _get_teller_client()
+        status, data = await teller.request("/accounts", body.accessToken)
+        if status != 200:
+            return JSONResponse(
+                status_code=502,
+                content={"error": "Failed to fetch accounts from Teller"},
+            )
+        accounts = data if isinstance(data, list) else []
+        return [
+            {
+                "id": a["id"],
+                "name": a["name"],
+                "type": a["type"],
+                "subtype": a.get("subtype"),
+            }
+            for a in accounts
+        ]
+    except Exception as exc:
+        print(f"Error previewing Teller accounts: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to preview accounts"}
+        )
+
+
+@router.post("/enroll")
+async def enroll(body: EnrollRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        enrollments = await _read_enrollments(db)
+
+        entry = {
+            "accessToken": body.accessToken,
+            "userId": body.userId,
+            "enrollmentId": body.enrollmentId,
+            "institutionName": body.institutionName,
+            "connectedAt": datetime.now(UTC).isoformat(),
+        }
+
+        idx = next(
+            (
+                i
+                for i, e in enumerate(enrollments)
+                if e.get("enrollmentId") == body.enrollmentId
+            ),
+            None,
+        )
+        if idx is not None:
+            enrollments[idx] = entry
+        else:
+            enrollments.append(entry)
+        await _write_enrollments(db, enrollments)
+
+        # Create account records for selected accounts
+        if body.selectedAccounts:
+            account_user_id = await _resolve_user_id(db, body.userId)
+
+            for acct in body.selectedAccounts:
+                result = await db.execute(
+                    select(Account).where(
+                        Account.teller_account_id == acct.tellerAccountId
+                    )
+                )
+                existing = result.scalar_one_or_none()
+                if not existing:
+                    account_id = hex(int(time.time() * 1000))[2:] + secrets.token_hex(4)
+                    db.add(
+                        Account(
+                            id=account_id,
+                            user_id=account_user_id,
+                            name=acct.alias,
+                            type=acct.accountType,
+                            teller_account_id=acct.tellerAccountId,
+                            teller_enrollment_id=body.enrollmentId,
+                        )
+                    )
+                else:
+                    existing.name = acct.alias
+                    existing.type = acct.accountType
+                    existing.teller_enrollment_id = body.enrollmentId
+
+        await db.commit()
+        return {"success": True}
+    except Exception as exc:
+        print(f"Error saving teller enrollment: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to save enrollment"}
+        )
+
+
+@router.post("/disconnect")
+async def disconnect(body: DisconnectRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(
+            delete(Account)
+            .where(Account.teller_enrollment_id == body.enrollmentId)
+            .returning(Account.id)
+        )
+        deleted_count = len(result.all())
+
+        enrollments = await _read_enrollments(db)
+        updated = [e for e in enrollments if e.get("enrollmentId") != body.enrollmentId]
+        await _write_enrollments(db, updated)
+        await db.commit()
+
+        return {"success": True, "accountsDeleted": deleted_count}
+    except Exception as exc:
+        print(f"Error disconnecting teller enrollment: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to disconnect enrollment"},
         )
