@@ -252,3 +252,58 @@ async def test_disconnect_removes_enrollment_and_accounts(
     )
     meta = result.scalar_one()
     assert len(meta.value) == 0
+
+
+@pytest.mark.asyncio
+async def test_enrollment_preview_accounts_not_found(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    await db_session.flush()
+
+    response = await client.get("/api/teller/enrollments/enr_missing/preview-accounts")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_manage_accounts_add(client: AsyncClient, db_session: AsyncSession):
+    db_session.add(User(id="u1", name="Test User"))
+    enrollment = {
+        "accessToken": "tok",
+        "userId": "u1",
+        "enrollmentId": "enr_1",
+        "institutionName": "Test Bank",
+        "connectedAt": "2026-01-01T00:00:00Z",
+    }
+    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/teller/enrollments/enr_1/manage-accounts",
+        json={
+            "toAdd": [
+                {
+                    "tellerAccountId": "tel_1",
+                    "alias": "New Checking",
+                    "accountType": "asset",
+                }
+            ],
+            "toRemove": [],
+            "userId": "u1",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["added"] == 1
+    assert data["removed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_refresh_balances_no_enrollment(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    await db_session.flush()
+
+    response = await client.post("/api/teller/refresh-balances")
+    assert response.status_code == 400

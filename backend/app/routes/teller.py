@@ -7,6 +7,9 @@ identical URL paths and JSON response shapes for frontend compatibility.
 import secrets
 import time
 from datetime import UTC, datetime
+from datetime import date as date_type
+from decimal import Decimal
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -15,12 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.account import Account
+from app.models.account import Account, AccountBalance
 from app.models.metadata import Metadata
 from app.models.user import User
 from app.schemas.teller import (
     DisconnectRequest,
     EnrollRequest,
+    ManageAccountsRequest,
     PreviewAccountsRequest,
     UpdateTokenRequest,
 )
@@ -339,4 +343,176 @@ async def disconnect(body: DisconnectRequest, db: AsyncSession = Depends(get_db)
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to disconnect enrollment"},
+        )
+
+
+@router.get("/enrollments/{enrollmentId}/preview-accounts")
+async def enrollment_preview_accounts(
+    enrollmentId: str, db: AsyncSession = Depends(get_db)
+):
+    try:
+        enrollments = await _read_enrollments(db)
+        enrollment = next(
+            (e for e in enrollments if e.get("enrollmentId") == enrollmentId), None
+        )
+        if not enrollment:
+            return JSONResponse(
+                status_code=404, content={"error": "Enrollment not found"}
+            )
+        teller = _get_teller_client()
+        status, data = await teller.request("/accounts", enrollment["accessToken"])
+        if status != 200:
+            return JSONResponse(
+                status_code=502,
+                content={"error": "Failed to fetch accounts from Teller"},
+            )
+        accounts = data if isinstance(data, list) else []
+        return [
+            {
+                "id": a["id"],
+                "name": a["name"],
+                "type": a["type"],
+                "subtype": a.get("subtype"),
+            }
+            for a in accounts
+        ]
+    except Exception as exc:
+        print(f"Error previewing accounts for enrollment: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to preview accounts"}
+        )
+
+
+@router.post("/enrollments/{enrollmentId}/manage-accounts")
+async def manage_accounts(
+    enrollmentId: str,
+    body: ManageAccountsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        enrollments = await _read_enrollments(db)
+        enrollment = next(
+            (e for e in enrollments if e.get("enrollmentId") == enrollmentId), None
+        )
+        if not enrollment:
+            return JSONResponse(
+                status_code=404, content={"error": "Enrollment not found"}
+            )
+
+        account_user_id = await _resolve_user_id(db, body.userId)
+
+        # Remove accounts
+        removed = 0
+        for teller_account_id in body.toRemove:
+            result = await db.execute(
+                delete(Account)
+                .where(
+                    Account.teller_account_id == teller_account_id,
+                    Account.teller_enrollment_id == enrollmentId,
+                )
+                .returning(Account.id)
+            )
+            removed += len(result.all())
+
+        # Add new accounts
+        added = 0
+        for acct in body.toAdd:
+            result = await db.execute(
+                select(Account).where(Account.teller_account_id == acct.tellerAccountId)
+            )
+            if not result.scalar_one_or_none():
+                account_id = hex(int(time.time() * 1000))[2:] + secrets.token_hex(4)
+                db.add(
+                    Account(
+                        id=account_id,
+                        user_id=account_user_id,
+                        name=acct.alias,
+                        type=acct.accountType,
+                        teller_account_id=acct.tellerAccountId,
+                        teller_enrollment_id=enrollmentId,
+                    )
+                )
+                added += 1
+
+        await db.commit()
+        return {"success": True, "added": added, "removed": removed}
+    except Exception as exc:
+        print(f"Error managing accounts for enrollment: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to manage accounts"}
+        )
+
+
+@router.post("/refresh-balances")
+async def refresh_balances(db: AsyncSession = Depends(get_db)):
+    try:
+        enrollments = await _read_enrollments(db)
+        if not enrollments:
+            return JSONResponse(
+                status_code=400, content={"error": "Not enrolled with Teller"}
+            )
+
+        today = date_type.today().isoformat()
+        refreshed = 0
+        reconnect_required: list[str] = []
+        teller = _get_teller_client()
+
+        for enrollment in enrollments:
+            access_token = enrollment["accessToken"]
+            status, data = await teller.request("/accounts", access_token)
+            if status != 200:
+                reconnect_required.append(
+                    enrollment.get("institutionName") or "Bank Account"
+                )
+                continue
+
+            teller_accounts = data if isinstance(data, list) else []
+            for teller_account in teller_accounts:
+                # Only refresh accounts the user explicitly added
+                result = await db.execute(
+                    select(Account).where(
+                        Account.teller_account_id == teller_account["id"]
+                    )
+                )
+                existing = result.scalar_one_or_none()
+                if not existing:
+                    continue
+
+                bal_status, bal_data = await teller.request(
+                    f"/accounts/{teller_account['id']}/balances", access_token
+                )
+                if bal_status != 200:
+                    continue
+
+                is_credit = teller_account.get("type") == "credit"
+                if is_credit:
+                    balance = float(
+                        bal_data.get("ledger") or bal_data.get("available") or 0
+                    )
+                else:
+                    balance = float(
+                        bal_data.get("available") or bal_data.get("ledger") or 0
+                    )
+
+                balance_id = hex(int(time.time() * 1000))[2:] + secrets.token_hex(4)
+                db.add(
+                    AccountBalance(
+                        id=balance_id,
+                        account_id=existing.id,
+                        balance=Decimal(str(balance)),
+                        date=date_type.fromisoformat(today),
+                        note="Auto-refreshed from Teller",
+                    )
+                )
+                refreshed += 1
+
+        await db.commit()
+        result_data: dict[str, Any] = {"refreshed": refreshed}
+        if reconnect_required:
+            result_data["reconnectRequired"] = reconnect_required
+        return result_data
+    except Exception as exc:
+        print(f"Error refreshing Teller balances: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to refresh balances"}
         )
