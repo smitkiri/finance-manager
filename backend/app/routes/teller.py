@@ -6,7 +6,8 @@ identical URL paths and JSON response shapes for frontend compatibility.
 
 import secrets
 import time
-from datetime import UTC, datetime
+import uuid
+from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
 from decimal import Decimal
 from typing import Any
@@ -19,17 +20,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.account import Account, AccountBalance
+from app.models.category import Category
+from app.models.import_session import ImportSession
 from app.models.metadata import Metadata
+from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.teller import (
     CategoryMappingsUpdateRequest,
     DisconnectRequest,
     EnrollRequest,
+    ImportTransactionsRequest,
     ManageAccountsRequest,
     PreviewAccountsRequest,
+    PreviewImportRequest,
     UpdateTokenRequest,
 )
+from app.utils.category_matcher import find_similar_category
 from app.utils.teller_client import TellerClient
+from app.utils.transfer_detection import detect_transfers
 
 router = APIRouter(prefix="/api/teller", tags=["teller"])
 
@@ -100,6 +108,47 @@ async def _write_enrollments(db: AsyncSession, enrollments: list[dict]) -> None:
     else:
         db.add(Metadata(key="teller_enrollments", value=enrollments))
     await db.flush()
+
+
+async def _fetch_teller_transactions_in_range(
+    teller: TellerClient,
+    access_token: str,
+    teller_account_id: str,
+    start_date: str,
+    end_date: str,
+) -> list[dict]:
+    """Fetch posted transactions from Teller within a date range.
+
+    Teller returns transactions in reverse-chronological order.
+    We paginate and break early once past start_date.
+    """
+    transactions: list[dict] = []
+    from_id: str | None = None
+
+    while True:
+        path = f"/accounts/{teller_account_id}/transactions?count=100"
+        if from_id:
+            path += f"&from_id={from_id}"
+
+        status, data = await teller.request(path, access_token)
+        if status != 200:
+            raise RuntimeError(
+                f"Teller API error {status} fetching transactions"
+                f" for account {teller_account_id}"
+            )
+
+        batch = data if isinstance(data, list) else []
+        for tx in batch:
+            if tx["date"] < start_date:
+                return transactions
+            if tx["date"] <= end_date and tx.get("status") == "posted":
+                transactions.append(tx)
+
+        if len(batch) < 100:
+            break
+        from_id = batch[-1]["id"]
+
+    return transactions
 
 
 async def _resolve_user_id(db: AsyncSession, user_id: str | None) -> str:
@@ -601,4 +650,350 @@ async def update_category_mappings(
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to update category mappings"},
+        )
+
+
+@router.post("/preview-import")
+async def preview_import(
+    body: PreviewImportRequest, db: AsyncSession = Depends(get_db)
+):
+    if not settings.is_teller_enabled:
+        return JSONResponse(
+            status_code=400, content={"error": "Teller integration not enabled"}
+        )
+    if not body.accountIds:
+        return JSONResponse(
+            status_code=400, content={"error": "accountIds is required"}
+        )
+    if not body.startDate or not body.endDate:
+        return JSONResponse(
+            status_code=400, content={"error": "startDate and endDate are required"}
+        )
+    if body.startDate > body.endDate:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "startDate must be before endDate"},
+        )
+
+    _clean_expired_previews()
+
+    try:
+        enrollments = await _read_enrollments(db)
+        teller = _get_teller_client()
+
+        # Load categories, saved mappings, and recent transactions
+        cat_result = await db.execute(select(Category))
+        existing_category_names = {c.name for c in cat_result.scalars().all()}
+        existing_category_names.add(UNCATEGORIZED)
+
+        map_result = await db.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings")
+        )
+        map_meta = map_result.scalar_one_or_none()
+        saved_mappings: dict[str, str] = map_meta.value if map_meta else {}
+
+        txn_result = await db.execute(
+            select(Transaction).order_by(Transaction.date.desc()).limit(500)
+        )
+        existing_expenses = [
+            {
+                "id": t.id,
+                "date": t.date,
+                "description": t.description,
+                "category": t.category,
+            }
+            for t in txn_result.scalars().all()
+        ]
+
+        reconnect_required: list[str] = []
+        preview_accounts: list[dict] = []
+
+        for account_id in body.accountIds:
+            result = await db.execute(select(Account).where(Account.id == account_id))
+            account = result.scalar_one_or_none()
+            if not account:
+                continue
+
+            enrollment = next(
+                (
+                    e
+                    for e in enrollments
+                    if e.get("enrollmentId") == account.teller_enrollment_id
+                ),
+                None,
+            )
+            if not enrollment or not account.teller_account_id:
+                continue
+
+            try:
+                transactions = await _fetch_teller_transactions_in_range(
+                    teller,
+                    enrollment["accessToken"],
+                    account.teller_account_id,
+                    body.startDate,
+                    body.endDate,
+                )
+            except RuntimeError as err:
+                if "404" in str(err):
+                    reconnect_required.append(account.name)
+                    continue
+                raise
+
+            # Deduplicate against existing transactions
+            teller_ids = [tx["id"] for tx in transactions]
+            existing_ids: set[str] = set()
+            if teller_ids:
+                dup_result = await db.execute(
+                    text(
+                        "SELECT metadata->>'tellerTransactionId' AS tid "
+                        "FROM transactions "
+                        "WHERE metadata->>'tellerTransactionId' = ANY(:ids)"
+                    ),
+                    {"ids": teller_ids},
+                )
+                existing_ids = {row.tid for row in dup_result.all()}
+
+            new_txs = [tx for tx in transactions if tx["id"] not in existing_ids]
+            dup_txs = [tx for tx in transactions if tx["id"] in existing_ids]
+
+            preview_accounts.append(
+                {
+                    "accountId": account_id,
+                    "accountName": account.name,
+                    "accountType": account.type,
+                    "userId": account.user_id,
+                    "tellerAccountId": account.teller_account_id,
+                    "newTransactions": new_txs,
+                    "newCount": len(new_txs),
+                    "duplicateCount": len(dup_txs),
+                }
+            )
+
+        if reconnect_required:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "reconnect_required",
+                    "accounts": reconnect_required,
+                },
+            )
+
+        # Compute categories for each new transaction
+        category_map: dict[str, str] = {}
+        all_assigned_categories: set[str] = set()
+
+        for account in preview_accounts:
+            for tx in account["newTransactions"]:
+                description = tx.get("details", {}).get("counterparty", {}).get(
+                    "name"
+                ) or tx.get("description", "")
+                teller_category = tx.get("details", {}).get("category")
+
+                if teller_category:
+                    category = saved_mappings.get(teller_category, teller_category)
+                else:
+                    category = (
+                        find_similar_category(description, existing_expenses)
+                        or UNCATEGORIZED
+                    )
+
+                category_map[tx["id"]] = category
+                all_assigned_categories.add(category)
+
+        new_categories = [
+            c for c in all_assigned_categories if c not in existing_category_names
+        ]
+
+        preview_token = secrets.token_hex(16)
+        _import_preview_cache[preview_token] = {
+            "accounts": preview_accounts,
+            "category_map": category_map,
+            "expires_at": time.time() + 600,
+        }
+
+        return {
+            "previewToken": preview_token,
+            "accounts": [
+                {
+                    "accountId": a["accountId"],
+                    "accountName": a["accountName"],
+                    "newCount": a["newCount"],
+                    "duplicateCount": a["duplicateCount"],
+                }
+                for a in preview_accounts
+            ],
+            "newCategories": new_categories,
+        }
+    except Exception as exc:
+        print(f"Error previewing Teller import: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to preview import"}
+        )
+
+
+@router.post("/import-transactions")
+async def import_transactions(
+    body: ImportTransactionsRequest, db: AsyncSession = Depends(get_db)
+):
+    _clean_expired_previews()
+    preview = _import_preview_cache.get(body.previewToken)
+    if not preview:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Preview expired or not found. Please preview again."},
+        )
+
+    try:
+        # Save any new user-provided category mappings
+        if body.userMappings:
+            result = await db.execute(
+                select(Metadata).where(Metadata.key == "teller_category_mappings")
+            )
+            meta = result.scalar_one_or_none()
+            existing_mappings: dict[str, str] = meta.value if meta else {}
+            merged = {**existing_mappings, **body.userMappings}
+            if meta:
+                meta.value = merged
+            else:
+                db.add(Metadata(key="teller_category_mappings", value=merged))
+            await db.flush()
+
+        preview_accounts = preview["accounts"]
+        category_map = preview["category_map"]
+
+        sessions: list[dict] = []
+        all_new_expenses: list[dict] = []
+
+        for account in preview_accounts:
+            if not account["newTransactions"]:
+                continue
+
+            session_id = str(uuid.uuid4())
+            db.add(
+                ImportSession(
+                    id=session_id,
+                    user_id=account.get("userId"),
+                    source_name=f"Teller: {account['accountName']}",
+                    transaction_count=len(account["newTransactions"]),
+                )
+            )
+
+            for tx in account["newTransactions"]:
+                description = tx.get("description") or (
+                    tx.get("details", {}).get("counterparty", {}).get("name", "")
+                )
+                base_category = category_map.get(tx["id"], UNCATEGORIZED)
+                category = body.userMappings.get(base_category, base_category)
+
+                expense_id = str(uuid.uuid4())
+                amount = abs(float(tx["amount"]))
+
+                # Determine type based on account type and transaction direction
+                if account["accountType"] == "liability":
+                    tx_type = "expense" if tx.get("type") == "credit" else "income"
+                else:
+                    tx_type = "expense" if tx.get("type") == "debit" else "income"
+
+                metadata = {
+                    "tellerTransactionId": tx["id"],
+                    "sourceName": f"Teller: {account['accountName']}",
+                    "importedAt": str(date_type.today()),
+                    "teller": {"details": tx.get("details", {})},
+                }
+
+                db.add(
+                    Transaction(
+                        id=expense_id,
+                        date=date_type.fromisoformat(tx["date"]),
+                        description=description,
+                        category=category,
+                        amount=Decimal(str(amount)),
+                        type=tx_type,
+                        user_id=account.get("userId") or "",
+                        labels=[],
+                        metadata_=metadata,
+                        transfer_info=None,
+                        excluded_from_calculations=False,
+                        import_id=session_id,
+                    )
+                )
+
+                all_new_expenses.append(
+                    {
+                        "id": expense_id,
+                        "date": tx["date"],
+                        "description": description,
+                        "category": category,
+                        "amount": amount,
+                        "type": tx_type,
+                        "user": account.get("userId") or "",
+                        "metadata": metadata,
+                    }
+                )
+
+            sessions.append(
+                {
+                    "accountId": account["accountId"],
+                    "accountName": account["accountName"],
+                    "sessionId": session_id,
+                    "added": len(account["newTransactions"]),
+                    "skipped": account["duplicateCount"],
+                }
+            )
+
+        await db.commit()
+
+        # Transfer detection on nearby transactions (after commit)
+        if all_new_expenses:
+            import_dates = sorted(e["date"] for e in all_new_expenses)
+            window_start = date_type.fromisoformat(import_dates[0])
+            window_end = date_type.fromisoformat(import_dates[-1])
+
+            window_start -= timedelta(days=3)
+            window_end += timedelta(days=3)
+
+            result = await db.execute(
+                select(Transaction).where(
+                    Transaction.date.between(window_start, window_end)
+                )
+            )
+            all_txns = result.scalars().all()
+            all_dicts = [
+                {
+                    "id": t.id,
+                    "date": t.date,
+                    "description": t.description,
+                    "category": t.category,
+                    "amount": float(t.amount),
+                    "type": t.type,
+                    "user": t.user_id,
+                    "labels": t.labels or [],
+                    "metadata": t.metadata_ or {},
+                    "transferInfo": t.transfer_info,
+                    "excludedFromCalculations": t.excluded_from_calculations,
+                    "importId": t.import_id,
+                }
+                for t in all_txns
+            ]
+
+            detection = detect_transfers(all_dicts)
+            for expense in detection["updatedTransactions"]:
+                if expense.get("transferInfo"):
+                    result = await db.execute(
+                        select(Transaction).where(Transaction.id == expense["id"])
+                    )
+                    txn = result.scalar_one_or_none()
+                    if txn:
+                        txn.transfer_info = expense["transferInfo"]
+                        txn.excluded_from_calculations = expense.get(
+                            "excludedFromCalculations", False
+                        )
+            await db.commit()
+
+        _import_preview_cache.pop(body.previewToken, None)
+        return {"sessions": sessions}
+    except Exception as exc:
+        print(f"Error importing Teller transactions: {exc}")
+        return JSONResponse(
+            status_code=500, content={"error": "Failed to import transactions"}
         )

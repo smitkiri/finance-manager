@@ -1,3 +1,4 @@
+import time
 from datetime import date as date_type
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,6 +13,7 @@ from app.models.account import Account
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.routes.teller import _import_preview_cache
 from app.utils.teller_client import TellerClient
 
 
@@ -392,3 +394,142 @@ async def test_get_category_mappings_with_counts(
     assert data["mappings"][0]["tellerCategory"] == "food_and_drink"
     assert data["mappings"][0]["userCategory"] == "Dining"
     assert data["mappings"][0]["transactionCount"] == 1
+
+
+# --- Preview-Import and Import-Transactions tests ---
+
+
+@pytest.mark.asyncio
+async def test_preview_import_disabled(client: AsyncClient):
+    response = await client.post(
+        "/api/teller/preview-import",
+        json={
+            "accountIds": ["a1"],
+            "startDate": "2026-01-01",
+            "endDate": "2026-01-31",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "Teller integration not enabled"
+
+
+@pytest.mark.asyncio
+async def test_preview_import_validation(client: AsyncClient, db_session: AsyncSession):
+    from app.config import settings
+
+    original = (
+        settings.finance_manager_teller_integration_enabled,
+        settings.finance_manager_teller_app_id,
+        settings.finance_manager_teller_private_key,
+        settings.finance_manager_teller_cert,
+    )
+    settings.finance_manager_teller_integration_enabled = True
+    settings.finance_manager_teller_app_id = "test-app-id"
+    settings.finance_manager_teller_private_key = "/tmp/key.pem"
+    settings.finance_manager_teller_cert = "/tmp/cert.pem"
+
+    try:
+        # Missing accountIds
+        response = await client.post(
+            "/api/teller/preview-import",
+            json={
+                "accountIds": [],
+                "startDate": "2026-01-01",
+                "endDate": "2026-01-31",
+            },
+        )
+        assert response.status_code == 400
+
+        # startDate > endDate
+        response = await client.post(
+            "/api/teller/preview-import",
+            json={
+                "accountIds": ["a1"],
+                "startDate": "2026-02-01",
+                "endDate": "2026-01-01",
+            },
+        )
+        assert response.status_code == 400
+    finally:
+        (
+            settings.finance_manager_teller_integration_enabled,
+            settings.finance_manager_teller_app_id,
+            settings.finance_manager_teller_private_key,
+            settings.finance_manager_teller_cert,
+        ) = original
+
+
+@pytest.mark.asyncio
+async def test_import_transactions_expired_preview(client: AsyncClient):
+    response = await client.post(
+        "/api/teller/import-transactions",
+        json={"previewToken": "nonexistent"},
+    )
+    assert response.status_code == 400
+    assert (
+        "expired" in response.json()["error"].lower()
+        or "not found" in response.json()["error"].lower()
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_transactions_from_cache(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Seed the preview cache directly and confirm import works."""
+    db_session.add(User(id="u1", name="Test User"))
+    await db_session.flush()
+
+    preview_token = "test-preview-token"
+    _import_preview_cache[preview_token] = {
+        "accounts": [
+            {
+                "accountId": "a1",
+                "accountName": "Checking",
+                "accountType": "asset",
+                "userId": "u1",
+                "tellerAccountId": "tel_1",
+                "newTransactions": [
+                    {
+                        "id": "teller_tx_1",
+                        "date": "2026-01-15",
+                        "description": "Coffee Shop",
+                        "amount": "-5.50",
+                        "type": "debit",
+                        "status": "posted",
+                        "details": {
+                            "category": "food_and_drink",
+                            "counterparty": {"name": "Starbucks"},
+                        },
+                    }
+                ],
+                "newCount": 1,
+                "duplicateCount": 0,
+            }
+        ],
+        "category_map": {"teller_tx_1": "Dining"},
+        "expires_at": time.time() + 600,
+    }
+
+    response = await client.post(
+        "/api/teller/import-transactions",
+        json={"previewToken": preview_token, "userMappings": {}},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["sessions"]) == 1
+    assert data["sessions"][0]["added"] == 1
+
+    # Verify transaction was created in DB
+    result = await db_session.execute(
+        select(Transaction).where(
+            Transaction.metadata_["tellerTransactionId"].as_string() == "teller_tx_1"
+        )
+    )
+    txn = result.scalar_one()
+    assert txn.description == "Coffee Shop"
+    assert txn.category == "Dining"
+    assert float(txn.amount) == 5.50
+
+    # Cache should be cleared
+    assert preview_token not in _import_preview_cache
