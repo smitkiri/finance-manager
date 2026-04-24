@@ -22,6 +22,7 @@ from app.models.account import Account, AccountBalance
 from app.models.metadata import Metadata
 from app.models.user import User
 from app.schemas.teller import (
+    CategoryMappingsUpdateRequest,
     DisconnectRequest,
     EnrollRequest,
     ManageAccountsRequest,
@@ -515,4 +516,89 @@ async def refresh_balances(db: AsyncSession = Depends(get_db)):
         print(f"Error refreshing Teller balances: {exc}")
         return JSONResponse(
             status_code=500, content={"error": "Failed to refresh balances"}
+        )
+
+
+@router.get("/category-mappings")
+async def get_category_mappings(db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings")
+        )
+        meta = result.scalar_one_or_none()
+        saved_mappings: dict[str, str] = meta.value if meta else {}
+
+        # Count transactions per original Teller category
+        count_result = await db.execute(
+            text(
+                "SELECT metadata->'teller'->'details'->>'category' AS teller_category, "
+                "COUNT(*)::int AS count "
+                "FROM transactions "
+                "WHERE metadata->'teller'->'details'->>'category' IS NOT NULL "
+                "GROUP BY teller_category"
+            )
+        )
+        count_map = {row.teller_category: row.count for row in count_result.all()}
+
+        mappings = [
+            {
+                "tellerCategory": teller_cat,
+                "userCategory": user_cat,
+                "transactionCount": count_map.get(teller_cat, 0),
+            }
+            for teller_cat, user_cat in saved_mappings.items()
+        ]
+
+        return {"mappings": mappings}
+    except Exception as exc:
+        print(f"Error loading Teller category mappings: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to load category mappings"},
+        )
+
+
+@router.put("/category-mappings")
+async def update_category_mappings(
+    body: CategoryMappingsUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        # Load existing mappings to detect changes
+        result = await db.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings")
+        )
+        meta = result.scalar_one_or_none()
+        existing_mappings: dict[str, str] = meta.value if meta else {}
+
+        # Build new mappings
+        new_mappings: dict[str, str] = {}
+        for m in body.mappings:
+            if m.tellerCategory and m.userCategory:
+                new_mappings[m.tellerCategory] = m.userCategory
+
+        # Re-categorize transactions where mapping changed
+        for teller_cat, user_cat in new_mappings.items():
+            if existing_mappings.get(teller_cat) != user_cat:
+                await db.execute(
+                    text(
+                        "UPDATE transactions SET category = :cat "
+                        "WHERE metadata->'teller'->'details'->>'category' = :teller_cat"
+                    ),
+                    {"cat": user_cat, "teller_cat": teller_cat},
+                )
+
+        # Persist new mappings
+        if meta:
+            meta.value = new_mappings
+        else:
+            db.add(Metadata(key="teller_category_mappings", value=new_mappings))
+
+        await db.commit()
+        return {"success": True, "updated": len(new_mappings)}
+    except Exception as exc:
+        print(f"Error updating Teller category mappings: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to update category mappings"},
         )

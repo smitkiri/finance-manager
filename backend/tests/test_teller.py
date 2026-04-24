@@ -1,3 +1,5 @@
+from datetime import date as date_type
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.models.account import Account
 from app.models.metadata import Metadata
+from app.models.transaction import Transaction
 from app.models.user import User
 from app.utils.teller_client import TellerClient
 
@@ -307,3 +310,85 @@ async def test_refresh_balances_no_enrollment(
 
     response = await client.post("/api/teller/refresh-balances")
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_category_mappings_empty(client: AsyncClient):
+    response = await client.get("/api/teller/category-mappings")
+    assert response.status_code == 200
+    assert response.json()["mappings"] == []
+
+
+@pytest.mark.asyncio
+async def test_put_category_mappings_updates_transactions(
+    client: AsyncClient, db_session: AsyncSession
+):
+    # Create a transaction with a teller category in metadata
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date_type(2026, 1, 15),
+            description="Coffee Shop",
+            category="food_and_drink",
+            amount=Decimal("5.50"),
+            type="expense",
+            user_id="u1",
+            metadata_={
+                "teller": {"details": {"category": "food_and_drink"}},
+                "tellerTransactionId": "teller_tx_1",
+            },
+        )
+    )
+    await db_session.flush()
+
+    response = await client.put(
+        "/api/teller/category-mappings",
+        json={
+            "mappings": [{"tellerCategory": "food_and_drink", "userCategory": "Dining"}]
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+    # Verify the transaction was re-categorized
+    result = await db_session.execute(select(Transaction).where(Transaction.id == "t1"))
+    txn = result.scalar_one()
+    assert txn.category == "Dining"
+
+
+@pytest.mark.asyncio
+async def test_get_category_mappings_with_counts(
+    client: AsyncClient, db_session: AsyncSession
+):
+    # Save a mapping
+    db_session.add(
+        Metadata(
+            key="teller_category_mappings",
+            value={"food_and_drink": "Dining"},
+        )
+    )
+    # Create a transaction with that teller category
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date_type(2026, 1, 15),
+            description="Coffee",
+            category="Dining",
+            amount=Decimal("5.00"),
+            type="expense",
+            user_id="u1",
+            metadata_={
+                "teller": {"details": {"category": "food_and_drink"}},
+                "tellerTransactionId": "teller_tx_1",
+            },
+        )
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/teller/category-mappings")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["mappings"]) == 1
+    assert data["mappings"][0]["tellerCategory"] == "food_and_drink"
+    assert data["mappings"][0]["userCategory"] == "Dining"
+    assert data["mappings"][0]["transactionCount"] == 1
