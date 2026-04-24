@@ -16,7 +16,7 @@ _async_url = None
 _tables_created = False
 
 # Reset settings to clean defaults so tests are not affected by the
-# developer's root .env file. Tests that need specific settings (e.g.
+# developer's backend/.env file. Tests that need specific settings (e.g.
 # teller enabled) should override them explicitly and restore after.
 _clean = Settings(_env_file=None)  # ty: ignore[unknown-argument]
 for field in Settings.model_fields:

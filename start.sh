@@ -36,16 +36,15 @@ echo "STEP 3: Installing Python backend dependencies..."
 cd backend && uv sync && cd ..
 echo "✅ Python dependencies installed."
 
-# Sync REACT_APP_* vars from root .env to frontend/.env
+# Verify frontend .env exists
 echo
-echo "STEP 4: Syncing frontend environment..."
-{
-  echo "REACT_APP_API_BASE_URL=http://localhost:3002/api"
-  if [ -f .env ]; then
-    grep "^REACT_APP_" .env 2>/dev/null || true
-  fi
-} > frontend/.env
-echo "✅ frontend/.env updated (API base → nginx on port 3002)"
+echo "STEP 4: Checking frontend environment..."
+if [ ! -f frontend/.env ]; then
+  echo "REACT_APP_API_BASE_URL=http://localhost:3002/api" > frontend/.env
+  echo "⚠️  Created frontend/.env with default API base URL — add REACT_APP_API_SECRET if needed"
+else
+  echo "✅ frontend/.env exists"
+fi
 
 # Delegate to Makefile for docker, migrations, and dev servers
 echo
