@@ -11,7 +11,6 @@ up:
 	@echo ""
 	@echo "Starting dev servers..."
 	@echo "  Frontend:  http://localhost:3000"
-	@echo "  Express:   http://localhost:3001 (Teller only)"
 	@echo "  FastAPI:   http://localhost:8000"
 	@echo "  nginx:     http://localhost:3002 (proxy)"
 	@echo ""

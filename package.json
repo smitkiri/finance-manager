@@ -7,9 +7,8 @@
     "concurrently": "^8.2.2"
   },
   "scripts": {
-    "dev": "concurrently --names express,fastapi,frontend --prefix-colors yellow,green,blue \"npm run server\" \"npm run fastapi\" \"npm run frontend\"",
+    "dev": "concurrently --names fastapi,frontend --prefix-colors green,blue \"npm run fastapi\" \"npm run frontend\"",
     "frontend": "cd frontend && npm start",
-    "server": "node legacy/server.js",
     "fastapi": "cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
     "migrate": "cd backend && uv run alembic upgrade head",
     "build": "cd frontend && npm run build",
@@ -20,7 +19,7 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "start:full": "./start.sh",
-    "install:all": "npm install && cd frontend && npm install && cd ../legacy && npm install && cd ../backend && uv sync"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && uv sync"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",

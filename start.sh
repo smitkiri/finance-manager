@@ -22,12 +22,11 @@ echo "✅ Docker is installed and running."
 # Install dependencies
 echo
 echo "STEP 2: Installing dependencies..."
-if [ -d "node_modules" ] && [ -d "frontend/node_modules" ] && [ -d "legacy/node_modules" ]; then
+if [ -d "node_modules" ] && [ -d "frontend/node_modules" ]; then
   echo "--> All 'node_modules' directories already exist, skipping npm install."
 else
   npm install
   cd frontend && npm install && cd ..
-  cd legacy && npm install && cd ..
   echo "✅ npm dependencies installed."
 fi
 
