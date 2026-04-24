@@ -5,7 +5,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
-from app.config import settings
+from app.config import Settings, settings
 from app.database import get_db
 from app.main import app
 from app.models.base import Base
@@ -14,6 +14,13 @@ from app.models.base import Base
 _container = None
 _async_url = None
 _tables_created = False
+
+# Reset settings to clean defaults so tests are not affected by the
+# developer's root .env file. Tests that need specific settings (e.g.
+# teller enabled) should override them explicitly and restore after.
+_clean = Settings(_env_file=None)  # ty: ignore[unknown-argument]
+for field in Settings.model_fields:
+    setattr(settings, field, getattr(_clean, field))
 
 
 def get_test_db_url():
@@ -65,29 +72,9 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    # Disable API key auth and teller in tests (root .env may set these)
-    original_secret = settings.api_secret
-    original_teller = (
-        settings.finance_manager_teller_integration_enabled,
-        settings.finance_manager_teller_app_id,
-        settings.finance_manager_teller_private_key,
-        settings.finance_manager_teller_cert,
-    )
-    settings.api_secret = None
-    settings.finance_manager_teller_integration_enabled = False
-    settings.finance_manager_teller_app_id = None
-    settings.finance_manager_teller_private_key = None
-    settings.finance_manager_teller_cert = None
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as ac:
         yield ac
-    settings.api_secret = original_secret
-    (
-        settings.finance_manager_teller_integration_enabled,
-        settings.finance_manager_teller_app_id,
-        settings.finance_manager_teller_private_key,
-        settings.finance_manager_teller_cert,
-    ) = original_teller
     app.dependency_overrides.clear()
