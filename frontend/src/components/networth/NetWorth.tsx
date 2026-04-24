@@ -215,8 +215,11 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
     .filter((g) => g.accounts.length > 0);
   const showUserHeaders = userGroups.length > 1;
 
-  const AccountRow = ({ account }: { account: Account }) => (
-    <div className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+  const renderAccountRow = (account: Account) => (
+    <div
+      key={account.id}
+      className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0"
+    >
       <div className="flex-1 min-w-0">
         <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">
           {account.name}
@@ -288,12 +291,10 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
                     <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">
                       {user.name}
                     </p>
-                    {groupAccounts.map((account) => (
-                      <AccountRow key={account.id} account={account} />
-                    ))}
+                    {groupAccounts.map(renderAccountRow)}
                   </div>
                 ))
-              : accounts.map((account) => <AccountRow key={account.id} account={account} />)}
+              : accounts.map(renderAccountRow)}
           </div>
 
           {/* Footer */}
@@ -558,18 +559,16 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     date: string,
     note?: string
   ) => {
-    await Promise.all(
-      entries.map(({ accountId, balance }) =>
-        LocalStorage.addAccountBalance(accountId, {
-          id: generateId(),
-          accountId,
-          balance,
-          date,
-          note,
-          createdAt: new Date().toISOString(),
-        })
-      )
-    );
+    for (const { accountId, balance } of entries) {
+      await LocalStorage.addAccountBalance(accountId, {
+        id: generateId(),
+        accountId,
+        balance,
+        date,
+        note,
+        createdAt: new Date().toISOString(),
+      });
+    }
     setShowBulkModal(false);
     await loadData();
     toast.success(`Updated ${entries.length} account balance${entries.length !== 1 ? 's' : ''}`, {

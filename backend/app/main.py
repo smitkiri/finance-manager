@@ -30,7 +30,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def api_key_auth(request: Request, call_next):
-    if settings.api_secret and request.url.path.startswith("/api"):
+    if (
+        settings.api_secret
+        and request.url.path.startswith("/api")
+        and request.method != "OPTIONS"
+    ):
         api_key = request.headers.get("x-api-key")
         if api_key != settings.api_secret:
             return JSONResponse(status_code=401, content={"error": "Unauthorized"})
