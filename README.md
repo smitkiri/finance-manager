@@ -16,8 +16,8 @@ Follow these steps to set up and run the Finance Manager locally.
 
 Before you begin, ensure you have the following installed:
 
--   **[Node.js](https://nodejs.org/)** (version 14 or higher) & **npm**
--   **[Docker & Docker Compose](https://www.docker.com/get-started/)**: Required to run the PostgreSQL database.
+- **[Node.js](https://nodejs.org/)** (version 14 or higher) & **npm**
+- **[Docker & Docker Compose](https://www.docker.com/get-started/)**: Required to run the PostgreSQL database.
 
 ### Quick Setup
 
@@ -66,6 +66,7 @@ The application uses PostgreSQL for data storage. We'll use Docker to easily set
     ```bash
     npm run docker:up
     ```
+
     This command will start a PostgreSQL container in the background. You can verify it's running with `docker ps`.
 
 2.  **Run database migrations:**
@@ -73,6 +74,7 @@ The application uses PostgreSQL for data storage. We'll use Docker to easily set
     ```bash
     npm run migrate
     ```
+
     This will create the necessary tables and schema in your PostgreSQL database.
 
 #### Running the Application
@@ -100,6 +102,7 @@ To create a production-ready build of the frontend:
 ```bash
 npm run build
 ```
+
 ## ✨ Features
 
 - 💰 **Track Expenses & Income**: Add, edit, and delete transactions
@@ -134,14 +137,14 @@ The primary way to get data into the system is by importing CSV files from your 
 
 ### Key Features Explained:
 
-*   **Multi-User Support**: Create separate profiles to track expenses for different individuals (e.g., family members).
-*   **Intelligent Category Matching**: When importing, the system can learn from your past categorization and suggest categories for new, uncategorized transactions.
-*   **Visual Analytics**: Explore your spending habits with interactive charts that break down expenses by category, show trends over time, and visualize your net income.
-*   **Advanced Filtering & Search**: Quickly find specific transactions using full-text search, date ranges, amount filters, and custom labels. You can also save your favorite filter configurations.
-*   **Report Builder**: Generate custom reports based on your filtered data, allowing for deeper analysis and insights into your financial health.
-*   **Smart Transfer Detection**: The system intelligently identifies and handles internal transfers between your accounts, preventing them from skewing your income/expense reports.
-*   **Net Worth Tracking**: Create asset accounts (bank accounts, investments, etc.) and liability accounts (credit cards, loans, etc.) linked to each user. Record balance snapshots over time and view your total assets, liabilities, and net worth on a dedicated page with a historical line chart. When viewing all users, accounts are grouped and subtotalled per person. Account management lives in Settings → Accounts; balance updates are done directly from the Net Worth page.
-*   **Personal Dashboards**: Build your own analytics dashboards tailored to what matters most. Each dashboard supports up to 15 chart panels with independent filters — filter by category, transaction type (income/expense/both), or a description regex pattern (e.g. `uber|lyft`). Choose between bar and line charts, pick between two-series (income & expenses) or net amount display modes, and reorder panels via drag-and-drop. A live transaction preview in the panel editor shows which transactions match your filters before you save.
+- **Multi-User Support**: Create separate profiles to track expenses for different individuals (e.g., family members).
+- **Intelligent Category Matching**: When importing, the system can learn from your past categorization and suggest categories for new, uncategorized transactions.
+- **Visual Analytics**: Explore your spending habits with interactive charts that break down expenses by category, show trends over time, and visualize your net income.
+- **Advanced Filtering & Search**: Quickly find specific transactions using full-text search, date ranges, amount filters, and custom labels. You can also save your favorite filter configurations.
+- **Report Builder**: Generate custom reports based on your filtered data, allowing for deeper analysis and insights into your financial health.
+- **Smart Transfer Detection**: The system intelligently identifies and handles internal transfers between your accounts, preventing them from skewing your income/expense reports.
+- **Net Worth Tracking**: Create asset accounts (bank accounts, investments, etc.) and liability accounts (credit cards, loans, etc.) linked to each user. Record balance snapshots over time and view your total assets, liabilities, and net worth on a dedicated page with a historical line chart. When viewing all users, accounts are grouped and subtotalled per person. Account management lives in Settings → Accounts; balance updates are done directly from the Net Worth page.
+- **Personal Dashboards**: Build your own analytics dashboards tailored to what matters most. Each dashboard supports up to 15 chart panels with independent filters — filter by category, transaction type (income/expense/both), or a description regex pattern (e.g. `uber|lyft`). Choose between bar and line charts, pick between two-series (income & expenses) or net amount display modes, and reorder panels via drag-and-drop. A live transaction preview in the panel editor shows which transactions match your filters before you save.
 
 ### Further Usage Details:
 
@@ -159,12 +162,12 @@ You need a Teller account and application. Sign up at [teller.io](https://teller
 
 Set the following four environment variables before starting the server. All four must be present for the feature to activate — if any are missing, no Teller UI will appear.
 
-| Variable | Description |
-|---|---|
-| `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | Set to `"true"` to enable the feature |
-| `FINANCE_MANAGER_TELLER_APP_ID` | Your Teller `applicationId` (from the Teller dashboard) |
-| `FINANCE_MANAGER_TELLER_PRIVATE_KEY` | Path to your Teller mTLS private key PEM file |
-| `FINANCE_MANAGER_TELLER_CERT` | Path to your Teller mTLS certificate PEM file |
+| Variable                                     | Description                                             |
+| -------------------------------------------- | ------------------------------------------------------- |
+| `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | Set to `"true"` to enable the feature                   |
+| `FINANCE_MANAGER_TELLER_APP_ID`              | Your Teller `applicationId` (from the Teller dashboard) |
+| `FINANCE_MANAGER_TELLER_PRIVATE_KEY`         | Path to your Teller mTLS private key PEM file           |
+| `FINANCE_MANAGER_TELLER_CERT`                | Path to your Teller mTLS certificate PEM file           |
 
 The private key and certificate are issued by Teller when you create an application. You can find them in the Teller dashboard under your application's settings. Save them as files on disk and point the env vars at those paths.
 
@@ -187,18 +190,76 @@ FINANCE_MANAGER_TELLER_CERT=/path/to/teller/certificate.pem
 
 > **Note**: Teller sandbox credentials can be used for testing without a real bank account. See the [Teller documentation](https://teller.io/docs) for details.
 
+## 🐳 Deploying to Coolify
+
+The repo includes a `docker-compose.prod.yml` for self-hosted deployment to a [Coolify](https://coolify.io/) server. The local-dev workflow (`make up`, `docker-compose.yml`) is independent and unaffected.
+
+### Architecture
+
+Three services are deployed by `docker-compose.prod.yml`:
+
+- **`nginx`** — multi-stage build. Node compiles the React app at build time; nginx then serves the static output and proxies `/api/*` to the backend. The only service exposed externally.
+- **`backend`** — FastAPI on port 8000 (internal only; reached by nginx via compose service DNS).
+- **`backend-migrate`** — one-shot service that runs `alembic upgrade head` before the backend starts, via `depends_on: { condition: service_completed_successfully }`.
+
+PostgreSQL is **not** in this compose file — it is provisioned as a separate Coolify-managed Postgres resource and reached over Coolify's internal docker network.
+
+### First-time deploy
+
+1.  **Create a Postgres resource in Coolify.** Note its internal hostname, port, user, password, and database name.
+2.  **Create a Docker Compose application** in Coolify pointing at this repo with `docker-compose.prod.yml` as the compose file.
+3.  **Set the following environment variables** in Coolify's app config:
+
+    | Variable                                     | Description                                                      |
+    | -------------------------------------------- | ---------------------------------------------------------------- |
+    | `DB_HOST`                                    | Coolify Postgres internal hostname                               |
+    | `DB_PORT`                                    | `5432` (default if unset)                                        |
+    | `DB_USER` / `DB_PASSWORD` / `DB_NAME`        | Postgres credentials                                             |
+    | `API_SECRET`                                 | Random secret for the backend's `x-api-key` middleware           |
+    | `REACT_APP_API_SECRET`                       | Must match `API_SECRET`. Baked into the JS bundle at build time. |
+    | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | `true` or `false`                                                |
+    | `FINANCE_MANAGER_TELLER_APP_ID`              | (only if Teller enabled)                                         |
+
+4.  **Create the `teller_secrets` volume** in Coolify and upload `private_key.pem` and `certificate.pem` to it. The backend mounts this volume read-only at `/secrets/teller/`. (Skip this step if Teller integration is disabled.)
+5.  **Attach a domain** to the `nginx` service. Coolify auto-issues SSL via Traefik / Let's Encrypt.
+6.  **Deploy.** Coolify builds both images, runs `backend-migrate` to completion, then starts `backend` and `nginx`.
+
+### Subsequent deploys
+
+`git push` triggers a Coolify rebuild. Migrations are auto-applied via the `backend-migrate` service on each deploy.
+
+### Local validation of the prod stack
+
+To smoke-test the prod compose locally against the existing dev Postgres:
+
+```bash
+docker compose up -d postgres   # start the dev postgres
+
+DB_HOST=host.docker.internal \
+DB_PORT=5432 \
+DB_USER=finance_manager DB_PASSWORD=finance_manager_password DB_NAME=finance_manager \
+API_SECRET=local_test_secret REACT_APP_API_SECRET=local_test_secret \
+FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=false \
+NGINX_PORT=8083 \
+docker compose -f docker-compose.prod.yml up --build
+
+# In another shell:
+curl -H "x-api-key: local_test_secret" http://localhost:8083/api/health
+# → {"status":"ok"}
+```
+
 ## 🧑‍💻 Technology Stack
 
--   **Frontend**: React 18 with TypeScript
--   **Backend**: Node.js with Express
--   **Database**: PostgreSQL
--   **Styling**: Tailwind CSS
--   **Charts**: Recharts
--   **Icons**: Lucide React
--   **Build Tool**: Create React App
--   **State Management**: React Context for theme
--   **Notifications**: React Toastify for toast notifications
--   **Date Handling**: date-fns for date manipulation
+- **Frontend**: React 18 with TypeScript
+- **Backend**: Node.js with Express
+- **Database**: PostgreSQL
+- **Styling**: Tailwind CSS
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **Build Tool**: Create React App
+- **State Management**: React Context for theme
+- **Notifications**: React Toastify for toast notifications
+- **Date Handling**: date-fns for date manipulation
 
 ## 🤝 Contributing
 
