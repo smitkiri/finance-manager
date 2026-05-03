@@ -4,9 +4,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5432
-    db_user: str = "expense_tracker"
-    db_password: str = "expense_tracker_password"
-    db_name: str = "expense_tracker"
+    db_user: str = "finance_manager"
+    db_password: str = "finance_manager_password"
+    db_name: str = "finance_manager"
     api_secret: str | None = None
     port: int = 8000
 
