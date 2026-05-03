@@ -5,7 +5,7 @@ up:
 	@echo "Starting Docker services (postgres + nginx)..."
 	docker-compose up -d
 	@echo "Waiting for database to be ready..."
-	@until docker exec expense_tracker_db pg_isready -U expense_tracker > /dev/null 2>&1; do sleep 1; done
+	@until docker exec finance_manager_db pg_isready -U finance_manager > /dev/null 2>&1; do sleep 1; done
 	@echo "Running database migrations (Alembic)..."
 	cd backend && uv run alembic upgrade head
 	@echo ""

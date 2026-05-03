@@ -85,6 +85,23 @@ Browser → Frontend (3000) → nginx (3002) → FastAPI (8000) → PostgreSQL (
 4. FastAPI uses SQLAlchemy ORM for all database access
 5. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
 
+### Production deployment (Coolify)
+
+Local dev (`make up`, `docker-compose.yml`) and production (`docker-compose.prod.yml`, deployed to Coolify) are intentionally separate stacks with different shapes:
+
+- **Dev:** frontend + backend run on the host with hot-reload; postgres + a host-proxy nginx run in Docker.
+- **Prod:** all three services (nginx, backend, backend-migrate) run as containers; postgres is an external Coolify-managed resource.
+
+Prod-specific files: `docker-compose.prod.yml`, `backend/Dockerfile`, `nginx/Dockerfile`, `nginx/prod.conf`, `.dockerignore`.
+
+In prod, nginx is the only exposed service. It serves the built React app as static files and proxies `/api/*` to `http://backend:8000`. Same-origin, so `REACT_APP_API_BASE_URL=/api`. Teller cert/key files live on a Coolify-managed `teller_secrets` volume mounted read-only at `/secrets/teller/`. See `README.md` § "Deploying to Coolify" for env vars and first-deploy steps.
+
+When making changes that affect prod, remember:
+
+- The backend `Dockerfile` is shared between `backend` and `backend-migrate` services (same image, different commands).
+- `REACT_APP_*` vars are **build args** for the nginx Dockerfile, not runtime env vars (CRA bakes them into the JS bundle at build time).
+- Compose service DNS: nginx talks to backend at `backend:8000` (not `localhost:8000`, not `host.docker.internal`).
+
 ## Conventions
 
 - Frontend components are PascalCase `.tsx` files; utilities are camelCase `.ts`

@@ -1,0 +1,76 @@
+# Version control
+.git/
+.gitignore
+.git-blame-ignore-revs
+.gitleaks.toml
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+**/node_modules/
+npm-debug.log*
+
+# Python
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+
+# Build outputs
+build/
+frontend/build/
+dist/
+
+# Tests (don't ship into prod images)
+backend/tests/
+
+# Local data
+.artifacts/
+.test_artifacts/
+.artifacts.old/
+
+# Tooling we don't need at build time
+.worktrees/
+.superpowers/
+.claude/
+samples/
+docs/
+
+# Env files — never bake credentials into images
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Lefthook / lint config not needed at runtime
+lefthook.yml
+commitlint.config.js
+.eslintrc.json
+.prettierrc
+.prettierignore
+
+# Existing dev compose / nginx config — not used by prod stack
+docker-compose.yml
+nginx.conf
+
+# Misc
+*.log
+*.tgz
+*.tar.gz
+Makefile
+start.sh
+start-expense-manager.sh
+package-lock.json
+package.json
+README.md
+CLAUDE.md

@@ -1,0 +1,63 @@
+# Production stack for Coolify deployment.
+# PostgreSQL is provisioned externally by Coolify and reached via
+# its internal docker network (DB_HOST is Coolify's Postgres service hostname).
+#
+# For local validation, see "Local validation of the prod stack"
+# in README.md § "Deploying to Coolify".
+
+services:
+  # One-shot: runs alembic upgrade head, then exits.
+  # `backend` waits for this to complete successfully before starting.
+  backend-migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: finance-manager-backend:latest
+    command: ['uv', 'run', 'alembic', 'upgrade', 'head']
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    restart: 'no'
+
+  backend:
+    image: finance-manager-backend:latest
+    depends_on:
+      backend-migrate:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      API_SECRET: ${API_SECRET}
+      FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED: ${FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED:-false}
+      FINANCE_MANAGER_TELLER_APP_ID: ${FINANCE_MANAGER_TELLER_APP_ID:-}
+      FINANCE_MANAGER_TELLER_PRIVATE_KEY: /secrets/teller/private_key.pem
+      FINANCE_MANAGER_TELLER_CERT: /secrets/teller/certificate.pem
+    volumes:
+      - teller_secrets:/secrets/teller:ro
+    expose:
+      - '8000'
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: /api
+        REACT_APP_API_SECRET: ${REACT_APP_API_SECRET}
+    depends_on:
+      - backend
+    ports:
+      # Coolify's Traefik will route domain → this published port.
+      # NGINX_PORT lets you override the host port for local testing.
+      - '${NGINX_PORT:-80}:80'
+    restart: unless-stopped
+
+volumes:
+  teller_secrets:
