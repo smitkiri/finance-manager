@@ -219,8 +219,9 @@ PostgreSQL is **not** in this compose file — it is provisioned as a separate C
     | `REACT_APP_API_SECRET`                       | Must match `API_SECRET`. Baked into the JS bundle at build time. |
     | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | `true` or `false`                                                |
     | `FINANCE_MANAGER_TELLER_APP_ID`              | (only if Teller enabled)                                         |
+    | `TELLER_SECRETS_PATH`                        | Absolute host path to the folder holding the Teller PEM files    |
 
-4.  **Create the `teller_secrets` volume** in Coolify and upload `private_key.pem` and `certificate.pem` to it. The backend mounts this volume read-only at `/secrets/teller/`. (Skip this step if Teller integration is disabled.)
+4.  **Place the Teller secrets on the Coolify host.** SSH into the server, create a folder (e.g., `/opt/finance-manager/teller/`), and copy `private_key.pem` and `certificate.pem` into it. Set `TELLER_SECRETS_PATH` to that absolute path — compose bind-mounts it read-only at `/secrets/teller/`. (Skip this step if Teller integration is disabled; the default `./teller_secrets` relative path will be used and the backend will simply not find the files.)
 5.  **Attach a domain** to the `nginx` service. Coolify auto-issues SSL via Traefik / Let's Encrypt.
 6.  **Deploy.** Coolify builds both images, runs `backend-migrate` to completion, then starts `backend` and `nginx`.
 

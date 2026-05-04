@@ -20,6 +20,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
+    networks:
+      - coolify
     restart: 'no'
 
   backend:
@@ -39,7 +41,12 @@ services:
       FINANCE_MANAGER_TELLER_PRIVATE_KEY: /secrets/teller/private_key.pem
       FINANCE_MANAGER_TELLER_CERT: /secrets/teller/certificate.pem
     volumes:
-      - teller_secrets:/secrets/teller:ro
+      # Bind mount a host folder containing private_key.pem and certificate.pem.
+      # On Coolify, set TELLER_SECRETS_PATH to an absolute path on the server.
+      - ${TELLER_SECRETS_PATH:-./teller_secrets}:/secrets/teller:ro
+    networks:
+      - default
+      - coolify
     expose:
       - '8000'
     restart: unless-stopped
@@ -56,8 +63,17 @@ services:
     ports:
       # Coolify's Traefik will route domain → this published port.
       # NGINX_PORT lets you override the host port for local testing.
-      - '${NGINX_PORT:-80}:80'
+      # NGINX_HOST_IP lets you bind to a specific host interface (e.g.
+      # your LAN IP) so the port isn't reachable on every interface.
+      # Defaults to 0.0.0.0 (all interfaces).
+      - '${NGINX_HOST_IP:-0.0.0.0}:${NGINX_PORT:-80}:80'
     restart: unless-stopped
 
-volumes:
-  teller_secrets:
+networks:
+  # Coolify's shared network — its managed Postgres lives here.
+  # backend and backend-migrate join this network to reach the DB
+  # via its UUID hostname (DB_HOST).
+  coolify:
+    external: true
+    name: coolify
+  default:
