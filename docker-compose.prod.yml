@@ -39,7 +39,9 @@ services:
       FINANCE_MANAGER_TELLER_PRIVATE_KEY: /secrets/teller/private_key.pem
       FINANCE_MANAGER_TELLER_CERT: /secrets/teller/certificate.pem
     volumes:
-      - teller_secrets:/secrets/teller:ro
+      # Bind mount a host folder containing private_key.pem and certificate.pem.
+      # On Coolify, set TELLER_SECRETS_PATH to an absolute path on the server.
+      - ${TELLER_SECRETS_PATH:-./teller_secrets}:/secrets/teller:ro
     expose:
       - '8000'
     restart: unless-stopped
@@ -58,6 +60,3 @@ services:
       # NGINX_PORT lets you override the host port for local testing.
       - '${NGINX_PORT:-80}:80'
     restart: unless-stopped
-
-volumes:
-  teller_secrets:
