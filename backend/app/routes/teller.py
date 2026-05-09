@@ -4,6 +4,7 @@ Ports legacy/routes/teller.js to FastAPI. All endpoints maintain
 identical URL paths and JSON response shapes for frontend compatibility.
 """
 
+import os
 import secrets
 import time
 import uuid
@@ -54,14 +55,53 @@ def _clean_expired_previews() -> None:
         del _import_preview_cache[k]
 
 
+def _missing_teller_credential_files() -> list[str]:
+    """Return the list of configured Teller cert/key paths that don't exist on
+    disk. Caller must ensure ``settings.is_teller_enabled`` is True (so the
+    paths are non-None)."""
+    cert_path = settings.finance_manager_teller_cert
+    key_path = settings.finance_manager_teller_private_key
+    assert cert_path is not None
+    assert key_path is not None
+    return [p for p in (cert_path, key_path) if not os.path.isfile(p)]
+
+
 def _get_teller_client() -> TellerClient:
     # Only called when is_teller_enabled is True, so these are guaranteed non-None
-    assert settings.finance_manager_teller_cert is not None
-    assert settings.finance_manager_teller_private_key is not None
-    return TellerClient(
-        cert_path=settings.finance_manager_teller_cert,
-        key_path=settings.finance_manager_teller_private_key,
-    )
+    cert_path = settings.finance_manager_teller_cert
+    key_path = settings.finance_manager_teller_private_key
+    assert cert_path is not None
+    assert key_path is not None
+    missing = _missing_teller_credential_files()
+    if missing:
+        # httpx would raise [Errno 2] No such file or directory at request time;
+        # surface a clearer error here naming the missing files so operators
+        # can fix the deployment (e.g. TELLER_SECRETS_PATH bind mount).
+        raise FileNotFoundError(
+            "Teller credential files not found: "
+            + ", ".join(missing)
+            + ". Verify the cert/key paths and the TELLER_SECRETS_PATH mount."
+        )
+    return TellerClient(cert_path=cert_path, key_path=key_path)
+
+
+def check_credentials_at_startup() -> None:
+    """Fail app startup if Teller is enabled but credential files are missing.
+
+    Without this, the misconfiguration is only discovered when a user clicks
+    refresh-balances and httpx tries to load the cert tuple. Failing startup
+    makes the deploy unhealthy until the operator fixes the cert/key paths or
+    the TELLER_SECRETS_PATH mount.
+    """
+    if not settings.is_teller_enabled:
+        return
+    missing = _missing_teller_credential_files()
+    if missing:
+        raise FileNotFoundError(
+            "Teller integration is enabled but credential files are missing: "
+            + ", ".join(missing)
+            + ". Verify the cert/key paths and the TELLER_SECRETS_PATH mount."
+        )
 
 
 async def _read_enrollments(db: AsyncSession) -> list[dict]:
@@ -495,6 +535,10 @@ async def manage_accounts(
 
 @router.post("/refresh-balances")
 async def refresh_balances(db: AsyncSession = Depends(get_db)):
+    if not settings.is_teller_enabled:
+        return JSONResponse(
+            status_code=400, content={"error": "Teller integration not enabled"}
+        )
     try:
         enrollments = await _read_enrollments(db)
         if not enrollments:
@@ -505,7 +549,11 @@ async def refresh_balances(db: AsyncSession = Depends(get_db)):
         today = date_type.today().isoformat()
         refreshed = 0
         reconnect_required: list[str] = []
-        teller = _get_teller_client()
+        try:
+            teller = _get_teller_client()
+        except FileNotFoundError as exc:
+            print(f"Error refreshing Teller balances: {exc}")
+            return JSONResponse(status_code=503, content={"error": str(exc)})
 
         for enrollment in enrollments:
             access_token = enrollment["accessToken"]

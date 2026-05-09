@@ -13,7 +13,7 @@ from app.models.account import Account
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.models.user import User
-from app.routes.teller import _import_preview_cache
+from app.routes.teller import _import_preview_cache, check_credentials_at_startup
 from app.utils.teller_client import TellerClient
 
 
@@ -45,6 +45,93 @@ def test_teller_disabled_when_partial():
         finance_manager_teller_cert=None,
     )
     assert s.is_teller_enabled is False
+
+
+def test_check_credentials_at_startup_silent_when_disabled():
+    """Disabled Teller integration should never raise at startup, even if
+    no cert/key paths are configured."""
+    from app.config import settings as live_settings
+
+    original = (
+        live_settings.finance_manager_teller_integration_enabled,
+        live_settings.finance_manager_teller_app_id,
+        live_settings.finance_manager_teller_private_key,
+        live_settings.finance_manager_teller_cert,
+    )
+    live_settings.finance_manager_teller_integration_enabled = False
+    live_settings.finance_manager_teller_app_id = None
+    live_settings.finance_manager_teller_private_key = None
+    live_settings.finance_manager_teller_cert = None
+    try:
+        check_credentials_at_startup()  # must not raise
+    finally:
+        (
+            live_settings.finance_manager_teller_integration_enabled,
+            live_settings.finance_manager_teller_app_id,
+            live_settings.finance_manager_teller_private_key,
+            live_settings.finance_manager_teller_cert,
+        ) = original
+
+
+def test_check_credentials_at_startup_raises_when_files_missing(tmp_path):
+    """Enabled Teller with non-existent cert/key paths must abort startup
+    so a misconfigured deploy never goes live."""
+    from app.config import settings as live_settings
+
+    bogus_cert = str(tmp_path / "missing-cert.pem")
+    bogus_key = str(tmp_path / "missing-key.pem")
+    original = (
+        live_settings.finance_manager_teller_integration_enabled,
+        live_settings.finance_manager_teller_app_id,
+        live_settings.finance_manager_teller_private_key,
+        live_settings.finance_manager_teller_cert,
+    )
+    live_settings.finance_manager_teller_integration_enabled = True
+    live_settings.finance_manager_teller_app_id = "test-app-id"
+    live_settings.finance_manager_teller_private_key = bogus_key
+    live_settings.finance_manager_teller_cert = bogus_cert
+    try:
+        with pytest.raises(FileNotFoundError) as excinfo:
+            check_credentials_at_startup()
+        msg = str(excinfo.value)
+        assert bogus_cert in msg
+        assert bogus_key in msg
+    finally:
+        (
+            live_settings.finance_manager_teller_integration_enabled,
+            live_settings.finance_manager_teller_app_id,
+            live_settings.finance_manager_teller_private_key,
+            live_settings.finance_manager_teller_cert,
+        ) = original
+
+
+def test_check_credentials_at_startup_silent_when_files_exist(tmp_path):
+    from app.config import settings as live_settings
+
+    cert_file = tmp_path / "cert.pem"
+    key_file = tmp_path / "key.pem"
+    cert_file.write_text("cert")
+    key_file.write_text("key")
+
+    original = (
+        live_settings.finance_manager_teller_integration_enabled,
+        live_settings.finance_manager_teller_app_id,
+        live_settings.finance_manager_teller_private_key,
+        live_settings.finance_manager_teller_cert,
+    )
+    live_settings.finance_manager_teller_integration_enabled = True
+    live_settings.finance_manager_teller_app_id = "test-app-id"
+    live_settings.finance_manager_teller_private_key = str(key_file)
+    live_settings.finance_manager_teller_cert = str(cert_file)
+    try:
+        check_credentials_at_startup()  # must not raise
+    finally:
+        (
+            live_settings.finance_manager_teller_integration_enabled,
+            live_settings.finance_manager_teller_app_id,
+            live_settings.finance_manager_teller_private_key,
+            live_settings.finance_manager_teller_cert,
+        ) = original
 
 
 @pytest.mark.asyncio
@@ -319,6 +406,73 @@ async def test_refresh_balances_no_enrollment(
 
     response = await client.post("/api/teller/refresh-balances")
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_refresh_balances_disabled(client: AsyncClient, db_session: AsyncSession):
+    """When Teller integration is disabled, refresh-balances returns 400."""
+    enrollment = {
+        "accessToken": "tok",
+        "userId": "u1",
+        "enrollmentId": "enr_1",
+        "institutionName": "Test Bank",
+        "connectedAt": "2026-01-01T00:00:00Z",
+    }
+    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    await db_session.flush()
+
+    response = await client.post("/api/teller/refresh-balances")
+    assert response.status_code == 400
+    assert response.json()["error"] == "Teller integration not enabled"
+
+
+@pytest.mark.asyncio
+async def test_refresh_balances_missing_cert_files(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """When cert/key paths are configured but files don't exist on disk,
+    refresh-balances should return 503 with a clear message naming the
+    missing files — not crash with a raw FileNotFoundError that leaks an
+    [Errno 2] message to the operator."""
+    from app.config import settings
+
+    original = (
+        settings.finance_manager_teller_integration_enabled,
+        settings.finance_manager_teller_app_id,
+        settings.finance_manager_teller_private_key,
+        settings.finance_manager_teller_cert,
+    )
+    settings.finance_manager_teller_integration_enabled = True
+    settings.finance_manager_teller_app_id = "test-app-id"
+    settings.finance_manager_teller_private_key = "/nonexistent/key.pem"
+    settings.finance_manager_teller_cert = "/nonexistent/cert.pem"
+
+    try:
+        enrollment = {
+            "accessToken": "tok",
+            "userId": "u1",
+            "enrollmentId": "enr_1",
+            "institutionName": "Test Bank",
+            "connectedAt": "2026-01-01T00:00:00Z",
+        }
+        db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+        await db_session.flush()
+
+        response = await client.post("/api/teller/refresh-balances")
+        assert response.status_code == 503
+        body = response.json()
+        assert "credential" in body["error"].lower()
+        # Both missing paths should appear in the error so the operator
+        # knows exactly what to fix.
+        assert "/nonexistent/cert.pem" in body["error"]
+        assert "/nonexistent/key.pem" in body["error"]
+    finally:
+        (
+            settings.finance_manager_teller_integration_enabled,
+            settings.finance_manager_teller_app_id,
+            settings.finance_manager_teller_private_key,
+            settings.finance_manager_teller_cert,
+        ) = original
 
 
 @pytest.mark.asyncio
