@@ -208,6 +208,44 @@ class TestImportWithMapping:
         assert len(rows) == 1
         assert rows[0].date == date(2026, 4, 30)
 
+    async def test_import_with_mapping_us_dates_run_transfer_detection(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Importing US-format dates against existing data from a different
+        source must not crash transfer detection."""
+        db_session.add(
+            Transaction(
+                id="existing1",
+                date=date(2026, 4, 28),
+                description="Outgoing Transfer",
+                category="Transfer",
+                amount=Decimal("100.00"),
+                type="expense",
+                user_id="user1",
+                metadata_={"sourceId": "src_other"},
+            )
+        )
+        await db_session.flush()
+
+        csv_text = "Trans Date,Desc,Amt\n04/29/2026,Incoming Transfer,100.00\n"
+        body = {
+            "csvText": csv_text,
+            "userId": "user1",
+            "mapping": {
+                "id": "src1",
+                "name": "Test Bank",
+                "flipIncomeExpense": False,
+                "mappings": [
+                    {"csvColumn": "Trans Date", "standardColumn": "Transaction Date"},
+                    {"csvColumn": "Desc", "standardColumn": "Description"},
+                    {"csvColumn": "Amt", "standardColumn": "Amount"},
+                ],
+            },
+        }
+        response = await client.post("/api/import-with-mapping", json=body)
+        assert response.status_code == 200
+        assert response.json()["imported"] == 1
+
     async def test_import_with_mapping_requires_user_id(
         self, client: AsyncClient, db_session: AsyncSession
     ):

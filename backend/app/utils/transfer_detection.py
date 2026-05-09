@@ -7,7 +7,8 @@ Matches debit/credit pairs across sources/users within a 4-day window.
 
 import secrets
 import time
-from datetime import date
+
+from app.utils.date_parser import parse_date
 
 
 def detect_transfers(transactions: list[dict]) -> dict:
@@ -132,8 +133,8 @@ def is_transfer_pair(t1: dict, t2: dict) -> bool:
     if abs(t1["amount"]) != abs(t2["amount"]):
         return False
 
-    d1 = _parse_date(t1["date"])
-    d2 = _parse_date(t2["date"])
+    d1 = parse_date(t1["date"])
+    d2 = parse_date(t2["date"])
     return not abs((d1 - d2).days) > 4
 
 
@@ -155,8 +156,8 @@ def calculate_transfer_confidence(t1: dict, t2: dict) -> float:
     else:
         return 0
 
-    d1 = _parse_date(t1["date"])
-    d2 = _parse_date(t2["date"])
+    d1 = parse_date(t1["date"])
+    d2 = parse_date(t2["date"])
     days_diff = abs((d1 - d2).days)
     if days_diff == 0:
         confidence += 0.2
@@ -175,10 +176,3 @@ def calculate_transfer_confidence(t1: dict, t2: dict) -> float:
         confidence += 0.05
 
     return min(confidence, 1.0)
-
-
-def _parse_date(d) -> date:
-    """Parse a date string or date object into a date."""
-    if isinstance(d, date):
-        return d
-    return date.fromisoformat(str(d)[:10])

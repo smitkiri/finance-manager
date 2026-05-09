@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 
 from app.utils.category_matcher import find_similar_category
+from app.utils.date_parser import parse_date
 
 
 def parse_csv_line(line: str) -> list[str]:
@@ -79,6 +80,11 @@ def parse_csv(
         except ValueError, IndexError:
             continue
 
+        try:
+            parsed_date = parse_date(date_str)
+        except ValueError:
+            continue
+
         amount = abs(raw_amount)
         txn_type = "income" if raw_amount >= 0 else "expense"
 
@@ -88,7 +94,7 @@ def parse_csv(
         transactions.append(
             {
                 "id": _generate_id(),
-                "date": date_str,
+                "date": parsed_date,
                 "description": description,
                 "category": category,
                 "amount": amount,
@@ -205,6 +211,11 @@ def parse_csv_with_mapping(
             continue
 
         try:
+            parsed_date = parse_date(date_str)
+        except ValueError:
+            continue
+
+        try:
             raw_amount = float(amount_str.replace(",", "")) if amount_str else 0
         except ValueError:
             continue
@@ -234,7 +245,7 @@ def parse_csv_with_mapping(
         expenses.append(
             {
                 "id": _generate_id(),
-                "date": date_str,
+                "date": parsed_date,
                 "description": description,
                 "category": category or "Uncategorized",
                 "amount": amount,
