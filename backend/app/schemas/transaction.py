@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date as date_type
 from typing import Any
 
 from pydantic import BaseModel
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class TransactionOut(BaseModel):
     id: str
-    date: date
+    date: date_type
     description: str
     category: str
     amount: float
@@ -37,7 +37,7 @@ class TransactionOut(BaseModel):
 
 
 class TransactionUpdate(BaseModel):
-    date: str | None = None
+    date: date_type | None = None
     description: str | None = None
     category: str | None = None
     amount: float | None = None
