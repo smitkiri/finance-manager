@@ -1,6 +1,7 @@
 import secrets
 import time
 from datetime import date as date_type
+from datetime import datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends
@@ -24,11 +25,28 @@ from app.utils.transfer_utils import txns_to_dicts
 router = APIRouter(prefix="/api", tags=["imports"])
 
 
+_DATE_FORMATS = ("%m/%d/%Y", "%m-%d-%Y", "%Y/%m/%d")
+
+
 def _parse_date(d) -> date_type:
-    """Convert a date string or date object to a date object."""
+    """Convert a date string or date object to a date object.
+
+    Accepts ISO 8601 (YYYY-MM-DD) and common US bank CSV formats
+    such as MM/DD/YYYY.
+    """
     if isinstance(d, date_type):
         return d
-    return date_type.fromisoformat(str(d))
+    s = str(d).strip()
+    try:
+        return date_type.fromisoformat(s)
+    except ValueError:
+        pass
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    raise ValueError(f"Unrecognized date format: {s!r}")
 
 
 COLUMN_MAPPINGS_KEY = "column_mappings"
