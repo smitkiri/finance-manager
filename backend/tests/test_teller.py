@@ -322,6 +322,73 @@ async def test_refresh_balances_no_enrollment(
 
 
 @pytest.mark.asyncio
+async def test_refresh_balances_disabled(client: AsyncClient, db_session: AsyncSession):
+    """When Teller integration is disabled, refresh-balances returns 400."""
+    enrollment = {
+        "accessToken": "tok",
+        "userId": "u1",
+        "enrollmentId": "enr_1",
+        "institutionName": "Test Bank",
+        "connectedAt": "2026-01-01T00:00:00Z",
+    }
+    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    await db_session.flush()
+
+    response = await client.post("/api/teller/refresh-balances")
+    assert response.status_code == 400
+    assert response.json()["error"] == "Teller integration not enabled"
+
+
+@pytest.mark.asyncio
+async def test_refresh_balances_missing_cert_files(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """When cert/key paths are configured but files don't exist on disk,
+    refresh-balances should return 503 with a clear message naming the
+    missing files — not crash with a raw FileNotFoundError that leaks an
+    [Errno 2] message to the operator."""
+    from app.config import settings
+
+    original = (
+        settings.finance_manager_teller_integration_enabled,
+        settings.finance_manager_teller_app_id,
+        settings.finance_manager_teller_private_key,
+        settings.finance_manager_teller_cert,
+    )
+    settings.finance_manager_teller_integration_enabled = True
+    settings.finance_manager_teller_app_id = "test-app-id"
+    settings.finance_manager_teller_private_key = "/nonexistent/key.pem"
+    settings.finance_manager_teller_cert = "/nonexistent/cert.pem"
+
+    try:
+        enrollment = {
+            "accessToken": "tok",
+            "userId": "u1",
+            "enrollmentId": "enr_1",
+            "institutionName": "Test Bank",
+            "connectedAt": "2026-01-01T00:00:00Z",
+        }
+        db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+        await db_session.flush()
+
+        response = await client.post("/api/teller/refresh-balances")
+        assert response.status_code == 503
+        body = response.json()
+        assert "credential" in body["error"].lower()
+        # Both missing paths should appear in the error so the operator
+        # knows exactly what to fix.
+        assert "/nonexistent/cert.pem" in body["error"]
+        assert "/nonexistent/key.pem" in body["error"]
+    finally:
+        (
+            settings.finance_manager_teller_integration_enabled,
+            settings.finance_manager_teller_app_id,
+            settings.finance_manager_teller_private_key,
+            settings.finance_manager_teller_cert,
+        ) = original
+
+
+@pytest.mark.asyncio
 async def test_get_category_mappings_empty(client: AsyncClient):
     response = await client.get("/api/teller/category-mappings")
     assert response.status_code == 200
