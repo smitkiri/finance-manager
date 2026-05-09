@@ -485,7 +485,11 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       const accountsWithBalances: Account[] = await Promise.all(
         accts.map(async (acct) => {
           const balances = await LocalStorage.loadAccountBalances(acct.id);
-          return { ...acct, currentBalance: balances[0]?.balance ?? 0 };
+          return {
+            ...acct,
+            currentBalance: balances[0]?.balance ?? 0,
+            previousBalance: balances[1]?.balance,
+          };
         })
       );
 
