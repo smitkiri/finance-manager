@@ -180,6 +180,34 @@ class TestImportWithMapping:
         assert "autoFilledCategories" in data
         assert "sessionId" in data
 
+    async def test_import_with_mapping_us_date_format(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Bank CSVs commonly use MM/DD/YYYY dates — must be accepted."""
+        csv_text = "Trans Date,Desc,Amt\n04/30/2026,Coffee Shop,-4.50\n"
+        body = {
+            "csvText": csv_text,
+            "userId": "user1",
+            "mapping": {
+                "id": "src1",
+                "name": "Test Bank",
+                "flipIncomeExpense": False,
+                "mappings": [
+                    {"csvColumn": "Trans Date", "standardColumn": "Transaction Date"},
+                    {"csvColumn": "Desc", "standardColumn": "Description"},
+                    {"csvColumn": "Amt", "standardColumn": "Amount"},
+                ],
+            },
+        }
+        response = await client.post("/api/import-with-mapping", json=body)
+        assert response.status_code == 200
+        assert response.json()["imported"] == 1
+
+        result = await db_session.execute(Transaction.__table__.select())
+        rows = result.all()
+        assert len(rows) == 1
+        assert rows[0].date == date(2026, 4, 30)
+
     async def test_import_with_mapping_requires_user_id(
         self, client: AsyncClient, db_session: AsyncSession
     ):
