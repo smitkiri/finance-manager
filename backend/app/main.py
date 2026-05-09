@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,11 +17,19 @@ from app.routes.imports import router as imports_router
 from app.routes.net_worth import router as net_worth_router
 from app.routes.reports import router as reports_router
 from app.routes.sources import router as sources_router
+from app.routes.teller import check_credentials_at_startup as _check_teller_credentials
 from app.routes.teller import router as teller_router
 from app.routes.transfers import router as transfers_router
 from app.routes.users import router as users_router
 
-app = FastAPI(title="Finance Manager API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    _check_teller_credentials()
+    yield
+
+
+app = FastAPI(title="Finance Manager API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

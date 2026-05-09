@@ -13,7 +13,7 @@ from app.models.account import Account
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.models.user import User
-from app.routes.teller import _import_preview_cache
+from app.routes.teller import _import_preview_cache, check_credentials_at_startup
 from app.utils.teller_client import TellerClient
 
 
@@ -45,6 +45,93 @@ def test_teller_disabled_when_partial():
         finance_manager_teller_cert=None,
     )
     assert s.is_teller_enabled is False
+
+
+def test_check_credentials_at_startup_silent_when_disabled():
+    """Disabled Teller integration should never raise at startup, even if
+    no cert/key paths are configured."""
+    from app.config import settings as live_settings
+
+    original = (
+        live_settings.finance_manager_teller_integration_enabled,
+        live_settings.finance_manager_teller_app_id,
+        live_settings.finance_manager_teller_private_key,
+        live_settings.finance_manager_teller_cert,
+    )
+    live_settings.finance_manager_teller_integration_enabled = False
+    live_settings.finance_manager_teller_app_id = None
+    live_settings.finance_manager_teller_private_key = None
+    live_settings.finance_manager_teller_cert = None
+    try:
+        check_credentials_at_startup()  # must not raise
+    finally:
+        (
+            live_settings.finance_manager_teller_integration_enabled,
+            live_settings.finance_manager_teller_app_id,
+            live_settings.finance_manager_teller_private_key,
+            live_settings.finance_manager_teller_cert,
+        ) = original
+
+
+def test_check_credentials_at_startup_raises_when_files_missing(tmp_path):
+    """Enabled Teller with non-existent cert/key paths must abort startup
+    so a misconfigured deploy never goes live."""
+    from app.config import settings as live_settings
+
+    bogus_cert = str(tmp_path / "missing-cert.pem")
+    bogus_key = str(tmp_path / "missing-key.pem")
+    original = (
+        live_settings.finance_manager_teller_integration_enabled,
+        live_settings.finance_manager_teller_app_id,
+        live_settings.finance_manager_teller_private_key,
+        live_settings.finance_manager_teller_cert,
+    )
+    live_settings.finance_manager_teller_integration_enabled = True
+    live_settings.finance_manager_teller_app_id = "test-app-id"
+    live_settings.finance_manager_teller_private_key = bogus_key
+    live_settings.finance_manager_teller_cert = bogus_cert
+    try:
+        with pytest.raises(FileNotFoundError) as excinfo:
+            check_credentials_at_startup()
+        msg = str(excinfo.value)
+        assert bogus_cert in msg
+        assert bogus_key in msg
+    finally:
+        (
+            live_settings.finance_manager_teller_integration_enabled,
+            live_settings.finance_manager_teller_app_id,
+            live_settings.finance_manager_teller_private_key,
+            live_settings.finance_manager_teller_cert,
+        ) = original
+
+
+def test_check_credentials_at_startup_silent_when_files_exist(tmp_path):
+    from app.config import settings as live_settings
+
+    cert_file = tmp_path / "cert.pem"
+    key_file = tmp_path / "key.pem"
+    cert_file.write_text("cert")
+    key_file.write_text("key")
+
+    original = (
+        live_settings.finance_manager_teller_integration_enabled,
+        live_settings.finance_manager_teller_app_id,
+        live_settings.finance_manager_teller_private_key,
+        live_settings.finance_manager_teller_cert,
+    )
+    live_settings.finance_manager_teller_integration_enabled = True
+    live_settings.finance_manager_teller_app_id = "test-app-id"
+    live_settings.finance_manager_teller_private_key = str(key_file)
+    live_settings.finance_manager_teller_cert = str(cert_file)
+    try:
+        check_credentials_at_startup()  # must not raise
+    finally:
+        (
+            live_settings.finance_manager_teller_integration_enabled,
+            live_settings.finance_manager_teller_app_id,
+            live_settings.finance_manager_teller_private_key,
+            live_settings.finance_manager_teller_cert,
+        ) = original
 
 
 @pytest.mark.asyncio
