@@ -350,6 +350,24 @@ async def test_patch_expense_update_excluded(
     assert response.json()["excludedFromCalculations"] is True
 
 
+@pytest.mark.asyncio
+async def test_patch_expense_with_iso_date_string(
+    client: AsyncClient, db_session: AsyncSession
+):
+    # Frontend re-sends the full transaction (including date as an ISO string)
+    # whenever the user edits a single field like category. The backend must
+    # accept the date string and persist it as a real date.
+    await _seed(db_session)
+    response = await client.patch(
+        "/api/expenses/t1",
+        json={"date": "2026-04-30", "category": "Food & Drink"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["category"] == "Food & Drink"
+    assert data["date"] == "2026-04-30"
+
+
 # --- POST (bulk save) tests ---
 
 
