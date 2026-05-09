@@ -165,6 +165,7 @@ export interface Account {
   createdAt: string;
   updatedAt: string;
   currentBalance?: number;
+  previousBalance?: number;
 }
 
 export interface AccountBalance {
