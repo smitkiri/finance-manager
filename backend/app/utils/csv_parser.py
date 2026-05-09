@@ -7,22 +7,10 @@ mapping with auto-categorization, and expense merge/deduplication.
 
 import secrets
 import time
-from datetime import date, datetime
+from datetime import datetime
 
 from app.utils.category_matcher import find_similar_category
-
-_DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%Y/%m/%d")
-
-
-def _parse_date(s: str) -> date | None:
-    """Parse a CSV date string into a date. Returns None if unrecognized."""
-    s = s.strip()
-    for fmt in _DATE_FORMATS:
-        try:
-            return datetime.strptime(s, fmt).date()
-        except ValueError:
-            continue
-    return None
+from app.utils.date_parser import parse_date
 
 
 def parse_csv_line(line: str) -> list[str]:
@@ -92,8 +80,9 @@ def parse_csv(
         except ValueError, IndexError:
             continue
 
-        parsed_date = _parse_date(date_str)
-        if parsed_date is None:
+        try:
+            parsed_date = parse_date(date_str)
+        except ValueError:
             continue
 
         amount = abs(raw_amount)
@@ -221,8 +210,9 @@ def parse_csv_with_mapping(
         if not date_str or not description:
             continue
 
-        parsed_date = _parse_date(date_str)
-        if parsed_date is None:
+        try:
+            parsed_date = parse_date(date_str)
+        except ValueError:
             continue
 
         try:
