@@ -8,7 +8,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Trash2, X, ChevronDown, ChevronUp, History, RefreshCw } from 'lucide-react';
+import {
+  Trash2,
+  X,
+  ChevronDown,
+  ChevronUp,
+  History,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
@@ -322,6 +332,49 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
   );
 };
 
+interface BalanceDeltaProps {
+  previousBalance?: number;
+  currentBalance?: number;
+  accountType: 'asset' | 'liability';
+}
+
+const BalanceDelta: React.FC<BalanceDeltaProps> = ({
+  previousBalance,
+  currentBalance,
+  accountType,
+}) => {
+  const neutralClass = 'text-gray-400 dark:text-gray-500';
+
+  if (previousBalance === undefined || currentBalance === undefined) {
+    return <span className={`text-xs font-medium mt-0.5 ${neutralClass}`}>—</span>;
+  }
+
+  const delta = currentBalance - previousBalance;
+
+  if (delta === 0) {
+    return (
+      <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${neutralClass}`}>
+        <Minus size={12} />
+        {formatCurrency(0)}
+      </span>
+    );
+  }
+
+  const isAsset = accountType === 'asset';
+  const isGood = (delta > 0 && isAsset) || (delta < 0 && !isAsset);
+  const colorClass = isGood
+    ? 'text-green-600 dark:text-green-400'
+    : 'text-red-600 dark:text-red-400';
+  const Icon = delta > 0 ? TrendingUp : TrendingDown;
+
+  return (
+    <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${colorClass}`}>
+      <Icon size={12} />
+      {formatCurrency(Math.abs(delta))}
+    </span>
+  );
+};
+
 // Account row with expand for history
 interface AccountRowProps {
   account: Account;
@@ -368,9 +421,16 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => 
           </span>
         </div>
         <div className="flex items-center gap-3 ml-4">
-          <span className={`text-base font-semibold ${balanceColor}`}>
-            {account.currentBalance !== undefined ? formatCurrency(account.currentBalance) : '—'}
-          </span>
+          <div className="flex flex-col items-end">
+            <span className={`text-base font-semibold ${balanceColor}`}>
+              {account.currentBalance !== undefined ? formatCurrency(account.currentBalance) : '—'}
+            </span>
+            <BalanceDelta
+              previousBalance={account.previousBalance}
+              currentBalance={account.currentBalance}
+              accountType={account.type}
+            />
+          </div>
           <button
             onClick={() => onUpdateBalance(account)}
             className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
