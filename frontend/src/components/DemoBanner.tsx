@@ -37,8 +37,8 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ enabled }) => {
   };
 
   return (
-    <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-sm">
-      <span>
+    <div className="bg-blue-600 text-white pl-16 pr-4 py-2 flex items-center justify-between text-sm gap-4">
+      <span className="flex-1 text-center sm:text-left">
         🎈 You're in demo mode — data resets daily.{' '}
         <a
           href={REPO_URL}
@@ -52,7 +52,7 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ enabled }) => {
       <button
         onClick={handleDismiss}
         aria-label="Dismiss"
-        className="p-1 hover:bg-blue-700 rounded transition-colors"
+        className="shrink-0 p-1 hover:bg-blue-700 rounded transition-colors"
       >
         <X size={16} />
       </button>
