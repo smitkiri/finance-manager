@@ -14,7 +14,7 @@ import asyncio
 import json
 import logging
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -183,14 +183,51 @@ def _load_fixture() -> dict[str, Any]:
     return json.loads(FIXTURE_PATH.read_text())
 
 
+def _shift_fixture(fixture: dict[str, Any], today: date | None = None) -> int:
+    """Mutates `fixture` in place: shifts all dates so max(transaction.date) == today.
+    Returns the shift in days."""
+    target = today if today is not None else date.today()
+    max_iso = max(t["date"] for t in fixture["transactions"])
+    max_date = date.fromisoformat(max_iso)
+    shift_days = (target - max_date).days
+    if shift_days == 0:
+        return 0
+    delta = timedelta(days=shift_days)
+
+    def shift_iso(s: str) -> str:
+        return (date.fromisoformat(s) + delta).isoformat()
+
+    for t in fixture["transactions"]:
+        t["date"] = shift_iso(t["date"])
+    for b in fixture["account_balances"]:
+        b["date"] = shift_iso(b["date"])
+    for d in fixture["dashboards"]:
+        d["date_range_start"] = shift_iso(d["date_range_start"])
+        d["date_range_end"] = shift_iso(d["date_range_end"])
+    for dr in fixture["date_ranges"]:
+        dr["start_date"] = shift_iso(dr["start_date"])
+        dr["end_date"] = shift_iso(dr["end_date"])
+    for r in fixture["reports"]:
+        f = r.get("filters") or {}
+        if isinstance(f.get("dateRange"), dict):
+            if "start" in f["dateRange"]:
+                f["dateRange"]["start"] = shift_iso(f["dateRange"]["start"])
+            if "end" in f["dateRange"]:
+                f["dateRange"]["end"] = shift_iso(f["dateRange"]["end"])
+    return shift_days
+
+
 async def _run_reset(db: AsyncSession) -> None:
     """The transactional core, separated so tests can pass a fixture session."""
     fixture = _load_fixture()
+    shift = _shift_fixture(fixture)
     await _wipe_all(db)
     await _insert_fixture(db, fixture)
     await db.flush()
     logger.info(
-        "demo reset: inserted %d users, %d sources, %d transactions, %d accounts",
+        "demo reset: shifted %d days; inserted %d users, %d sources, "
+        "%d transactions, %d accounts",
+        shift,
         len(fixture["users"]),
         len(fixture["sources"]),
         len(fixture["transactions"]),

@@ -64,3 +64,83 @@ async def test_reset_wipes_and_inserts_fixture(db_session: AsyncSession):
     # Account balances exist
     balances = (await db_session.execute(select(AccountBalance))).scalars().all()
     assert len(balances) > 0
+
+
+def test_shift_fixture_moves_latest_to_target_date():
+    """_shift_fixture with an explicit target shifts all dates by the right delta."""
+    from datetime import date
+
+    from app.demo.reset import _shift_fixture
+
+    fixture = {
+        "transactions": [
+            {"date": "2026-01-01"},
+            {"date": "2026-05-17"},  # max
+        ],
+        "account_balances": [{"date": "2026-03-01"}],
+        "dashboards": [
+            {"date_range_start": "2026-01-01", "date_range_end": "2026-05-17"},
+        ],
+        "date_ranges": [
+            {"start_date": "2026-04-17", "end_date": "2026-05-17"},
+        ],
+        "reports": [
+            {"filters": {"dateRange": {"start": "2026-01-01", "end": "2026-05-17"}}}
+        ],
+    }
+    target = date(2026, 8, 1)  # 76 days after the fixture's max
+    shift = _shift_fixture(fixture, today=target)
+    assert shift == 76
+
+    assert fixture["transactions"][0]["date"] == "2026-03-18"
+    assert fixture["transactions"][1]["date"] == "2026-08-01"
+    assert fixture["account_balances"][0]["date"] == "2026-05-16"
+    assert fixture["dashboards"][0]["date_range_end"] == "2026-08-01"
+    assert fixture["date_ranges"][0]["end_date"] == "2026-08-01"
+    assert fixture["reports"][0]["filters"]["dateRange"]["end"] == "2026-08-01"
+
+
+def test_shift_fixture_no_op_when_already_today():
+    from datetime import date
+
+    from app.demo.reset import _shift_fixture
+
+    fixture = {
+        "transactions": [{"date": "2026-05-17"}],
+        "account_balances": [],
+        "dashboards": [],
+        "date_ranges": [],
+        "reports": [],
+    }
+    assert _shift_fixture(fixture, today=date(2026, 5, 17)) == 0
+    assert fixture["transactions"][0]["date"] == "2026-05-17"
+
+
+@pytest.mark.asyncio
+async def test_reset_shifts_latest_to_today(db_session: AsyncSession):
+    """The latest transaction date should equal today after a reset."""
+    from datetime import date as _date
+
+    from app.demo import reset as reset_mod
+
+    original = settings.finance_manager_demo_mode
+    settings.finance_manager_demo_mode = True
+    try:
+        await reset_mod._run_reset(db_session)
+    finally:
+        settings.finance_manager_demo_mode = original
+
+    txns = (await db_session.execute(select(Transaction))).scalars().all()
+    assert len(txns) > 0
+    latest = max(t.date for t in txns)
+    assert latest == _date.today()
+
+    # Account balances should also have a snapshot on today
+    balances = (await db_session.execute(select(AccountBalance))).scalars().all()
+    latest_bal = max(b.date for b in balances)
+    assert latest_bal == _date.today()
+
+    # Dashboards' date_range_end should be today
+    dashes = (await db_session.execute(select(Dashboard))).scalars().all()
+    for d in dashes:
+        assert d.date_range_end == _date.today()
