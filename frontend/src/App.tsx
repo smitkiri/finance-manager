@@ -1030,7 +1030,11 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        topOffset={demoEnabled}
+      />
 
       {/* Sticky top group: demo banner sits above the header so both stay
           pinned together when scrolling. */}
