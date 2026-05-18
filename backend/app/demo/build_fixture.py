@@ -444,6 +444,223 @@ for first in iter_months(FIXTURE_START, ANCHOR):
             )
         )
 
+# ---------- Realistic income/expense variance ----------
+# Creates negative-savings months (Nov/Dec from holiday spending, occasional
+# car repair) and huge-savings months (Dec bonuses, March tax refund).
+
+
+def years_in_range():
+    """Yield every calendar year that the fixture period touches."""
+    yield from range(FIXTURE_START.year, ANCHOR.year + 1)
+
+
+def safe_add(t: Txn):
+    """Append a txn only if its date falls inside the fixture window."""
+    if FIXTURE_START <= t.date <= ANCHOR:
+        txns.append(t)
+
+
+for year in years_in_range():
+    # Year-end bonuses, mid-December — the "huge savings" months
+    bonus_date = date(year, 12, 15)
+    safe_add(
+        Txn(
+            id=next_id("txn"),
+            date=bonus_date,
+            description="Year-end bonus",
+            category="Salary",
+            amount=Decimal("8500.00"),
+            type="income",
+            user_id=USER_ALICE,
+            labels=[],
+            metadata={"sourceId": SRC_CHASE, "accountId": ACCT_ALICE_CHECKING},
+        )
+    )
+    safe_add(
+        Txn(
+            id=next_id("txn"),
+            date=bonus_date,
+            description="Year-end bonus",
+            category="Salary",
+            amount=Decimal("4200.00"),
+            type="income",
+            user_id=USER_BEN,
+            labels=[],
+            metadata={"sourceId": SRC_CAPONE, "accountId": ACCT_BEN_CHECKING},
+        )
+    )
+
+    # Federal tax refund, mid-March — the other "huge savings" month
+    refund_date = date(year, 3, 18)
+    safe_add(
+        Txn(
+            id=next_id("txn"),
+            date=refund_date,
+            description="Federal tax refund",
+            category="Refunds",
+            amount=Decimal(str(round(random.uniform(2200, 3600), 2))),
+            type="income",
+            user_id=USER_ALICE,
+            labels=[],
+            metadata={"sourceId": SRC_CHASE, "accountId": ACCT_ALICE_CHECKING},
+        )
+    )
+
+    # Holiday gift cluster, late Nov - late Dec — pushes Dec into negative
+    # savings even though the bonus lands the same month (some years).
+    GIFT_RECIPIENTS = [
+        "Mom",
+        "Dad",
+        "Sister",
+        "Brother",
+        "Niece",
+        "Nephew",
+        "Ben",
+        "Alice",
+        "Friend",
+        "Coworker",
+    ]
+    gift_count = random.randint(9, 13)
+    for _ in range(gift_count):
+        month = random.choice([11, 11, 12, 12, 12])  # Dec weighted
+        day = random.randint(15, 27)
+        try:
+            d = date(year, month, day)
+        except ValueError:
+            continue
+        amt = round(random.uniform(80, 450), 2)
+        safe_add(
+            Txn(
+                id=next_id("txn"),
+                date=d,
+                description=f"Gift - {random.choice(GIFT_RECIPIENTS)}",
+                category="Entertainment",
+                amount=Decimal(str(amt)),
+                type="expense",
+                user_id=random.choice([USER_ALICE, USER_BEN]),
+                labels=["holiday-gifts"],
+                metadata={"sourceId": SRC_AMEX, "accountId": ACCT_JOINT_CARD},
+            )
+        )
+
+    # Thanksgiving travel — late November
+    safe_add(
+        Txn(
+            id=next_id("txn"),
+            date=date(year, 11, 22),
+            description="Flight - Thanksgiving",
+            category="Travel",
+            amount=Decimal(str(round(random.uniform(380, 720), 2))),
+            type="expense",
+            user_id=USER_ALICE,
+            labels=[],
+            metadata={"sourceId": SRC_AMEX, "accountId": ACCT_JOINT_CARD},
+        )
+    )
+
+    # Car insurance — twice a year, lumpy premium payments
+    for month in (1, 7):
+        safe_add(
+            Txn(
+                id=next_id("txn"),
+                date=date(year, month, 12),
+                description="Car insurance - 6mo premium",
+                category="Transportation",
+                amount=Decimal("780.00"),
+                type="expense",
+                user_id=USER_ALICE,
+                labels=[],
+                metadata={"sourceId": SRC_CHASE, "accountId": ACCT_ALICE_CHECKING},
+            )
+        )
+
+    # Car repair, ~70% of years — random month, large expense
+    if random.random() < 0.7:
+        month = random.randint(2, 10)
+        day = random.randint(5, 25)
+        try:
+            d = date(year, month, day)
+        except ValueError:
+            d = date(year, month, 15)
+        safe_add(
+            Txn(
+                id=next_id("txn"),
+                date=d,
+                description="Auto repair shop",
+                category="Transportation",
+                amount=Decimal(str(round(random.uniform(450, 1850), 2))),
+                type="expense",
+                user_id=random.choice([USER_ALICE, USER_BEN]),
+                labels=[],
+                metadata={"sourceId": SRC_AMEX, "accountId": ACCT_JOINT_CARD},
+            )
+        )
+
+    # Medical bill, ~50% of years
+    if random.random() < 0.5:
+        month = random.randint(2, 11)
+        day = random.randint(5, 25)
+        try:
+            d = date(year, month, day)
+        except ValueError:
+            d = date(year, month, 15)
+        safe_add(
+            Txn(
+                id=next_id("txn"),
+                date=d,
+                description="Specialist visit copay",
+                category="Healthcare",
+                amount=Decimal(str(round(random.uniform(280, 1200), 2))),
+                type="expense",
+                user_id=random.choice([USER_ALICE, USER_BEN]),
+                labels=[],
+                metadata={"sourceId": SRC_AMEX, "accountId": ACCT_JOINT_CARD},
+            )
+        )
+
+    # Major one-off expense per year — large enough to push the month into
+    # negative savings even with both salaries landing. Falls outside the
+    # bonus (Dec) and refund (Mar) months so the bonus highs stay clean.
+    BIG_EVENTS = [
+        ("Dental implant - out of pocket", "Healthcare", 8000, 14000),
+        ("Auto repair - transmission rebuild", "Transportation", 7500, 13000),
+        ("HVAC replacement", "Housing", 12000, 18000),
+        ("Hospital bill - procedure", "Healthcare", 14000, 22000),
+        ("Furniture - new sofa & bedroom", "Housing", 9000, 15000),
+        ("Used car purchase", "Transportation", 16000, 24000),
+        ("Wedding deposit", "Entertainment", 10000, 16000),
+        ("Roof repair", "Housing", 8000, 15000),
+        ("Engagement ring", "Entertainment", 7500, 14000),
+    ]
+    # Restrict candidate months to ones that actually fall inside the fixture
+    # window for this year. Avoid Mar/Nov/Dec so bonuses/refunds stay clean.
+    candidate_months = []
+    for m in (2, 4, 5, 6, 7, 8, 9, 10):
+        if date(year, m, 15) >= FIXTURE_START and date(year, m, 15) <= ANCHOR:
+            candidate_months.append(m)
+    if candidate_months:
+        desc, cat, lo, hi = random.choice(BIG_EVENTS)
+        big_month = random.choice(candidate_months)
+        big_day = random.randint(8, 24)
+        try:
+            big_date = date(year, big_month, big_day)
+        except ValueError:
+            big_date = date(year, big_month, 15)
+        safe_add(
+            Txn(
+                id=next_id("txn"),
+                date=big_date,
+                description=desc,
+                category=cat,
+                amount=Decimal(str(round(random.uniform(lo, hi), 2))),
+                type="expense",
+                user_id=random.choice([USER_ALICE, USER_BEN]),
+                labels=[],
+                metadata={"sourceId": SRC_CHASE, "accountId": ACCT_ALICE_CHECKING},
+            )
+        )
+
+
 # ---------- Feature showcases ----------
 
 # Vacation cluster 2024 (label vacation-2024)

@@ -8975,6 +8975,598 @@
     },
     {
       "id": "txn-00556",
+      "date": "2024-12-15",
+      "description": "Year-end bonus",
+      "category": "Salary",
+      "amount": 8500.0,
+      "type": "income",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00557",
+      "date": "2024-12-15",
+      "description": "Year-end bonus",
+      "category": "Salary",
+      "amount": 4200.0,
+      "type": "income",
+      "user_id": "user-ben",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-capone",
+        "accountId": "acct-ben-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00559",
+      "date": "2024-11-17",
+      "description": "Gift - Coworker",
+      "category": "Entertainment",
+      "amount": 246.52,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00560",
+      "date": "2024-12-16",
+      "description": "Gift - Brother",
+      "category": "Entertainment",
+      "amount": 192.14,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00561",
+      "date": "2024-12-15",
+      "description": "Gift - Niece",
+      "category": "Entertainment",
+      "amount": 195.24,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00562",
+      "date": "2024-11-27",
+      "description": "Gift - Ben",
+      "category": "Entertainment",
+      "amount": 173.98,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00563",
+      "date": "2024-12-15",
+      "description": "Gift - Niece",
+      "category": "Entertainment",
+      "amount": 417.4,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00564",
+      "date": "2024-12-26",
+      "description": "Gift - Brother",
+      "category": "Entertainment",
+      "amount": 309.77,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00565",
+      "date": "2024-11-25",
+      "description": "Gift - Ben",
+      "category": "Entertainment",
+      "amount": 99.86,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00566",
+      "date": "2024-11-20",
+      "description": "Gift - Dad",
+      "category": "Entertainment",
+      "amount": 394.35,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00567",
+      "date": "2024-12-15",
+      "description": "Gift - Nephew",
+      "category": "Entertainment",
+      "amount": 426.01,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00568",
+      "date": "2024-11-16",
+      "description": "Gift - Friend",
+      "category": "Entertainment",
+      "amount": 413.34,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00569",
+      "date": "2024-11-22",
+      "description": "Flight - Thanksgiving",
+      "category": "Travel",
+      "amount": 698.04,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00571",
+      "date": "2024-07-12",
+      "description": "Car insurance - 6mo premium",
+      "category": "Transportation",
+      "amount": 780.0,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00572",
+      "date": "2024-10-14",
+      "description": "Auto repair shop",
+      "category": "Transportation",
+      "amount": 1161.99,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00573",
+      "date": "2024-07-17",
+      "description": "Auto repair - transmission rebuild",
+      "category": "Transportation",
+      "amount": 12766.04,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00574",
+      "date": "2025-12-15",
+      "description": "Year-end bonus",
+      "category": "Salary",
+      "amount": 8500.0,
+      "type": "income",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00575",
+      "date": "2025-12-15",
+      "description": "Year-end bonus",
+      "category": "Salary",
+      "amount": 4200.0,
+      "type": "income",
+      "user_id": "user-ben",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-capone",
+        "accountId": "acct-ben-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00576",
+      "date": "2025-03-18",
+      "description": "Federal tax refund",
+      "category": "Refunds",
+      "amount": 3140.32,
+      "type": "income",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00577",
+      "date": "2025-11-23",
+      "description": "Gift - Brother",
+      "category": "Entertainment",
+      "amount": 376.87,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00578",
+      "date": "2025-12-17",
+      "description": "Gift - Coworker",
+      "category": "Entertainment",
+      "amount": 364.76,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00579",
+      "date": "2025-12-24",
+      "description": "Gift - Mom",
+      "category": "Entertainment",
+      "amount": 436.49,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00580",
+      "date": "2025-12-22",
+      "description": "Gift - Brother",
+      "category": "Entertainment",
+      "amount": 166.92,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00581",
+      "date": "2025-12-18",
+      "description": "Gift - Alice",
+      "category": "Entertainment",
+      "amount": 240.1,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00582",
+      "date": "2025-12-17",
+      "description": "Gift - Niece",
+      "category": "Entertainment",
+      "amount": 351.11,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00583",
+      "date": "2025-12-27",
+      "description": "Gift - Dad",
+      "category": "Entertainment",
+      "amount": 367.56,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00584",
+      "date": "2025-11-27",
+      "description": "Gift - Nephew",
+      "category": "Entertainment",
+      "amount": 159.23,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00585",
+      "date": "2025-11-27",
+      "description": "Gift - Brother",
+      "category": "Entertainment",
+      "amount": 85.64,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00586",
+      "date": "2025-12-15",
+      "description": "Gift - Mom",
+      "category": "Entertainment",
+      "amount": 234.56,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": ["holiday-gifts"],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00587",
+      "date": "2025-11-22",
+      "description": "Flight - Thanksgiving",
+      "category": "Travel",
+      "amount": 709.73,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00588",
+      "date": "2025-01-12",
+      "description": "Car insurance - 6mo premium",
+      "category": "Transportation",
+      "amount": 780.0,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00589",
+      "date": "2025-07-12",
+      "description": "Car insurance - 6mo premium",
+      "category": "Transportation",
+      "amount": 780.0,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00590",
+      "date": "2025-09-15",
+      "description": "Specialist visit copay",
+      "category": "Healthcare",
+      "amount": 944.66,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-amex",
+        "accountId": "acct-joint-card"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00591",
+      "date": "2025-07-21",
+      "description": "Engagement ring",
+      "category": "Entertainment",
+      "amount": 8698.65,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00594",
+      "date": "2026-03-18",
+      "description": "Federal tax refund",
+      "category": "Refunds",
+      "amount": 3463.0,
+      "type": "income",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00609",
+      "date": "2026-01-12",
+      "description": "Car insurance - 6mo premium",
+      "category": "Transportation",
+      "amount": 780.0,
+      "type": "expense",
+      "user_id": "user-alice",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00611",
+      "date": "2026-02-12",
+      "description": "Dental implant - out of pocket",
+      "category": "Healthcare",
+      "amount": 10815.69,
+      "type": "expense",
+      "user_id": "user-ben",
+      "labels": [],
+      "metadata": {
+        "sourceId": "src-chase",
+        "accountId": "acct-alice-checking"
+      },
+      "transfer_info": null,
+      "excluded_from_calculations": false
+    },
+    {
+      "id": "txn-00612",
       "date": "2025-05-02",
       "description": "Flight - SFO to JFK",
       "category": "Travel",
@@ -8990,7 +9582,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00557",
+      "id": "txn-00613",
       "date": "2025-05-03",
       "description": "Hotel - Manhattan",
       "category": "Travel",
@@ -9006,7 +9598,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00558",
+      "id": "txn-00614",
       "date": "2025-05-04",
       "description": "Broadway Show",
       "category": "Entertainment",
@@ -9022,7 +9614,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00559",
+      "id": "txn-00615",
       "date": "2025-05-05",
       "description": "Dinner - Carbone",
       "category": "Restaurants",
@@ -9038,7 +9630,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00560",
+      "id": "txn-00616",
       "date": "2025-05-06",
       "description": "Uber - Times Square",
       "category": "Transportation",
@@ -9054,7 +9646,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00561",
+      "id": "txn-00617",
       "date": "2026-03-08",
       "description": "Flight - SFO to MAUI",
       "category": "Travel",
@@ -9070,7 +9662,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00562",
+      "id": "txn-00618",
       "date": "2026-03-09",
       "description": "Hotel - Wailea",
       "category": "Travel",
@@ -9086,7 +9678,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00563",
+      "id": "txn-00619",
       "date": "2026-03-10",
       "description": "Snorkel tour",
       "category": "Entertainment",
@@ -9102,7 +9694,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00564",
+      "id": "txn-00620",
       "date": "2026-03-11",
       "description": "Luau dinner",
       "category": "Restaurants",
@@ -9118,7 +9710,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00565",
+      "id": "txn-00621",
       "date": "2026-03-12",
       "description": "Car rental",
       "category": "Transportation",
@@ -9134,7 +9726,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00566",
+      "id": "txn-00622",
       "date": "2025-10-29",
       "description": "Lunch with client #1",
       "category": "Restaurants",
@@ -9150,7 +9742,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00567",
+      "id": "txn-00623",
       "date": "2025-11-05",
       "description": "Lunch with client #2",
       "category": "Restaurants",
@@ -9166,7 +9758,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00568",
+      "id": "txn-00624",
       "date": "2025-11-12",
       "description": "Lunch with client #3",
       "category": "Restaurants",
@@ -9182,7 +9774,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00569",
+      "id": "txn-00625",
       "date": "2025-11-19",
       "description": "Lunch with client #4",
       "category": "Restaurants",
@@ -9198,7 +9790,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00570",
+      "id": "txn-00626",
       "date": "2025-11-26",
       "description": "Lunch with client #5",
       "category": "Restaurants",
@@ -9214,7 +9806,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00571",
+      "id": "txn-00627",
       "date": "2026-04-17",
       "description": "Reimbursable conference dinner",
       "category": "Restaurants",
@@ -9230,7 +9822,7 @@
       "excluded_from_calculations": true
     },
     {
-      "id": "txn-00572",
+      "id": "txn-00628",
       "date": "2026-04-03",
       "description": "Reimbursable Uber to client site",
       "category": "Restaurants",
@@ -9246,7 +9838,7 @@
       "excluded_from_calculations": true
     },
     {
-      "id": "txn-00573",
+      "id": "txn-00629",
       "date": "2026-04-02",
       "description": "Transfer to Savings",
       "category": "Transfers",
@@ -9268,7 +9860,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00574",
+      "id": "txn-00630",
       "date": "2026-04-02",
       "description": "Transfer from Checking",
       "category": "Transfers",
@@ -9290,7 +9882,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00575",
+      "id": "txn-00631",
       "date": "2026-02-16",
       "description": "Venmo to Alice (rent share)",
       "category": "Transfers",
@@ -9312,7 +9904,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00576",
+      "id": "txn-00632",
       "date": "2026-02-16",
       "description": "Venmo from Ben (rent share)",
       "category": "Transfers",
@@ -9334,7 +9926,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00577",
+      "id": "txn-00633",
       "date": "2026-05-02",
       "description": "Credit card payment",
       "category": "Transfers",
@@ -9356,7 +9948,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00578",
+      "id": "txn-00634",
       "date": "2026-05-02",
       "description": "Payment received - thank you",
       "category": "Transfers",
@@ -9378,7 +9970,7 @@
       "excluded_from_calculations": false
     },
     {
-      "id": "txn-00579",
+      "id": "txn-00635",
       "date": "2026-05-17",
       "description": "Coffee",
       "category": "Restaurants",
@@ -9438,912 +10030,912 @@
   ],
   "account_balances": [
     {
-      "id": "bal-00580",
-      "account_id": "acct-alice-checking",
-      "balance": 8859.32,
-      "date": "2024-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00581",
-      "account_id": "acct-alice-checking",
-      "balance": 8451.48,
-      "date": "2024-06-01",
-      "note": null
-    },
-    {
-      "id": "bal-00582",
-      "account_id": "acct-alice-checking",
-      "balance": 7953.02,
-      "date": "2024-07-01",
-      "note": null
-    },
-    {
-      "id": "bal-00583",
-      "account_id": "acct-alice-checking",
-      "balance": 7421.32,
-      "date": "2024-08-01",
-      "note": null
-    },
-    {
-      "id": "bal-00584",
-      "account_id": "acct-alice-checking",
-      "balance": 8198.71,
-      "date": "2024-09-01",
-      "note": null
-    },
-    {
-      "id": "bal-00585",
-      "account_id": "acct-alice-checking",
-      "balance": 7883.85,
-      "date": "2024-10-01",
-      "note": null
-    },
-    {
-      "id": "bal-00586",
-      "account_id": "acct-alice-checking",
-      "balance": 7764.24,
-      "date": "2024-11-01",
-      "note": null
-    },
-    {
-      "id": "bal-00587",
-      "account_id": "acct-alice-checking",
-      "balance": 7449.19,
-      "date": "2024-12-01",
-      "note": null
-    },
-    {
-      "id": "bal-00588",
-      "account_id": "acct-alice-checking",
-      "balance": 6951.58,
-      "date": "2025-01-01",
-      "note": null
-    },
-    {
-      "id": "bal-00589",
-      "account_id": "acct-alice-checking",
-      "balance": 6756.36,
-      "date": "2025-02-01",
-      "note": null
-    },
-    {
-      "id": "bal-00590",
-      "account_id": "acct-alice-checking",
-      "balance": 7437.48,
-      "date": "2025-03-01",
-      "note": null
-    },
-    {
-      "id": "bal-00591",
-      "account_id": "acct-alice-checking",
-      "balance": 7161.06,
-      "date": "2025-04-01",
-      "note": null
-    },
-    {
-      "id": "bal-00592",
-      "account_id": "acct-alice-checking",
-      "balance": 6859.4,
-      "date": "2025-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00593",
-      "account_id": "acct-alice-checking",
-      "balance": 6549.11,
-      "date": "2025-06-01",
-      "note": null
-    },
-    {
-      "id": "bal-00594",
-      "account_id": "acct-alice-checking",
-      "balance": 6317.41,
-      "date": "2025-07-01",
-      "note": null
-    },
-    {
-      "id": "bal-00595",
-      "account_id": "acct-alice-checking",
-      "balance": 6778.44,
-      "date": "2025-08-01",
-      "note": null
-    },
-    {
-      "id": "bal-00596",
-      "account_id": "acct-alice-checking",
-      "balance": 7147.1,
-      "date": "2025-09-01",
-      "note": null
-    },
-    {
-      "id": "bal-00597",
-      "account_id": "acct-alice-checking",
-      "balance": 7032.97,
-      "date": "2025-10-01",
-      "note": null
-    },
-    {
-      "id": "bal-00598",
-      "account_id": "acct-alice-checking",
-      "balance": 6653.74,
-      "date": "2025-11-01",
-      "note": null
-    },
-    {
-      "id": "bal-00599",
-      "account_id": "acct-alice-checking",
-      "balance": 7312.75,
-      "date": "2025-12-01",
-      "note": null
-    },
-    {
-      "id": "bal-00600",
-      "account_id": "acct-alice-checking",
-      "balance": 6936.27,
-      "date": "2026-01-01",
-      "note": null
-    },
-    {
-      "id": "bal-00601",
-      "account_id": "acct-alice-checking",
-      "balance": 7180.84,
-      "date": "2026-02-01",
-      "note": null
-    },
-    {
-      "id": "bal-00602",
-      "account_id": "acct-alice-checking",
-      "balance": 7492.88,
-      "date": "2026-03-01",
-      "note": null
-    },
-    {
-      "id": "bal-00603",
-      "account_id": "acct-alice-checking",
-      "balance": 7774.79,
-      "date": "2026-04-01",
-      "note": null
-    },
-    {
-      "id": "bal-00604",
-      "account_id": "acct-alice-checking",
-      "balance": 7998.6,
-      "date": "2026-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00605",
-      "account_id": "acct-alice-checking",
-      "balance": 7998.6,
-      "date": "2026-05-17",
-      "note": null
-    },
-    {
-      "id": "bal-00606",
-      "account_id": "acct-alice-savings",
-      "balance": 21700.15,
-      "date": "2024-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00607",
-      "account_id": "acct-alice-savings",
-      "balance": 21343.1,
-      "date": "2024-06-01",
-      "note": null
-    },
-    {
-      "id": "bal-00608",
-      "account_id": "acct-alice-savings",
-      "balance": 21262.35,
-      "date": "2024-07-01",
-      "note": null
-    },
-    {
-      "id": "bal-00609",
-      "account_id": "acct-alice-savings",
-      "balance": 21003.56,
-      "date": "2024-08-01",
-      "note": null
-    },
-    {
-      "id": "bal-00610",
-      "account_id": "acct-alice-savings",
-      "balance": 21283.24,
-      "date": "2024-09-01",
-      "note": null
-    },
-    {
-      "id": "bal-00611",
-      "account_id": "acct-alice-savings",
-      "balance": 21400.99,
-      "date": "2024-10-01",
-      "note": null
-    },
-    {
-      "id": "bal-00612",
-      "account_id": "acct-alice-savings",
-      "balance": 21512.58,
-      "date": "2024-11-01",
-      "note": null
-    },
-    {
-      "id": "bal-00613",
-      "account_id": "acct-alice-savings",
-      "balance": 21411.79,
-      "date": "2024-12-01",
-      "note": null
-    },
-    {
-      "id": "bal-00614",
-      "account_id": "acct-alice-savings",
-      "balance": 21233.45,
-      "date": "2025-01-01",
-      "note": null
-    },
-    {
-      "id": "bal-00615",
-      "account_id": "acct-alice-savings",
-      "balance": 21581.59,
-      "date": "2025-02-01",
-      "note": null
-    },
-    {
-      "id": "bal-00616",
-      "account_id": "acct-alice-savings",
-      "balance": 21872.75,
-      "date": "2025-03-01",
-      "note": null
-    },
-    {
-      "id": "bal-00617",
-      "account_id": "acct-alice-savings",
-      "balance": 21856.24,
-      "date": "2025-04-01",
-      "note": null
-    },
-    {
-      "id": "bal-00618",
-      "account_id": "acct-alice-savings",
-      "balance": 21516.21,
-      "date": "2025-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00619",
-      "account_id": "acct-alice-savings",
-      "balance": 21367.66,
-      "date": "2025-06-01",
-      "note": null
-    },
-    {
-      "id": "bal-00620",
-      "account_id": "acct-alice-savings",
-      "balance": 21677.1,
-      "date": "2025-07-01",
-      "note": null
-    },
-    {
-      "id": "bal-00621",
-      "account_id": "acct-alice-savings",
-      "balance": 22067.44,
-      "date": "2025-08-01",
-      "note": null
-    },
-    {
-      "id": "bal-00622",
-      "account_id": "acct-alice-savings",
-      "balance": 21884.32,
-      "date": "2025-09-01",
-      "note": null
-    },
-    {
-      "id": "bal-00623",
-      "account_id": "acct-alice-savings",
-      "balance": 21706.36,
-      "date": "2025-10-01",
-      "note": null
-    },
-    {
-      "id": "bal-00624",
-      "account_id": "acct-alice-savings",
-      "balance": 21605.24,
-      "date": "2025-11-01",
-      "note": null
-    },
-    {
-      "id": "bal-00625",
-      "account_id": "acct-alice-savings",
-      "balance": 21437.11,
-      "date": "2025-12-01",
-      "note": null
-    },
-    {
-      "id": "bal-00626",
-      "account_id": "acct-alice-savings",
-      "balance": 21673.19,
-      "date": "2026-01-01",
-      "note": null
-    },
-    {
-      "id": "bal-00627",
-      "account_id": "acct-alice-savings",
-      "balance": 22032.99,
-      "date": "2026-02-01",
-      "note": null
-    },
-    {
-      "id": "bal-00628",
-      "account_id": "acct-alice-savings",
-      "balance": 21836.63,
-      "date": "2026-03-01",
-      "note": null
-    },
-    {
-      "id": "bal-00629",
-      "account_id": "acct-alice-savings",
-      "balance": 21439.94,
-      "date": "2026-04-01",
-      "note": null
-    },
-    {
-      "id": "bal-00630",
-      "account_id": "acct-alice-savings",
-      "balance": 21579.93,
-      "date": "2026-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00631",
-      "account_id": "acct-alice-savings",
-      "balance": 21579.93,
-      "date": "2026-05-17",
-      "note": null
-    },
-    {
-      "id": "bal-00632",
-      "account_id": "acct-ben-checking",
-      "balance": 4683.07,
-      "date": "2024-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00633",
-      "account_id": "acct-ben-checking",
-      "balance": 4426.37,
-      "date": "2024-06-01",
-      "note": null
-    },
-    {
-      "id": "bal-00634",
-      "account_id": "acct-ben-checking",
-      "balance": 4370.12,
-      "date": "2024-07-01",
-      "note": null
-    },
-    {
-      "id": "bal-00635",
-      "account_id": "acct-ben-checking",
-      "balance": 3870.07,
-      "date": "2024-08-01",
-      "note": null
-    },
-    {
       "id": "bal-00636",
-      "account_id": "acct-ben-checking",
-      "balance": 3539.63,
-      "date": "2024-09-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8410.51,
+      "date": "2024-05-01",
       "note": null
     },
     {
       "id": "bal-00637",
-      "account_id": "acct-ben-checking",
-      "balance": 3227.84,
-      "date": "2024-10-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8714.76,
+      "date": "2024-06-01",
       "note": null
     },
     {
       "id": "bal-00638",
-      "account_id": "acct-ben-checking",
-      "balance": 3257.36,
-      "date": "2024-11-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8027.9,
+      "date": "2024-07-01",
       "note": null
     },
     {
       "id": "bal-00639",
-      "account_id": "acct-ben-checking",
-      "balance": 3338.1,
-      "date": "2024-12-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8188.42,
+      "date": "2024-08-01",
       "note": null
     },
     {
       "id": "bal-00640",
-      "account_id": "acct-ben-checking",
-      "balance": 3243.18,
-      "date": "2025-01-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8326.99,
+      "date": "2024-09-01",
       "note": null
     },
     {
       "id": "bal-00641",
-      "account_id": "acct-ben-checking",
-      "balance": 2802.05,
-      "date": "2025-02-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8768.69,
+      "date": "2024-10-01",
       "note": null
     },
     {
       "id": "bal-00642",
-      "account_id": "acct-ben-checking",
-      "balance": 2904.56,
-      "date": "2025-03-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8430.63,
+      "date": "2024-11-01",
       "note": null
     },
     {
       "id": "bal-00643",
-      "account_id": "acct-ben-checking",
-      "balance": 3309.57,
-      "date": "2025-04-01",
+      "account_id": "acct-alice-checking",
+      "balance": 8434.1,
+      "date": "2024-12-01",
       "note": null
     },
     {
       "id": "bal-00644",
-      "account_id": "acct-ben-checking",
-      "balance": 3173.96,
-      "date": "2025-05-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7731.2,
+      "date": "2025-01-01",
       "note": null
     },
     {
       "id": "bal-00645",
-      "account_id": "acct-ben-checking",
-      "balance": 3382.66,
-      "date": "2025-06-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7844.77,
+      "date": "2025-02-01",
       "note": null
     },
     {
       "id": "bal-00646",
-      "account_id": "acct-ben-checking",
-      "balance": 3151.8,
-      "date": "2025-07-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7181.94,
+      "date": "2025-03-01",
       "note": null
     },
     {
       "id": "bal-00647",
-      "account_id": "acct-ben-checking",
-      "balance": 3708.0,
-      "date": "2025-08-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7420.35,
+      "date": "2025-04-01",
       "note": null
     },
     {
       "id": "bal-00648",
-      "account_id": "acct-ben-checking",
-      "balance": 3116.19,
-      "date": "2025-09-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7968.53,
+      "date": "2025-05-01",
       "note": null
     },
     {
       "id": "bal-00649",
-      "account_id": "acct-ben-checking",
-      "balance": 3093.32,
-      "date": "2025-10-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7865.2,
+      "date": "2025-06-01",
       "note": null
     },
     {
       "id": "bal-00650",
-      "account_id": "acct-ben-checking",
-      "balance": 3044.52,
-      "date": "2025-11-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7527.72,
+      "date": "2025-07-01",
       "note": null
     },
     {
       "id": "bal-00651",
-      "account_id": "acct-ben-checking",
-      "balance": 2736.07,
-      "date": "2025-12-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7611.07,
+      "date": "2025-08-01",
       "note": null
     },
     {
       "id": "bal-00652",
-      "account_id": "acct-ben-checking",
-      "balance": 2164.77,
-      "date": "2026-01-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7305.87,
+      "date": "2025-09-01",
       "note": null
     },
     {
       "id": "bal-00653",
-      "account_id": "acct-ben-checking",
-      "balance": 1803.77,
-      "date": "2026-02-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7336.88,
+      "date": "2025-10-01",
       "note": null
     },
     {
       "id": "bal-00654",
-      "account_id": "acct-ben-checking",
-      "balance": 2163.2,
-      "date": "2026-03-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7651.44,
+      "date": "2025-11-01",
       "note": null
     },
     {
       "id": "bal-00655",
-      "account_id": "acct-ben-checking",
-      "balance": 2680.16,
-      "date": "2026-04-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7500.01,
+      "date": "2025-12-01",
       "note": null
     },
     {
       "id": "bal-00656",
-      "account_id": "acct-ben-checking",
-      "balance": 2820.24,
-      "date": "2026-05-01",
+      "account_id": "acct-alice-checking",
+      "balance": 6983.9,
+      "date": "2026-01-01",
       "note": null
     },
     {
       "id": "bal-00657",
-      "account_id": "acct-ben-checking",
-      "balance": 2820.24,
-      "date": "2026-05-17",
+      "account_id": "acct-alice-checking",
+      "balance": 7552.78,
+      "date": "2026-02-01",
       "note": null
     },
     {
       "id": "bal-00658",
-      "account_id": "acct-joint-card",
-      "balance": -1789.92,
-      "date": "2024-05-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7876.36,
+      "date": "2026-03-01",
       "note": null
     },
     {
       "id": "bal-00659",
-      "account_id": "acct-joint-card",
-      "balance": -1557.18,
-      "date": "2024-06-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7489.02,
+      "date": "2026-04-01",
       "note": null
     },
     {
       "id": "bal-00660",
-      "account_id": "acct-joint-card",
-      "balance": -1773.94,
-      "date": "2024-07-01",
+      "account_id": "acct-alice-checking",
+      "balance": 7237.15,
+      "date": "2026-05-01",
       "note": null
     },
     {
       "id": "bal-00661",
-      "account_id": "acct-joint-card",
-      "balance": -1625.12,
-      "date": "2024-08-01",
-      "note": null
-    },
-    {
-      "id": "bal-00662",
-      "account_id": "acct-joint-card",
-      "balance": -1171.87,
-      "date": "2024-09-01",
-      "note": null
-    },
-    {
-      "id": "bal-00663",
-      "account_id": "acct-joint-card",
-      "balance": -878.53,
-      "date": "2024-10-01",
-      "note": null
-    },
-    {
-      "id": "bal-00664",
-      "account_id": "acct-joint-card",
-      "balance": -1023.38,
-      "date": "2024-11-01",
-      "note": null
-    },
-    {
-      "id": "bal-00665",
-      "account_id": "acct-joint-card",
-      "balance": -934.32,
-      "date": "2024-12-01",
-      "note": null
-    },
-    {
-      "id": "bal-00666",
-      "account_id": "acct-joint-card",
-      "balance": -1165.81,
-      "date": "2025-01-01",
-      "note": null
-    },
-    {
-      "id": "bal-00667",
-      "account_id": "acct-joint-card",
-      "balance": -830.49,
-      "date": "2025-02-01",
-      "note": null
-    },
-    {
-      "id": "bal-00668",
-      "account_id": "acct-joint-card",
-      "balance": -1116.37,
-      "date": "2025-03-01",
-      "note": null
-    },
-    {
-      "id": "bal-00669",
-      "account_id": "acct-joint-card",
-      "balance": -1273.29,
-      "date": "2025-04-01",
-      "note": null
-    },
-    {
-      "id": "bal-00670",
-      "account_id": "acct-joint-card",
-      "balance": -778.64,
-      "date": "2025-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00671",
-      "account_id": "acct-joint-card",
-      "balance": -560.56,
-      "date": "2025-06-01",
-      "note": null
-    },
-    {
-      "id": "bal-00672",
-      "account_id": "acct-joint-card",
-      "balance": -999.76,
-      "date": "2025-07-01",
-      "note": null
-    },
-    {
-      "id": "bal-00673",
-      "account_id": "acct-joint-card",
-      "balance": -1484.52,
-      "date": "2025-08-01",
-      "note": null
-    },
-    {
-      "id": "bal-00674",
-      "account_id": "acct-joint-card",
-      "balance": -1187.61,
-      "date": "2025-09-01",
-      "note": null
-    },
-    {
-      "id": "bal-00675",
-      "account_id": "acct-joint-card",
-      "balance": -909.7,
-      "date": "2025-10-01",
-      "note": null
-    },
-    {
-      "id": "bal-00676",
-      "account_id": "acct-joint-card",
-      "balance": -411.56,
-      "date": "2025-11-01",
-      "note": null
-    },
-    {
-      "id": "bal-00677",
-      "account_id": "acct-joint-card",
-      "balance": -724.08,
-      "date": "2025-12-01",
-      "note": null
-    },
-    {
-      "id": "bal-00678",
-      "account_id": "acct-joint-card",
-      "balance": -1163.27,
-      "date": "2026-01-01",
-      "note": null
-    },
-    {
-      "id": "bal-00679",
-      "account_id": "acct-joint-card",
-      "balance": -1260.83,
-      "date": "2026-02-01",
-      "note": null
-    },
-    {
-      "id": "bal-00680",
-      "account_id": "acct-joint-card",
-      "balance": -1736.12,
-      "date": "2026-03-01",
-      "note": null
-    },
-    {
-      "id": "bal-00681",
-      "account_id": "acct-joint-card",
-      "balance": -1860.98,
-      "date": "2026-04-01",
-      "note": null
-    },
-    {
-      "id": "bal-00682",
-      "account_id": "acct-joint-card",
-      "balance": -1801.3,
-      "date": "2026-05-01",
-      "note": null
-    },
-    {
-      "id": "bal-00683",
-      "account_id": "acct-joint-card",
-      "balance": -1801.3,
+      "account_id": "acct-alice-checking",
+      "balance": 7237.15,
       "date": "2026-05-17",
       "note": null
     },
     {
-      "id": "bal-00684",
-      "account_id": "acct-401k",
-      "balance": 47484.52,
+      "id": "bal-00662",
+      "account_id": "acct-alice-savings",
+      "balance": 21792.49,
       "date": "2024-05-01",
       "note": null
     },
     {
-      "id": "bal-00685",
-      "account_id": "acct-401k",
-      "balance": 47476.21,
+      "id": "bal-00663",
+      "account_id": "acct-alice-savings",
+      "balance": 21752.95,
       "date": "2024-06-01",
       "note": null
     },
     {
-      "id": "bal-00686",
-      "account_id": "acct-401k",
-      "balance": 48010.11,
+      "id": "bal-00664",
+      "account_id": "acct-alice-savings",
+      "balance": 21907.51,
       "date": "2024-07-01",
       "note": null
     },
     {
-      "id": "bal-00687",
-      "account_id": "acct-401k",
-      "balance": 48579.5,
+      "id": "bal-00665",
+      "account_id": "acct-alice-savings",
+      "balance": 21618.46,
       "date": "2024-08-01",
       "note": null
     },
     {
-      "id": "bal-00688",
-      "account_id": "acct-401k",
-      "balance": 48828.14,
+      "id": "bal-00666",
+      "account_id": "acct-alice-savings",
+      "balance": 21415.73,
       "date": "2024-09-01",
       "note": null
     },
     {
-      "id": "bal-00689",
-      "account_id": "acct-401k",
-      "balance": 48230.65,
+      "id": "bal-00667",
+      "account_id": "acct-alice-savings",
+      "balance": 21659.73,
       "date": "2024-10-01",
       "note": null
     },
     {
-      "id": "bal-00690",
-      "account_id": "acct-401k",
-      "balance": 47473.23,
+      "id": "bal-00668",
+      "account_id": "acct-alice-savings",
+      "balance": 21417.96,
       "date": "2024-11-01",
       "note": null
     },
     {
-      "id": "bal-00691",
-      "account_id": "acct-401k",
-      "balance": 48388.04,
+      "id": "bal-00669",
+      "account_id": "acct-alice-savings",
+      "balance": 21065.65,
       "date": "2024-12-01",
       "note": null
     },
     {
-      "id": "bal-00692",
-      "account_id": "acct-401k",
-      "balance": 49353.19,
+      "id": "bal-00670",
+      "account_id": "acct-alice-savings",
+      "balance": 21417.0,
       "date": "2025-01-01",
       "note": null
     },
     {
-      "id": "bal-00693",
-      "account_id": "acct-401k",
-      "balance": 49854.04,
+      "id": "bal-00671",
+      "account_id": "acct-alice-savings",
+      "balance": 21793.9,
       "date": "2025-02-01",
       "note": null
     },
     {
-      "id": "bal-00694",
-      "account_id": "acct-401k",
-      "balance": 50679.1,
+      "id": "bal-00672",
+      "account_id": "acct-alice-savings",
+      "balance": 21626.65,
       "date": "2025-03-01",
       "note": null
     },
     {
-      "id": "bal-00695",
-      "account_id": "acct-401k",
-      "balance": 50943.13,
+      "id": "bal-00673",
+      "account_id": "acct-alice-savings",
+      "balance": 21818.84,
       "date": "2025-04-01",
       "note": null
     },
     {
-      "id": "bal-00696",
-      "account_id": "acct-401k",
-      "balance": 49807.47,
+      "id": "bal-00674",
+      "account_id": "acct-alice-savings",
+      "balance": 22200.51,
       "date": "2025-05-01",
       "note": null
     },
     {
-      "id": "bal-00697",
-      "account_id": "acct-401k",
-      "balance": 49126.42,
+      "id": "bal-00675",
+      "account_id": "acct-alice-savings",
+      "balance": 22227.83,
       "date": "2025-06-01",
       "note": null
     },
     {
-      "id": "bal-00698",
-      "account_id": "acct-401k",
-      "balance": 48719.46,
+      "id": "bal-00676",
+      "account_id": "acct-alice-savings",
+      "balance": 22264.37,
       "date": "2025-07-01",
       "note": null
     },
     {
-      "id": "bal-00699",
-      "account_id": "acct-401k",
-      "balance": 48277.52,
+      "id": "bal-00677",
+      "account_id": "acct-alice-savings",
+      "balance": 22228.49,
       "date": "2025-08-01",
       "note": null
     },
     {
-      "id": "bal-00700",
-      "account_id": "acct-401k",
-      "balance": 47716.34,
+      "id": "bal-00678",
+      "account_id": "acct-alice-savings",
+      "balance": 21861.4,
       "date": "2025-09-01",
       "note": null
     },
     {
-      "id": "bal-00701",
-      "account_id": "acct-401k",
-      "balance": 46853.05,
+      "id": "bal-00679",
+      "account_id": "acct-alice-savings",
+      "balance": 21822.41,
       "date": "2025-10-01",
       "note": null
     },
     {
-      "id": "bal-00702",
-      "account_id": "acct-401k",
-      "balance": 47455.58,
+      "id": "bal-00680",
+      "account_id": "acct-alice-savings",
+      "balance": 21788.29,
       "date": "2025-11-01",
       "note": null
     },
     {
-      "id": "bal-00703",
-      "account_id": "acct-401k",
-      "balance": 48603.13,
+      "id": "bal-00681",
+      "account_id": "acct-alice-savings",
+      "balance": 21617.16,
       "date": "2025-12-01",
       "note": null
     },
     {
-      "id": "bal-00704",
-      "account_id": "acct-401k",
-      "balance": 49287.29,
+      "id": "bal-00682",
+      "account_id": "acct-alice-savings",
+      "balance": 21477.38,
       "date": "2026-01-01",
       "note": null
     },
     {
-      "id": "bal-00705",
-      "account_id": "acct-401k",
-      "balance": 49088.09,
+      "id": "bal-00683",
+      "account_id": "acct-alice-savings",
+      "balance": 21163.9,
       "date": "2026-02-01",
       "note": null
     },
     {
-      "id": "bal-00706",
-      "account_id": "acct-401k",
-      "balance": 49356.27,
+      "id": "bal-00684",
+      "account_id": "acct-alice-savings",
+      "balance": 20808.86,
       "date": "2026-03-01",
       "note": null
     },
     {
-      "id": "bal-00707",
-      "account_id": "acct-401k",
-      "balance": 48630.14,
+      "id": "bal-00685",
+      "account_id": "acct-alice-savings",
+      "balance": 20628.17,
       "date": "2026-04-01",
       "note": null
     },
     {
-      "id": "bal-00708",
-      "account_id": "acct-401k",
-      "balance": 47543.22,
+      "id": "bal-00686",
+      "account_id": "acct-alice-savings",
+      "balance": 20381.38,
       "date": "2026-05-01",
       "note": null
     },
     {
+      "id": "bal-00687",
+      "account_id": "acct-alice-savings",
+      "balance": 20381.38,
+      "date": "2026-05-17",
+      "note": null
+    },
+    {
+      "id": "bal-00688",
+      "account_id": "acct-ben-checking",
+      "balance": 5574.3,
+      "date": "2024-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00689",
+      "account_id": "acct-ben-checking",
+      "balance": 5278.58,
+      "date": "2024-06-01",
+      "note": null
+    },
+    {
+      "id": "bal-00690",
+      "account_id": "acct-ben-checking",
+      "balance": 5309.6,
+      "date": "2024-07-01",
+      "note": null
+    },
+    {
+      "id": "bal-00691",
+      "account_id": "acct-ben-checking",
+      "balance": 5609.98,
+      "date": "2024-08-01",
+      "note": null
+    },
+    {
+      "id": "bal-00692",
+      "account_id": "acct-ben-checking",
+      "balance": 5021.26,
+      "date": "2024-09-01",
+      "note": null
+    },
+    {
+      "id": "bal-00693",
+      "account_id": "acct-ben-checking",
+      "balance": 4580.53,
+      "date": "2024-10-01",
+      "note": null
+    },
+    {
+      "id": "bal-00694",
+      "account_id": "acct-ben-checking",
+      "balance": 4450.33,
+      "date": "2024-11-01",
+      "note": null
+    },
+    {
+      "id": "bal-00695",
+      "account_id": "acct-ben-checking",
+      "balance": 4876.63,
+      "date": "2024-12-01",
+      "note": null
+    },
+    {
+      "id": "bal-00696",
+      "account_id": "acct-ben-checking",
+      "balance": 4941.32,
+      "date": "2025-01-01",
+      "note": null
+    },
+    {
+      "id": "bal-00697",
+      "account_id": "acct-ben-checking",
+      "balance": 4355.82,
+      "date": "2025-02-01",
+      "note": null
+    },
+    {
+      "id": "bal-00698",
+      "account_id": "acct-ben-checking",
+      "balance": 3916.28,
+      "date": "2025-03-01",
+      "note": null
+    },
+    {
+      "id": "bal-00699",
+      "account_id": "acct-ben-checking",
+      "balance": 3607.56,
+      "date": "2025-04-01",
+      "note": null
+    },
+    {
+      "id": "bal-00700",
+      "account_id": "acct-ben-checking",
+      "balance": 3581.7,
+      "date": "2025-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00701",
+      "account_id": "acct-ben-checking",
+      "balance": 3806.29,
+      "date": "2025-06-01",
+      "note": null
+    },
+    {
+      "id": "bal-00702",
+      "account_id": "acct-ben-checking",
+      "balance": 4063.26,
+      "date": "2025-07-01",
+      "note": null
+    },
+    {
+      "id": "bal-00703",
+      "account_id": "acct-ben-checking",
+      "balance": 4049.07,
+      "date": "2025-08-01",
+      "note": null
+    },
+    {
+      "id": "bal-00704",
+      "account_id": "acct-ben-checking",
+      "balance": 4074.28,
+      "date": "2025-09-01",
+      "note": null
+    },
+    {
+      "id": "bal-00705",
+      "account_id": "acct-ben-checking",
+      "balance": 4213.37,
+      "date": "2025-10-01",
+      "note": null
+    },
+    {
+      "id": "bal-00706",
+      "account_id": "acct-ben-checking",
+      "balance": 3883.09,
+      "date": "2025-11-01",
+      "note": null
+    },
+    {
+      "id": "bal-00707",
+      "account_id": "acct-ben-checking",
+      "balance": 4344.73,
+      "date": "2025-12-01",
+      "note": null
+    },
+    {
+      "id": "bal-00708",
+      "account_id": "acct-ben-checking",
+      "balance": 4100.59,
+      "date": "2026-01-01",
+      "note": null
+    },
+    {
       "id": "bal-00709",
+      "account_id": "acct-ben-checking",
+      "balance": 3892.92,
+      "date": "2026-02-01",
+      "note": null
+    },
+    {
+      "id": "bal-00710",
+      "account_id": "acct-ben-checking",
+      "balance": 4374.54,
+      "date": "2026-03-01",
+      "note": null
+    },
+    {
+      "id": "bal-00711",
+      "account_id": "acct-ben-checking",
+      "balance": 4035.55,
+      "date": "2026-04-01",
+      "note": null
+    },
+    {
+      "id": "bal-00712",
+      "account_id": "acct-ben-checking",
+      "balance": 4284.18,
+      "date": "2026-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00713",
+      "account_id": "acct-ben-checking",
+      "balance": 4284.18,
+      "date": "2026-05-17",
+      "note": null
+    },
+    {
+      "id": "bal-00714",
+      "account_id": "acct-joint-card",
+      "balance": -1778.8,
+      "date": "2024-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00715",
+      "account_id": "acct-joint-card",
+      "balance": -1614.58,
+      "date": "2024-06-01",
+      "note": null
+    },
+    {
+      "id": "bal-00716",
+      "account_id": "acct-joint-card",
+      "balance": -1235.43,
+      "date": "2024-07-01",
+      "note": null
+    },
+    {
+      "id": "bal-00717",
+      "account_id": "acct-joint-card",
+      "balance": -1648.73,
+      "date": "2024-08-01",
+      "note": null
+    },
+    {
+      "id": "bal-00718",
+      "account_id": "acct-joint-card",
+      "balance": -1430.86,
+      "date": "2024-09-01",
+      "note": null
+    },
+    {
+      "id": "bal-00719",
+      "account_id": "acct-joint-card",
+      "balance": -1300.04,
+      "date": "2024-10-01",
+      "note": null
+    },
+    {
+      "id": "bal-00720",
+      "account_id": "acct-joint-card",
+      "balance": -1784.51,
+      "date": "2024-11-01",
+      "note": null
+    },
+    {
+      "id": "bal-00721",
+      "account_id": "acct-joint-card",
+      "balance": -1441.48,
+      "date": "2024-12-01",
+      "note": null
+    },
+    {
+      "id": "bal-00722",
+      "account_id": "acct-joint-card",
+      "balance": -1016.28,
+      "date": "2025-01-01",
+      "note": null
+    },
+    {
+      "id": "bal-00723",
+      "account_id": "acct-joint-card",
+      "balance": -765.24,
+      "date": "2025-02-01",
+      "note": null
+    },
+    {
+      "id": "bal-00724",
+      "account_id": "acct-joint-card",
+      "balance": -1075.86,
+      "date": "2025-03-01",
+      "note": null
+    },
+    {
+      "id": "bal-00725",
+      "account_id": "acct-joint-card",
+      "balance": -1340.98,
+      "date": "2025-04-01",
+      "note": null
+    },
+    {
+      "id": "bal-00726",
+      "account_id": "acct-joint-card",
+      "balance": -1194.11,
+      "date": "2025-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00727",
+      "account_id": "acct-joint-card",
+      "balance": -939.67,
+      "date": "2025-06-01",
+      "note": null
+    },
+    {
+      "id": "bal-00728",
+      "account_id": "acct-joint-card",
+      "balance": -1070.43,
+      "date": "2025-07-01",
+      "note": null
+    },
+    {
+      "id": "bal-00729",
+      "account_id": "acct-joint-card",
+      "balance": -1559.38,
+      "date": "2025-08-01",
+      "note": null
+    },
+    {
+      "id": "bal-00730",
+      "account_id": "acct-joint-card",
+      "balance": -1721.3,
+      "date": "2025-09-01",
+      "note": null
+    },
+    {
+      "id": "bal-00731",
+      "account_id": "acct-joint-card",
+      "balance": -2021.12,
+      "date": "2025-10-01",
+      "note": null
+    },
+    {
+      "id": "bal-00732",
+      "account_id": "acct-joint-card",
+      "balance": -1858.78,
+      "date": "2025-11-01",
+      "note": null
+    },
+    {
+      "id": "bal-00733",
+      "account_id": "acct-joint-card",
+      "balance": -1593.34,
+      "date": "2025-12-01",
+      "note": null
+    },
+    {
+      "id": "bal-00734",
+      "account_id": "acct-joint-card",
+      "balance": -1608.81,
+      "date": "2026-01-01",
+      "note": null
+    },
+    {
+      "id": "bal-00735",
+      "account_id": "acct-joint-card",
+      "balance": -1634.66,
+      "date": "2026-02-01",
+      "note": null
+    },
+    {
+      "id": "bal-00736",
+      "account_id": "acct-joint-card",
+      "balance": -1253.73,
+      "date": "2026-03-01",
+      "note": null
+    },
+    {
+      "id": "bal-00737",
+      "account_id": "acct-joint-card",
+      "balance": -982.0,
+      "date": "2026-04-01",
+      "note": null
+    },
+    {
+      "id": "bal-00738",
+      "account_id": "acct-joint-card",
+      "balance": -813.41,
+      "date": "2026-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00739",
+      "account_id": "acct-joint-card",
+      "balance": -813.41,
+      "date": "2026-05-17",
+      "note": null
+    },
+    {
+      "id": "bal-00740",
       "account_id": "acct-401k",
-      "balance": 47543.22,
+      "balance": 47151.01,
+      "date": "2024-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00741",
+      "account_id": "acct-401k",
+      "balance": 48293.81,
+      "date": "2024-06-01",
+      "note": null
+    },
+    {
+      "id": "bal-00742",
+      "account_id": "acct-401k",
+      "balance": 49464.81,
+      "date": "2024-07-01",
+      "note": null
+    },
+    {
+      "id": "bal-00743",
+      "account_id": "acct-401k",
+      "balance": 49567.96,
+      "date": "2024-08-01",
+      "note": null
+    },
+    {
+      "id": "bal-00744",
+      "account_id": "acct-401k",
+      "balance": 50325.41,
+      "date": "2024-09-01",
+      "note": null
+    },
+    {
+      "id": "bal-00745",
+      "account_id": "acct-401k",
+      "balance": 49515.06,
+      "date": "2024-10-01",
+      "note": null
+    },
+    {
+      "id": "bal-00746",
+      "account_id": "acct-401k",
+      "balance": 50542.88,
+      "date": "2024-11-01",
+      "note": null
+    },
+    {
+      "id": "bal-00747",
+      "account_id": "acct-401k",
+      "balance": 50081.94,
+      "date": "2024-12-01",
+      "note": null
+    },
+    {
+      "id": "bal-00748",
+      "account_id": "acct-401k",
+      "balance": 49071.52,
+      "date": "2025-01-01",
+      "note": null
+    },
+    {
+      "id": "bal-00749",
+      "account_id": "acct-401k",
+      "balance": 48116.56,
+      "date": "2025-02-01",
+      "note": null
+    },
+    {
+      "id": "bal-00750",
+      "account_id": "acct-401k",
+      "balance": 48292.8,
+      "date": "2025-03-01",
+      "note": null
+    },
+    {
+      "id": "bal-00751",
+      "account_id": "acct-401k",
+      "balance": 47675.23,
+      "date": "2025-04-01",
+      "note": null
+    },
+    {
+      "id": "bal-00752",
+      "account_id": "acct-401k",
+      "balance": 48544.99,
+      "date": "2025-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00753",
+      "account_id": "acct-401k",
+      "balance": 49120.86,
+      "date": "2025-06-01",
+      "note": null
+    },
+    {
+      "id": "bal-00754",
+      "account_id": "acct-401k",
+      "balance": 48347.06,
+      "date": "2025-07-01",
+      "note": null
+    },
+    {
+      "id": "bal-00755",
+      "account_id": "acct-401k",
+      "balance": 49147.37,
+      "date": "2025-08-01",
+      "note": null
+    },
+    {
+      "id": "bal-00756",
+      "account_id": "acct-401k",
+      "balance": 49614.52,
+      "date": "2025-09-01",
+      "note": null
+    },
+    {
+      "id": "bal-00757",
+      "account_id": "acct-401k",
+      "balance": 48539.72,
+      "date": "2025-10-01",
+      "note": null
+    },
+    {
+      "id": "bal-00758",
+      "account_id": "acct-401k",
+      "balance": 48142.77,
+      "date": "2025-11-01",
+      "note": null
+    },
+    {
+      "id": "bal-00759",
+      "account_id": "acct-401k",
+      "balance": 48320.21,
+      "date": "2025-12-01",
+      "note": null
+    },
+    {
+      "id": "bal-00760",
+      "account_id": "acct-401k",
+      "balance": 48169.65,
+      "date": "2026-01-01",
+      "note": null
+    },
+    {
+      "id": "bal-00761",
+      "account_id": "acct-401k",
+      "balance": 47214.11,
+      "date": "2026-02-01",
+      "note": null
+    },
+    {
+      "id": "bal-00762",
+      "account_id": "acct-401k",
+      "balance": 46649.74,
+      "date": "2026-03-01",
+      "note": null
+    },
+    {
+      "id": "bal-00763",
+      "account_id": "acct-401k",
+      "balance": 46542.37,
+      "date": "2026-04-01",
+      "note": null
+    },
+    {
+      "id": "bal-00764",
+      "account_id": "acct-401k",
+      "balance": 47406.4,
+      "date": "2026-05-01",
+      "note": null
+    },
+    {
+      "id": "bal-00765",
+      "account_id": "acct-401k",
+      "balance": 47406.4,
       "date": "2026-05-17",
       "note": null
     }
