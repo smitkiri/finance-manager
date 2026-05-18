@@ -1029,60 +1029,64 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <DemoBanner enabled={demoEnabled} />
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Finance Manager
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <UserFilter
-                users={users}
-                selectedUserId={selectedUserId}
-                onUserChange={setSelectedUserId}
-              />
-              <DateRangePicker currentRange={dateRange} onDateRangeChange={setDateRange} />
-              <button
-                onClick={toggleTheme}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-              >
-                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-              </button>
-              {tellerEnabled && accounts.some((a) => a.tellerAccountId) && (
+      {/* Sticky top group: demo banner sits above the header so both stay
+          pinned together when scrolling. */}
+      <div className="sticky top-0 z-20">
+        <DemoBanner enabled={demoEnabled} />
+        {/* Header */}
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center">
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Finance Manager
+                </h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <UserFilter
+                  users={users}
+                  selectedUserId={selectedUserId}
+                  onUserChange={setSelectedUserId}
+                />
+                <DateRangePicker currentRange={dateRange} onDateRangeChange={setDateRange} />
                 <button
-                  onClick={() => setShowTellerImport(true)}
-                  className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={toggleTheme}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                  title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
                 >
-                  <Building2 size={16} />
-                  <span>Import from Bank</span>
+                  {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                 </button>
-              )}
-              <label className="cursor-pointer">
-                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                <div className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <Upload size={16} />
-                  <span>Import CSV</span>
-                </div>
-              </label>
-              <button
-                onClick={() => setIsFormOpen(true)}
-                className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                title="Add Transaction"
-              >
-                <Plus size={24} />
-              </button>
+                {tellerEnabled && accounts.some((a) => a.tellerAccountId) && (
+                  <button
+                    onClick={() => setShowTellerImport(true)}
+                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <Building2 size={16} />
+                    <span>Import from Bank</span>
+                  </button>
+                )}
+                <label className="cursor-pointer">
+                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                  <div className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Upload size={16} />
+                    <span>Import CSV</span>
+                  </div>
+                </label>
+                <button
+                  onClick={() => setIsFormOpen(true)}
+                  className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  title="Add Transaction"
+                >
+                  <Plus size={24} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       <main
         className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8`}
