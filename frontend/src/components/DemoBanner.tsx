@@ -1,6 +1,6 @@
 import React from 'react';
 
-const REPO_URL = 'https://github.com/smitkiri/expense-tracker';
+const REPO_URL = 'https://github.com/smitkiri/finance-manager';
 
 interface DemoBannerProps {
   enabled: boolean;
