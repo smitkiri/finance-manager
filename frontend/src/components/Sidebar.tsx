@@ -14,9 +14,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  // When true, the toggle button sits below the demo banner so it doesn't
+  // straddle the banner/header boundary.
+  topOffset?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, topOffset = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,7 +37,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       {/* Hamburger button */}
       <button
         onClick={onToggle}
-        className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        className={`fixed left-4 z-50 p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all ${
+          topOffset ? 'top-[52px]' : 'top-4'
+        }`}
         aria-label="Toggle menu"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}

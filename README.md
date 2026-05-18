@@ -26,8 +26,8 @@ To get the Finance Manager up and running quickly, follow these steps:
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/smitkiri/expense-tracker.git
-    cd expense_tracker
+    git clone https://github.com/smitkiri/finance-manager.git
+    cd finance-manager
     ```
 
 2.  **Run the setup script:**
@@ -47,8 +47,8 @@ If you prefer to set up the project manually or troubleshoot, here are the detai
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/smitkiri/expense-tracker.git
-    cd expense_tracker
+    git clone https://github.com/smitkiri/finance-manager.git
+    cd finance-manager
     ```
 
 2.  **Install project dependencies:**
@@ -248,6 +248,10 @@ docker compose -f docker-compose.prod.yml up --build
 curl -H "x-api-key: local_test_secret" http://localhost:8083/api/health
 # → {"status":"ok"}
 ```
+
+## 🎈 Hosting a Public Demo
+
+Finance Manager supports a "demo mode" that powers a public hosted demo with sample data that resets daily. See [docs/DEMO.md](docs/DEMO.md) for setup instructions.
 
 ## 🧑‍💻 Technology Stack
 

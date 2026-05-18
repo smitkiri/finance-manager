@@ -1068,6 +1068,17 @@ export class LocalStorage {
     }
   }
 
+  // Demo Mode
+  static async getDemoConfig(): Promise<{ enabled: boolean }> {
+    try {
+      const response = await LocalStorage.apiFetch(`${this.API_BASE}/demo/config`);
+      if (!response.ok) return { enabled: false };
+      return response.json();
+    } catch {
+      return { enabled: false };
+    }
+  }
+
   // Teller Integration Methods
   static async getTellerConfig(): Promise<{
     enabled: boolean;
