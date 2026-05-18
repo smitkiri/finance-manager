@@ -144,3 +144,64 @@ async def test_reset_shifts_latest_to_today(db_session: AsyncSession):
     dashes = (await db_session.execute(select(Dashboard))).scalars().all()
     for d in dashes:
         assert d.date_range_end == _date.today()
+
+
+@pytest.mark.asyncio
+async def test_reset_is_idempotent(db_session: AsyncSession):
+    """Running reset twice produces the same row counts."""
+    from app.demo import reset as reset_mod
+
+    original = settings.finance_manager_demo_mode
+    settings.finance_manager_demo_mode = True
+    try:
+        await reset_mod._run_reset(db_session)
+        first = {
+            "txns": len(
+                (await db_session.execute(select(Transaction))).scalars().all()
+            ),
+            "users": len((await db_session.execute(select(User))).scalars().all()),
+            "accts": len((await db_session.execute(select(Account))).scalars().all()),
+            "dashes": len(
+                (await db_session.execute(select(Dashboard))).scalars().all()
+            ),
+        }
+
+        await reset_mod._run_reset(db_session)
+        second = {
+            "txns": len(
+                (await db_session.execute(select(Transaction))).scalars().all()
+            ),
+            "users": len((await db_session.execute(select(User))).scalars().all()),
+            "accts": len((await db_session.execute(select(Account))).scalars().all()),
+            "dashes": len(
+                (await db_session.execute(select(Dashboard))).scalars().all()
+            ),
+        }
+        assert first == second
+    finally:
+        settings.finance_manager_demo_mode = original
+
+
+@pytest.mark.asyncio
+async def test_reset_preserves_transfer_pairs(db_session: AsyncSession):
+    """Each transfer pair (same transferId) should have exactly 2 transactions."""
+    from app.demo import reset as reset_mod
+
+    original = settings.finance_manager_demo_mode
+    settings.finance_manager_demo_mode = True
+    try:
+        await reset_mod._run_reset(db_session)
+    finally:
+        settings.finance_manager_demo_mode = original
+
+    txns = (await db_session.execute(select(Transaction))).scalars().all()
+    transfer_ids: dict[str, int] = {}
+    for t in txns:
+        info = t.transfer_info or {}
+        tid = info.get("transferId") if isinstance(info, dict) else None
+        if tid:
+            transfer_ids[tid] = transfer_ids.get(tid, 0) + 1
+
+    assert len(transfer_ids) == 3
+    for tid, count in transfer_ids.items():
+        assert count == 2, f"transferId {tid} should have 2 transactions, got {count}"
