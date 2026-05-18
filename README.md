@@ -249,6 +249,40 @@ curl -H "x-api-key: local_test_secret" http://localhost:8083/api/health
 # → {"status":"ok"}
 ```
 
+## 🎈 Hosting a Public Demo
+
+You can host a public demo deployment where visitors explore the app with sample data that resets daily. The demo is a normal Coolify app with two additions on top of the standard prod setup.
+
+### Setup
+
+1. **Create a second Coolify app** pointing at this repo with `docker-compose.prod.yml` as the compose file.
+
+2. **Set environment variables** — all the standard prod vars (`DB_*`, `API_SECRET`, `REACT_APP_API_SECRET`) **plus**:
+
+   ```
+   FINANCE_MANAGER_DEMO_MODE=true
+   FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=false
+   ```
+
+3. **Create a scheduled job** in Coolify attached to this app:
+   - **Image:** same as the backend service (the backend Dockerfile)
+   - **Command:** `python -m app.demo.reset`
+   - **Schedule:** `0 9 * * *` (daily, 09:00 UTC)
+   - **Env:** same DB credentials as the backend service, plus `FINANCE_MANAGER_DEMO_MODE=true`
+
+4. **Deploy.** After the first successful deploy, run the scheduled job once manually from Coolify so the database has data before any visitor lands on the URL.
+
+### What the demo does
+
+- Loads ~580 hand-curated transactions for two users (Alice & Ben) over 24 months.
+- Every reset shifts all dates so the latest transaction is "today" — filters like "last 30 days" never show empty data.
+- Visitors can freely edit, delete, mark transfers, build dashboards. The daily reset wipes their changes and reseeds.
+- The frontend shows a dismissible banner indicating demo mode is active, with a link to this repo.
+
+### Safety
+
+The reset script refuses to run unless `FINANCE_MANAGER_DEMO_MODE=true` is set in its environment. Pointing it at a non-demo database without that flag will cause it to exit non-zero without touching the data.
+
 ## 🧑‍💻 Technology Stack
 
 - **Frontend**: React 18 with TypeScript
