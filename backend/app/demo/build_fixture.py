@@ -849,12 +849,10 @@ reports = [
 
 date_ranges = [
     {
-        "id": "dr-last-30",
         "start_date": (ANCHOR - timedelta(days=30)).isoformat(),
         "end_date": ANCHOR.isoformat(),
     },
     {
-        "id": "dr-ytd",
         "start_date": date(ANCHOR.year, 1, 1).isoformat(),
         "end_date": ANCHOR.isoformat(),
     },

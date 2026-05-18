@@ -70,12 +70,10 @@
   "metadata": [],
   "date_ranges": [
     {
-      "id": "dr-last-30",
       "start_date": "2026-04-17",
       "end_date": "2026-05-17"
     },
     {
-      "id": "dr-ytd",
       "start_date": "2026-01-01",
       "end_date": "2026-05-17"
     }
