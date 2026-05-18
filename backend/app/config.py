@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     finance_manager_teller_private_key: str | None = None  # file path
     finance_manager_teller_cert: str | None = None  # file path
 
+    # Demo mode (public hosted demo)
+    finance_manager_demo_mode: bool = False
+
     @property
     def is_teller_enabled(self) -> bool:
         return (
