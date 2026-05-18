@@ -11,6 +11,7 @@ from app.routes.categories import router as categories_router
 from app.routes.dashboards import router as dashboards_router
 from app.routes.data import router as data_router
 from app.routes.date_range import router as date_range_router
+from app.routes.demo import router as demo_router
 from app.routes.expenses import router as expenses_router
 from app.routes.import_sessions import router as import_sessions_router
 from app.routes.imports import router as imports_router
@@ -61,6 +62,7 @@ app.include_router(sources_router)
 app.include_router(imports_router)
 app.include_router(import_sessions_router)
 app.include_router(data_router)
+app.include_router(demo_router)
 app.include_router(backup_router)
 app.include_router(transfers_router)
 app.include_router(users_router)
