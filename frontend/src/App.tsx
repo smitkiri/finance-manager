@@ -33,6 +33,7 @@ import { TransactionDetailsModal } from './components/modals/TransactionDetailsM
 import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
 import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
+import { DemoBanner } from './components/DemoBanner';
 import { ITEMS_PER_PAGE } from './constants';
 
 function AppContent() {
@@ -70,6 +71,7 @@ function AppContent() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tellerEnabled, setTellerEnabled] = useState(false);
   const [showTellerImport, setShowTellerImport] = useState(false);
+  const [demoEnabled, setDemoEnabled] = useState(false);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -98,6 +100,7 @@ function AppContent() {
           loadedAccounts,
           tellerConfig,
           loadedLabels,
+          demoConfig,
         ] = await Promise.all([
           LocalStorage.loadSources(),
           LocalStorage.loadDateRange(),
@@ -106,6 +109,7 @@ function AppContent() {
           LocalStorage.loadAccounts(),
           LocalStorage.getTellerConfig(),
           LocalStorage.loadLabels(),
+          LocalStorage.getDemoConfig(),
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
@@ -113,6 +117,7 @@ function AppContent() {
         setUsers(loadedUsers);
         setAccounts(loadedAccounts);
         setTellerEnabled(tellerConfig.enabled);
+        setDemoEnabled(demoConfig.enabled);
         if (loadedDateRange) {
           setDateRange(loadedDateRange);
         }
@@ -1024,6 +1029,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <DemoBanner enabled={demoEnabled} />
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
 
