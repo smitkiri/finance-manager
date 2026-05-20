@@ -74,6 +74,10 @@ function AppContent() {
   const [showTellerImport, setShowTellerImport] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(false);
 
+  useEffect(() => {
+    document.title = demoEnabled ? '(Demo) Tally' : 'Tally';
+  }, [demoEnabled]);
+
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
     if (!isInitialLoadComplete) return;
