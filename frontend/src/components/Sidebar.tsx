@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Logo } from './Logo';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, topOffset = 
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Finance Manager</h1>
+            <Logo className="h-7 w-auto text-gray-900 dark:text-white" />
           </div>
 
           {/* Navigation */}

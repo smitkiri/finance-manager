@@ -34,6 +34,7 @@ import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
 import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
 import { DemoBanner } from './components/DemoBanner';
+import { Logo } from './components/Logo';
 import { ITEMS_PER_PAGE } from './constants';
 
 function AppContent() {
@@ -1045,9 +1046,7 @@ function AppContent() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center">
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Finance Manager
-                </h1>
+                <Logo className="h-8 w-auto text-gray-900 dark:text-white" />
               </div>
               <div className="flex items-center space-x-4">
                 <UserFilter
