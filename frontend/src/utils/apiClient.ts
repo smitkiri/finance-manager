@@ -29,11 +29,11 @@ interface StorageMetadata {
 
 const SOURCES_STORAGE_KEY = 'sources';
 
-export class LocalStorage {
+export class ApiClient {
   private static API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
 
   static getApiBase(): string {
-    return LocalStorage.API_BASE;
+    return ApiClient.API_BASE;
   }
 
   static apiFetch(url: string, options?: RequestInit): Promise<Response> {
@@ -59,7 +59,7 @@ export class LocalStorage {
         },
       };
 
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/expenses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ export class LocalStorage {
 
   static async loadExpenses(): Promise<Expense[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/expenses`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/expenses`);
 
       if (!response.ok) {
         throw new Error('Failed to load expenses from server');
@@ -157,9 +157,7 @@ export class LocalStorage {
     if (searchText?.trim()) params.set('search', searchText.trim());
 
     try {
-      const response = await LocalStorage.apiFetch(
-        `${this.API_BASE}/expenses?${params.toString()}`
-      );
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/expenses?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to load expenses page from server');
       }
@@ -197,7 +195,7 @@ export class LocalStorage {
       );
     if (userId !== null && userId !== undefined && userId !== '') params.set('userId', userId);
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/stats?${params.toString()}`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/stats?${params.toString()}`);
       if (!response.ok) return null;
       const data = await response.json();
       return data as DashboardStats;
@@ -212,7 +210,7 @@ export class LocalStorage {
     fileName?: string
   ): Promise<{ expenses: Expense[]; sessionId?: string }> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-csv`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/import-csv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,7 +236,7 @@ export class LocalStorage {
 
   static async loadImportSessions(): Promise<ImportSession[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-sessions`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/import-sessions`);
       if (!response.ok) throw new Error('Failed to load import sessions');
       return response.json();
     } catch (error) {
@@ -248,7 +246,7 @@ export class LocalStorage {
   }
 
   static async undoImportSession(sessionId: string): Promise<{ removed: number }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/import-sessions/${sessionId}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/import-sessions/${sessionId}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to undo import session');
@@ -276,16 +274,13 @@ export class LocalStorage {
 
   static async updateExpense(updatedExpense: Expense): Promise<Expense> {
     try {
-      const response = await LocalStorage.apiFetch(
-        `${this.API_BASE}/expenses/${updatedExpense.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatedExpense),
-        }
-      );
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/expenses/${updatedExpense.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedExpense),
+      });
 
       if (!response.ok) {
         throw new Error('Failed to update expense on server');
@@ -354,7 +349,7 @@ export class LocalStorage {
 
   static async exportData(): Promise<string> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/export-csv`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/export-csv`);
 
       if (!response.ok) {
         throw new Error('Failed to export CSV');
@@ -371,7 +366,7 @@ export class LocalStorage {
   // Source Methods
   static async saveSource(source: import('../types').Source): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/sources`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -397,7 +392,7 @@ export class LocalStorage {
     updatedSource: import('../types').Source
   ): Promise<import('../types').Source[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/sources/${updatedSource.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -427,7 +422,7 @@ export class LocalStorage {
 
   static async loadSources(): Promise<import('../types').Source[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/sources`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/sources`);
 
       if (!response.ok) {
         throw new Error('Failed to load sources from server');
@@ -555,7 +550,7 @@ export class LocalStorage {
   // Date Range Persistence Methods
   static async saveDateRange(dateRange: { start: Date; end: Date }): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/date-range`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/date-range`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -586,7 +581,7 @@ export class LocalStorage {
 
   static async loadDateRange(): Promise<{ start: Date; end: Date } | null> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/date-range`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/date-range`);
       if (!response.ok) {
         const stored = localStorage.getItem('dateRange');
         if (stored) {
@@ -617,7 +612,7 @@ export class LocalStorage {
   // Category Management Methods
   static async saveCategories(categories: string[]): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/categories`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -639,7 +634,7 @@ export class LocalStorage {
 
   static async loadCategories(): Promise<string[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/categories`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/categories`);
 
       if (!response.ok) {
         throw new Error('Failed to load categories from server');
@@ -673,7 +668,7 @@ export class LocalStorage {
 
   static async loadLabels(): Promise<string[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/labels`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/labels`);
       if (!response.ok) throw new Error('Failed to load labels from server');
       const result = await response.json();
       return result.labels;
@@ -731,7 +726,7 @@ export class LocalStorage {
   // Report Methods
   static async saveReport(report: Report): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -760,7 +755,7 @@ export class LocalStorage {
 
   static async loadReports(): Promise<Report[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/reports`);
 
       if (!response.ok) {
         throw new Error('Failed to load reports from server');
@@ -778,7 +773,7 @@ export class LocalStorage {
 
   static async deleteReport(reportId: string): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportId}`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/reports/${reportId}`, {
         method: 'DELETE',
       });
 
@@ -798,7 +793,7 @@ export class LocalStorage {
 
   static async saveReportData(reportData: ReportData): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(
+      const response = await ApiClient.apiFetch(
         `${this.API_BASE}/reports/${reportData.report.id}/data`,
         {
           method: 'POST',
@@ -824,7 +819,7 @@ export class LocalStorage {
 
   static async loadReportData(reportId: string): Promise<ReportData | null> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/reports/${reportId}/data`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/reports/${reportId}/data`);
 
       if (!response.ok) {
         throw new Error('Failed to load report data from server');
@@ -873,7 +868,7 @@ export class LocalStorage {
   // User Management Methods
   static async saveUsers(users: import('../types').User[]): Promise<void> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/users`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -895,7 +890,7 @@ export class LocalStorage {
 
   static async loadUsers(): Promise<import('../types').User[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/users`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/users`);
 
       if (!response.ok) {
         throw new Error('Failed to load users from server');
@@ -963,9 +958,7 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await LocalStorage.apiFetch(
-        `${this.API_BASE}/accounts?${params.toString()}`
-      );
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/accounts?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to load accounts');
       return await response.json();
     } catch (error) {
@@ -975,7 +968,7 @@ export class LocalStorage {
   }
 
   static async createAccount(account: Account): Promise<Account> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(account),
@@ -985,7 +978,7 @@ export class LocalStorage {
   }
 
   static async updateAccount(account: Account): Promise<Account> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${account.id}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/accounts/${account.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: account.name, type: account.type }),
@@ -995,7 +988,7 @@ export class LocalStorage {
   }
 
   static async deleteAccount(accountId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/accounts/${accountId}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/accounts/${accountId}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete account');
@@ -1005,23 +998,18 @@ export class LocalStorage {
     accountId: string,
     balance: AccountBalance
   ): Promise<AccountBalance> {
-    const response = await LocalStorage.apiFetch(
-      `${this.API_BASE}/accounts/${accountId}/balances`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(balance),
-      }
-    );
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(balance),
+    });
     if (!response.ok) throw new Error('Failed to add account balance');
     return response.json();
   }
 
   static async loadAccountBalances(accountId: string): Promise<AccountBalance[]> {
     try {
-      const response = await LocalStorage.apiFetch(
-        `${this.API_BASE}/accounts/${accountId}/balances`
-      );
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/accounts/${accountId}/balances`);
       if (!response.ok) throw new Error('Failed to load account balances');
       return response.json();
     } catch (error) {
@@ -1031,7 +1019,7 @@ export class LocalStorage {
   }
 
   static async deleteAccountBalance(accountId: string, balanceId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(
+    const response = await ApiClient.apiFetch(
       `${this.API_BASE}/accounts/${accountId}/balances/${balanceId}`,
       { method: 'DELETE' }
     );
@@ -1042,7 +1030,7 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await LocalStorage.apiFetch(
+      const response = await ApiClient.apiFetch(
         `${this.API_BASE}/net-worth/summary?${params.toString()}`
       );
       if (!response.ok) return null;
@@ -1057,7 +1045,7 @@ export class LocalStorage {
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
-      const response = await LocalStorage.apiFetch(
+      const response = await ApiClient.apiFetch(
         `${this.API_BASE}/net-worth/history?${params.toString()}`
       );
       if (!response.ok) return [];
@@ -1071,7 +1059,7 @@ export class LocalStorage {
   // Demo Mode
   static async getDemoConfig(): Promise<{ enabled: boolean }> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/demo/config`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/demo/config`);
       if (!response.ok) return { enabled: false };
       return response.json();
     } catch {
@@ -1086,7 +1074,7 @@ export class LocalStorage {
     enrollments: Array<{ enrollmentId: string; institutionName?: string; connectedAt?: string }>;
   }> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/config`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/config`);
       if (!response.ok) return { enabled: false, enrollments: [] };
       return response.json();
     } catch {
@@ -1097,7 +1085,7 @@ export class LocalStorage {
   static async tellerPreviewAccounts(
     accessToken: string
   ): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-accounts`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/preview-accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessToken }),
@@ -1117,7 +1105,7 @@ export class LocalStorage {
       accountType: 'asset' | 'liability';
     }>
   ): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/enroll`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/enroll`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1134,7 +1122,7 @@ export class LocalStorage {
   static async tellerPreviewEnrollmentAccounts(
     enrollmentId: string
   ): Promise<Array<{ id: string; name: string; type: string; subtype?: string }>> {
-    const response = await LocalStorage.apiFetch(
+    const response = await ApiClient.apiFetch(
       `${this.API_BASE}/teller/enrollments/${enrollmentId}/preview-accounts`
     );
     if (!response.ok) throw new Error('Failed to fetch Teller accounts');
@@ -1147,7 +1135,7 @@ export class LocalStorage {
     toAdd: Array<{ tellerAccountId: string; alias: string; accountType: 'asset' | 'liability' }>,
     toRemove: string[]
   ): Promise<{ added: number; removed: number }> {
-    const response = await LocalStorage.apiFetch(
+    const response = await ApiClient.apiFetch(
       `${this.API_BASE}/teller/enrollments/${enrollmentId}/manage-accounts`,
       {
         method: 'POST',
@@ -1160,7 +1148,7 @@ export class LocalStorage {
   }
 
   static async tellerDisconnect(enrollmentId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/disconnect`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/disconnect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enrollmentId }),
@@ -1169,7 +1157,7 @@ export class LocalStorage {
   }
 
   static async getTellerEnrollmentToken(enrollmentId: string): Promise<{ accessToken: string }> {
-    const response = await LocalStorage.apiFetch(
+    const response = await ApiClient.apiFetch(
       `${this.API_BASE}/teller/enrollment-token/${enrollmentId}`
     );
     if (!response.ok) throw new Error('Failed to fetch enrollment token');
@@ -1180,7 +1168,7 @@ export class LocalStorage {
     enrollmentId: string,
     accessToken: string
   ): Promise<void> {
-    const response = await LocalStorage.apiFetch(
+    const response = await ApiClient.apiFetch(
       `${this.API_BASE}/teller/enrollment/${enrollmentId}/token`,
       {
         method: 'PUT',
@@ -1194,7 +1182,7 @@ export class LocalStorage {
   static async getTellerCategoryMappings(): Promise<{
     mappings: Array<{ tellerCategory: string; userCategory: string; transactionCount: number }>;
   }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/category-mappings`);
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/category-mappings`);
     if (!response.ok) throw new Error('Failed to load category mappings');
     return response.json();
   }
@@ -1202,7 +1190,7 @@ export class LocalStorage {
   static async updateTellerCategoryMappings(
     mappings: Array<{ tellerCategory: string; userCategory: string }>
   ): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/category-mappings`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/category-mappings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mappings }),
@@ -1219,7 +1207,7 @@ export class LocalStorage {
     accounts: import('../types').TellerImportPreviewAccount[];
     newCategories: string[];
   }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/preview-import`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/preview-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accountIds, startDate, endDate }),
@@ -1240,7 +1228,7 @@ export class LocalStorage {
     previewToken: string,
     userMappings: Record<string, string> = {}
   ): Promise<{ sessions: import('../types').TellerImportResult[] }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/import-transactions`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/import-transactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ previewToken, userMappings }),
@@ -1253,7 +1241,7 @@ export class LocalStorage {
     refreshed: number;
     reconnectRequired?: string[];
   }> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/teller/refresh-balances`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/teller/refresh-balances`, {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to refresh Teller balances');
@@ -1290,7 +1278,7 @@ export class LocalStorage {
 
   static async loadDashboards(): Promise<Dashboard[]> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards`);
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards`);
       if (!response.ok) throw new Error('Failed to load dashboards');
       return response.json();
     } catch (error) {
@@ -1302,7 +1290,7 @@ export class LocalStorage {
   static async createDashboard(
     dashboard: Omit<Dashboard, 'createdAt' | 'updatedAt' | 'panelCount'>
   ): Promise<Dashboard> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dashboard),
@@ -1315,7 +1303,7 @@ export class LocalStorage {
     id: string,
     updates: Partial<Pick<Dashboard, 'name' | 'isDefault' | 'dateRangeStart' | 'dateRangeEnd'>>
   ): Promise<Dashboard> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -1325,16 +1313,14 @@ export class LocalStorage {
   }
 
   static async deleteDashboard(id: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete dashboard');
   }
 
   static async loadPanels(dashboardId: string): Promise<DashboardPanel[]> {
-    const response = await LocalStorage.apiFetch(
-      `${this.API_BASE}/dashboards/${dashboardId}/panels`
-    );
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`);
     if (!response.ok) throw new Error('Failed to load panels');
     return response.json();
   }
@@ -1343,14 +1329,11 @@ export class LocalStorage {
     dashboardId: string,
     panel: Omit<DashboardPanel, 'dashboardId' | 'createdAt' | 'updatedAt'>
   ): Promise<DashboardPanel> {
-    const response = await LocalStorage.apiFetch(
-      `${this.API_BASE}/dashboards/${dashboardId}/panels`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...panel, dashboardId }),
-      }
-    );
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/panels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...panel, dashboardId }),
+    });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error((err as any).error || 'Failed to create panel');
@@ -1362,7 +1345,7 @@ export class LocalStorage {
     panelId: string,
     updates: Partial<Omit<DashboardPanel, 'id' | 'dashboardId' | 'createdAt' | 'updatedAt'>>
   ): Promise<DashboardPanel> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -1372,14 +1355,14 @@ export class LocalStorage {
   }
 
   static async deletePanel(panelId: string): Promise<void> {
-    const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboard-panels/${panelId}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete panel');
   }
 
   static async reorderPanels(dashboardId: string, panelIds: string[]): Promise<void> {
-    const response = await LocalStorage.apiFetch(
+    const response = await ApiClient.apiFetch(
       `${this.API_BASE}/dashboards/${dashboardId}/panel-order`,
       {
         method: 'PATCH',
@@ -1395,14 +1378,11 @@ export class LocalStorage {
     opts: { userId?: string | null; dateRangeStart: string; dateRangeEnd: string }
   ): Promise<PanelData[]> {
     try {
-      const response = await LocalStorage.apiFetch(
-        `${this.API_BASE}/dashboards/${dashboardId}/data`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(opts),
-        }
-      );
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboards/${dashboardId}/data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      });
       if (!response.ok) throw new Error('Failed to load dashboard data');
       const data = await response.json();
       return data.panels as PanelData[];
@@ -1421,7 +1401,7 @@ export class LocalStorage {
     offset?: number;
   }): Promise<{ transactions: Expense[]; total: number }> {
     try {
-      const response = await LocalStorage.apiFetch(`${this.API_BASE}/dashboard-panels/preview`, {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboard-panels/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(opts),
@@ -1444,14 +1424,11 @@ export class LocalStorage {
     monthMap: Record<string, { month: string }>;
   }> {
     try {
-      const response = await LocalStorage.apiFetch(
-        `${this.API_BASE}/dashboard-panels/chart-preview`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(opts),
-        }
-      );
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/dashboard-panels/chart-preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      });
       if (!response.ok) throw new Error('Failed to fetch chart preview');
       return response.json();
     } catch (error) {

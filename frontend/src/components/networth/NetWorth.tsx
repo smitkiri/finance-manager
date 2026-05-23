@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 
 interface NetWorthProps {
   selectedUserId: string | null;
@@ -388,7 +388,7 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => 
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
-    const balances = await LocalStorage.loadAccountBalances(account.id);
+    const balances = await ApiClient.loadAccountBalances(account.id);
     setHistory(balances);
     setLoadingHistory(false);
   }, [account.id]);
@@ -400,7 +400,7 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => 
 
   const handleDeleteBalance = async (balanceId: string) => {
     try {
-      await LocalStorage.deleteAccountBalance(account.id, balanceId);
+      await ApiClient.deleteAccountBalance(account.id, balanceId);
       setHistory((prev) => prev.filter((b) => b.id !== balanceId));
     } catch {
       toast.error('Failed to delete balance entry', { position: 'bottom-right', autoClose: 3000 });
@@ -536,15 +536,15 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     setLoading(true);
     try {
       const [accts, sum, hist] = await Promise.all([
-        LocalStorage.loadAccounts(selectedUserId),
-        LocalStorage.loadNetWorthSummary(selectedUserId),
-        LocalStorage.loadNetWorthHistory(selectedUserId),
+        ApiClient.loadAccounts(selectedUserId),
+        ApiClient.loadNetWorthSummary(selectedUserId),
+        ApiClient.loadNetWorthHistory(selectedUserId),
       ]);
 
       // Fetch the current balance for each account (most recent)
       const accountsWithBalances: Account[] = await Promise.all(
         accts.map(async (acct) => {
-          const balances = await LocalStorage.loadAccountBalances(acct.id);
+          const balances = await ApiClient.loadAccountBalances(acct.id);
           return {
             ...acct,
             currentBalance: balances[0]?.balance ?? 0,
@@ -566,7 +566,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   }, [loadData]);
 
   useEffect(() => {
-    LocalStorage.getTellerConfig().then((config) => {
+    ApiClient.getTellerConfig().then((config) => {
       setTellerEnabled(config.enabled);
       setTellerConnected((config.enrollments?.length ?? 0) > 0);
     });
@@ -575,7 +575,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const handleRefreshBalances = async () => {
     setRefreshing(true);
     try {
-      const result = await LocalStorage.tellerRefreshBalances();
+      const result = await ApiClient.tellerRefreshBalances();
       if (result.refreshed > 0) {
         toast.success(
           `Refreshed ${result.refreshed} account balance${result.refreshed !== 1 ? 's' : ''}`,
@@ -601,7 +601,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const handleAddBalance = async (amount: number, date: string, note?: string) => {
     if (!balanceAccount) return;
     try {
-      await LocalStorage.addAccountBalance(balanceAccount.id, {
+      await ApiClient.addAccountBalance(balanceAccount.id, {
         id: generateId(),
         accountId: balanceAccount.id,
         balance: amount,
@@ -624,7 +624,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
     note?: string
   ) => {
     for (const { accountId, balance } of entries) {
-      await LocalStorage.addAccountBalance(accountId, {
+      await ApiClient.addAccountBalance(accountId, {
         id: generateId(),
         accountId,
         balance,

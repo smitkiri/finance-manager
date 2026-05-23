@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, FileText, Calendar, DollarSign, Tag, Filter } from 'lucide-react';
 import { Report, Expense, DateRange, Source } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { ReportCreator } from './ReportCreator';
 import { ReportViewer } from './ReportViewer';
 import { formatCurrency, formatDate } from '../../utils';
@@ -31,7 +31,7 @@ export const Reports: React.FC<ReportsProps> = ({
 
   const loadReports = async () => {
     try {
-      const loadedReports = await LocalStorage.loadReports();
+      const loadedReports = await ApiClient.loadReports();
       setReports(loadedReports);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -42,7 +42,7 @@ export const Reports: React.FC<ReportsProps> = ({
 
   const handleCreateReport = async (report: Report) => {
     try {
-      await LocalStorage.saveReport(report);
+      await ApiClient.saveReport(report);
       await loadReports();
       setIsCreatingReport(false);
     } catch (error) {
@@ -53,7 +53,7 @@ export const Reports: React.FC<ReportsProps> = ({
   const handleDeleteReport = async (reportId: string) => {
     if (window.confirm('Are you sure you want to delete this report?')) {
       try {
-        await LocalStorage.deleteReport(reportId);
+        await ApiClient.deleteReport(reportId);
         await loadReports();
         if (selectedReport?.id === reportId) {
           setSelectedReport(null);

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, Building2, Loader2, CheckCircle2 } from 'lucide-react';
 import { Account, User, TellerImportPreviewAccount, TellerImportResult } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 
 interface Props {
   accounts: Account[];
@@ -81,7 +81,7 @@ export function TellerImportModal({
     setStep('previewing');
     try {
       const { startDate, endDate } = getDateRange();
-      const result = await LocalStorage.tellerPreviewImport(
+      const result = await ApiClient.tellerPreviewImport(
         Array.from(selectedIds),
         startDate,
         endDate
@@ -117,7 +117,7 @@ export function TellerImportModal({
       for (const [newCat, choice] of Object.entries(categoryChoices)) {
         if (choice !== '') userMappings[newCat] = choice;
       }
-      const result = await LocalStorage.tellerImportTransactions(previewToken, userMappings);
+      const result = await ApiClient.tellerImportTransactions(previewToken, userMappings);
       const totalAdded = result.sessions.reduce((sum, s) => sum + s.added, 0);
       setImportSessions(result.sessions);
       // Notify parent first (triggers data refresh), then show done step

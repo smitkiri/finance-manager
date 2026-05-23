@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { PanelEditor } from './PanelEditor';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { Dashboard, DashboardPanel } from '../../types';
 
-jest.mock('../../utils/storage', () => ({
-  LocalStorage: {
+jest.mock('../../utils/apiClient', () => ({
+  ApiClient: {
     previewPanelTransactions: jest.fn().mockResolvedValue({ transactions: [], total: 0 }),
     chartPreview: jest.fn().mockResolvedValue({ rows: [], monthMap: {} }),
     createPanel: jest.fn().mockResolvedValue({}),
@@ -240,7 +240,7 @@ describe('PanelEditor', () => {
   });
 
   // 8. Save calls createPanel in create mode
-  test('save button calls LocalStorage.createPanel in create mode', async () => {
+  test('save button calls ApiClient.createPanel in create mode', async () => {
     const onSave = jest.fn();
     const savedPanel = {
       id: 'test-id',
@@ -255,7 +255,7 @@ describe('PanelEditor', () => {
       createdAt: '2025-01-01T00:00:00Z',
       updatedAt: '2025-01-01T00:00:00Z',
     };
-    (LocalStorage.createPanel as jest.Mock).mockResolvedValueOnce(savedPanel);
+    (ApiClient.createPanel as jest.Mock).mockResolvedValueOnce(savedPanel);
 
     await act(async () => {
       render(<PanelEditor {...defaultProps} onSave={onSave} />);
@@ -273,7 +273,7 @@ describe('PanelEditor', () => {
       fireEvent.click(saveButton);
     });
 
-    expect(LocalStorage.createPanel).toHaveBeenCalledWith(
+    expect(ApiClient.createPanel).toHaveBeenCalledWith(
       'dash-1',
       expect.objectContaining({
         title: 'New Panel',
@@ -285,7 +285,7 @@ describe('PanelEditor', () => {
         panelOrder: 0,
       })
     );
-    expect(LocalStorage.updatePanel).not.toHaveBeenCalled();
+    expect(ApiClient.updatePanel).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(savedPanel);
@@ -293,10 +293,10 @@ describe('PanelEditor', () => {
   });
 
   // 9. Save calls updatePanel in edit mode
-  test('save button calls LocalStorage.updatePanel in edit mode', async () => {
+  test('save button calls ApiClient.updatePanel in edit mode', async () => {
     const onSave = jest.fn();
     const updatedPanel = { ...mockPanel, title: 'Updated Panel' };
-    (LocalStorage.updatePanel as jest.Mock).mockResolvedValueOnce(updatedPanel);
+    (ApiClient.updatePanel as jest.Mock).mockResolvedValueOnce(updatedPanel);
 
     await act(async () => {
       render(<PanelEditor {...defaultProps} panel={mockPanel} onSave={onSave} />);
@@ -308,7 +308,7 @@ describe('PanelEditor', () => {
       fireEvent.click(saveButton);
     });
 
-    expect(LocalStorage.updatePanel).toHaveBeenCalledWith(
+    expect(ApiClient.updatePanel).toHaveBeenCalledWith(
       'panel-1',
       expect.objectContaining({
         id: 'panel-1',
@@ -317,7 +317,7 @@ describe('PanelEditor', () => {
         seriesMode: 'net_amount',
       })
     );
-    expect(LocalStorage.createPanel).not.toHaveBeenCalled();
+    expect(ApiClient.createPanel).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(updatedPanel);

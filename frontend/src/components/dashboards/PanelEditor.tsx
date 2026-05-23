@@ -8,7 +8,7 @@ import {
   LegendOptions,
   PanelMonthData,
 } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { PanelChart } from './PanelChart';
 import { ChartLegend } from './ChartLegend';
 import { TransactionPreview } from './TransactionPreview';
@@ -86,7 +86,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
       // Fetch transaction preview
       setPreviewLoading(true);
-      const previewResult = await LocalStorage.previewPanelTransactions({
+      const previewResult = await ApiClient.previewPanelTransactions({
         filterGroups,
         userId: selectedUserId,
         dateFrom,
@@ -100,7 +100,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       // Fetch chart data via server-side aggregation endpoint
       setChartLoading(true);
       try {
-        const chartResult = await LocalStorage.chartPreview({
+        const chartResult = await ApiClient.chartPreview({
           filterGroups,
           userId: selectedUserId,
           dateFrom,
@@ -174,9 +174,9 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
       let saved: DashboardPanel;
       if (isEdit) {
-        saved = await LocalStorage.updatePanel(panel!.id, payload);
+        saved = await ApiClient.updatePanel(panel!.id, payload);
       } else {
-        saved = await LocalStorage.createPanel(dashboard.id, payload);
+        saved = await ApiClient.createPanel(dashboard.id, payload);
       }
       onSave(saved);
     } catch (e: any) {
