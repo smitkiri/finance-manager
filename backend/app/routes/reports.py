@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.report import Report
 from app.schemas.report import ReportOut, ReportSaveRequest
 
@@ -14,14 +15,22 @@ router = APIRouter(prefix="/api", tags=["reports"])
 
 
 @router.get("/reports")
-async def get_reports(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Report).order_by(Report.created_at.desc()))
+async def get_reports(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Report)
+        .where(Report.household_id == household_id)
+        .order_by(Report.created_at.desc())
+    )
     return [ReportOut.from_orm_model(r).model_dump() for r in result.scalars().all()]
 
 
 @router.post("/reports")
 async def save_report(
     body: ReportSaveRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     r = body.report
@@ -34,6 +43,7 @@ async def save_report(
             id=r.id,
             name=r.name,
             description=r.description,
+            household_id=household_id,
             filters=r.filters or {},
             created_at=created,
             last_modified=modified,
@@ -57,9 +67,14 @@ async def save_report(
 @router.delete("/reports/{report_id}")
 async def delete_report(
     report_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    await db.execute(delete(Report).where(Report.id == report_id))
+    await db.execute(
+        delete(Report).where(
+            Report.id == report_id, Report.household_id == household_id
+        )
+    )
     await db.commit()
     return {"success": True}
 

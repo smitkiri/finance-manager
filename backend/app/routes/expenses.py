@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.schemas.transaction import (
@@ -41,6 +42,7 @@ async def get_expenses(
     minAmount: str | None = Query(None),
     maxAmount: str | None = Query(None),
     search: str | None = Query(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     filter_params = {
@@ -55,8 +57,10 @@ async def get_expenses(
         "maxAmount": maxAmount,
         "search": search,
     }
-    filters = build_expenses_filter(filter_params)
-    base_stmt = select(Transaction).where(*filters) if filters else select(Transaction)
+    filters = [Transaction.household_id == household_id] + build_expenses_filter(
+        filter_params
+    )
+    base_stmt = select(Transaction).where(*filters)
     order = base_stmt.order_by(Transaction.date.desc())
 
     if limit is not None and limit >= 0:
@@ -81,9 +85,12 @@ async def get_stats(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     userId: str | None = Query(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    filters = build_stats_filter(dateFrom, dateTo, userId)
+    filters = [Transaction.household_id == household_id] + build_stats_filter(
+        dateFrom, dateTo, userId
+    )
     base = (
         select(
             Transaction.id,
@@ -290,9 +297,14 @@ async def get_stats(
 async def update_expense(
     expense_id: str,
     body: TransactionUpdate = Body(...),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Transaction).where(Transaction.id == expense_id))
+    result = await db.execute(
+        select(Transaction).where(
+            Transaction.id == expense_id, Transaction.household_id == household_id
+        )
+    )
     txn = result.scalar_one_or_none()
     if not txn:
         return JSONResponse(status_code=404, content={"error": "Transaction not found"})
@@ -338,12 +350,15 @@ async def update_expense(
 @router.post("/expenses")
 async def bulk_save_expenses(
     body: ExpenseBulkSaveRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    # Delete all existing transactions
-    await db.execute(delete(Transaction))
+    # Delete existing transactions for this household only.
+    await db.execute(
+        delete(Transaction).where(Transaction.household_id == household_id)
+    )
 
-    # Insert new transactions
+    # Insert new transactions, attached to the requested household.
     for exp in body.expenses:
         txn = Transaction(
             id=exp.id,
@@ -352,6 +367,7 @@ async def bulk_save_expenses(
             category=exp.category or "Uncategorized",
             amount=exp.amount,
             type=exp.type,
+            household_id=household_id,
             created_by_user_id=exp.user,
             labels=exp.labels or [],
             metadata_=exp.metadata or {},

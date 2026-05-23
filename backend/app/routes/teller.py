@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.import_session import ImportSession
@@ -191,13 +192,30 @@ async def _fetch_teller_transactions_in_range(
     return transactions
 
 
-async def _resolve_user_id(db: AsyncSession, user_id: str | None) -> str:
-    """Resolve a valid user ID, falling back to the first user in the DB."""
+async def _resolve_user_id(
+    db: AsyncSession, user_id: str | None, household_id: str | None = None
+) -> str:
+    """Resolve a valid user ID, falling back to the first user in the (household).
+
+    When `household_id` is provided, lookup is scoped to that household.
+    """
     if user_id:
-        result = await db.execute(select(User).where(User.id == user_id))
+        stmt = select(User).where(User.id == user_id)
+        if household_id is not None:
+            stmt = stmt.where(User.household_id == household_id)
+        result = await db.execute(stmt)
         if result.scalar_one_or_none():
             return user_id
-    result = await db.execute(select(User).order_by(User.created_at).limit(1))
+
+    stmt = select(User).order_by(User.created_at).limit(1)
+    if household_id is not None:
+        stmt = (
+            select(User)
+            .where(User.household_id == household_id)
+            .order_by(User.created_at)
+            .limit(1)
+        )
+    result = await db.execute(stmt)
     user = result.scalar_one_or_none()
     return user.id if user else "default-user"
 
@@ -349,7 +367,11 @@ async def preview_accounts(
 
 
 @router.post("/enroll")
-async def enroll(body: EnrollRequest, db: AsyncSession = Depends(get_db)):
+async def enroll(
+    body: EnrollRequest,
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         enrollments = await _read_enrollments(db)
 
@@ -377,12 +399,13 @@ async def enroll(body: EnrollRequest, db: AsyncSession = Depends(get_db)):
 
         # Create account records for selected accounts
         if body.selectedAccounts:
-            account_user_id = await _resolve_user_id(db, body.userId)
+            account_user_id = await _resolve_user_id(db, body.userId, household_id)
 
             for acct in body.selectedAccounts:
                 result = await db.execute(
                     select(Account).where(
-                        Account.teller_account_id == acct.tellerAccountId
+                        Account.teller_account_id == acct.tellerAccountId,
+                        Account.household_id == household_id,
                     )
                 )
                 existing = result.scalar_one_or_none()
@@ -391,6 +414,7 @@ async def enroll(body: EnrollRequest, db: AsyncSession = Depends(get_db)):
                     db.add(
                         Account(
                             id=account_id,
+                            household_id=household_id,
                             created_by_user_id=account_user_id,
                             name=acct.alias,
                             type=acct.accountType,
@@ -413,11 +437,18 @@ async def enroll(body: EnrollRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/disconnect")
-async def disconnect(body: DisconnectRequest, db: AsyncSession = Depends(get_db)):
+async def disconnect(
+    body: DisconnectRequest,
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         result = await db.execute(
             delete(Account)
-            .where(Account.teller_enrollment_id == body.enrollmentId)
+            .where(
+                Account.teller_enrollment_id == body.enrollmentId,
+                Account.household_id == household_id,
+            )
             .returning(Account.id)
         )
         deleted_count = len(result.all())
@@ -477,6 +508,7 @@ async def enrollment_preview_accounts(
 async def manage_accounts(
     enrollmentId: str,
     body: ManageAccountsRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -489,7 +521,7 @@ async def manage_accounts(
                 status_code=404, content={"error": "Enrollment not found"}
             )
 
-        account_user_id = await _resolve_user_id(db, body.userId)
+        account_user_id = await _resolve_user_id(db, body.userId, household_id)
 
         # Remove accounts
         removed = 0
@@ -499,6 +531,7 @@ async def manage_accounts(
                 .where(
                     Account.teller_account_id == teller_account_id,
                     Account.teller_enrollment_id == enrollmentId,
+                    Account.household_id == household_id,
                 )
                 .returning(Account.id)
             )
@@ -508,13 +541,17 @@ async def manage_accounts(
         added = 0
         for acct in body.toAdd:
             result = await db.execute(
-                select(Account).where(Account.teller_account_id == acct.tellerAccountId)
+                select(Account).where(
+                    Account.teller_account_id == acct.tellerAccountId,
+                    Account.household_id == household_id,
+                )
             )
             if not result.scalar_one_or_none():
                 account_id = hex(int(time.time() * 1000))[2:] + secrets.token_hex(4)
                 db.add(
                     Account(
                         id=account_id,
+                        household_id=household_id,
                         created_by_user_id=account_user_id,
                         name=acct.alias,
                         type=acct.accountType,
@@ -534,7 +571,10 @@ async def manage_accounts(
 
 
 @router.post("/refresh-balances")
-async def refresh_balances(db: AsyncSession = Depends(get_db)):
+async def refresh_balances(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.is_teller_enabled:
         return JSONResponse(
             status_code=400, content={"error": "Teller integration not enabled"}
@@ -566,10 +606,11 @@ async def refresh_balances(db: AsyncSession = Depends(get_db)):
 
             teller_accounts = data if isinstance(data, list) else []
             for teller_account in teller_accounts:
-                # Only refresh accounts the user explicitly added
+                # Only refresh accounts the user explicitly added to this household
                 result = await db.execute(
                     select(Account).where(
-                        Account.teller_account_id == teller_account["id"]
+                        Account.teller_account_id == teller_account["id"],
+                        Account.household_id == household_id,
                     )
                 )
                 existing = result.scalar_one_or_none()
@@ -703,7 +744,9 @@ async def update_category_mappings(
 
 @router.post("/preview-import")
 async def preview_import(
-    body: PreviewImportRequest, db: AsyncSession = Depends(get_db)
+    body: PreviewImportRequest,
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
 ):
     if not settings.is_teller_enabled:
         return JSONResponse(
@@ -729,8 +772,10 @@ async def preview_import(
         enrollments = await _read_enrollments(db)
         teller = _get_teller_client()
 
-        # Load categories, saved mappings, and recent transactions
-        cat_result = await db.execute(select(Category))
+        # Load categories, saved mappings, and recent transactions for this household
+        cat_result = await db.execute(
+            select(Category).where(Category.household_id == household_id)
+        )
         existing_category_names = {c.name for c in cat_result.scalars().all()}
         existing_category_names.add(UNCATEGORIZED)
 
@@ -741,7 +786,10 @@ async def preview_import(
         saved_mappings: dict[str, str] = map_meta.value if map_meta else {}
 
         txn_result = await db.execute(
-            select(Transaction).order_by(Transaction.date.desc()).limit(500)
+            select(Transaction)
+            .where(Transaction.household_id == household_id)
+            .order_by(Transaction.date.desc())
+            .limit(500)
         )
         existing_expenses = [
             {
@@ -757,7 +805,12 @@ async def preview_import(
         preview_accounts: list[dict] = []
 
         for account_id in body.accountIds:
-            result = await db.execute(select(Account).where(Account.id == account_id))
+            result = await db.execute(
+                select(Account).where(
+                    Account.id == account_id,
+                    Account.household_id == household_id,
+                )
+            )
             account = result.scalar_one_or_none()
             if not account:
                 continue
@@ -795,9 +848,10 @@ async def preview_import(
                     text(
                         "SELECT metadata->>'tellerTransactionId' AS tid "
                         "FROM transactions "
-                        "WHERE metadata->>'tellerTransactionId' = ANY(:ids)"
+                        "WHERE household_id = :hid "
+                        "AND metadata->>'tellerTransactionId' = ANY(:ids)"
                     ),
-                    {"ids": teller_ids},
+                    {"hid": household_id, "ids": teller_ids},
                 )
                 existing_ids = {row.tid for row in dup_result.all()}
 
@@ -881,7 +935,9 @@ async def preview_import(
 
 @router.post("/import-transactions")
 async def import_transactions(
-    body: ImportTransactionsRequest, db: AsyncSession = Depends(get_db)
+    body: ImportTransactionsRequest,
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
 ):
     _clean_expired_previews()
     preview = _import_preview_cache.get(body.previewToken)
@@ -920,6 +976,7 @@ async def import_transactions(
             db.add(
                 ImportSession(
                     id=session_id,
+                    household_id=household_id,
                     created_by_user_id=account.get("userId"),
                     source_name=f"Teller: {account['accountName']}",
                     transaction_count=len(account["newTransactions"]),
@@ -957,7 +1014,8 @@ async def import_transactions(
                         category=category,
                         amount=Decimal(str(amount)),
                         type=tx_type,
-                        user_id=account.get("userId") or "",
+                        household_id=household_id,
+                        created_by_user_id=account.get("userId") or None,
                         labels=[],
                         metadata_=metadata,
                         transfer_info=None,

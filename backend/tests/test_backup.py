@@ -16,7 +16,7 @@ class TestBackup:
         self, client: AsyncClient, db_session: AsyncSession
     ):
         db_session.add(User(id="user1", name="Alice"))
-        db_session.add(Category(name="Food"))
+        db_session.add(Category(id="Food", name="Food"))
         db_session.add(
             Transaction(
                 id="t1",

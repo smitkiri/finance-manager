@@ -30,6 +30,48 @@ for field in Settings.model_fields:
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
 
+# Default any model that has a `household_id` column but no value at insert
+# time to the seeded test household. Production routes pass `household_id`
+# explicitly; this is purely a test convenience to avoid editing every model
+# construction in legacy tests.
+def _install_household_default() -> None:
+    from sqlalchemy import event
+
+    from app.models import (
+        Account,
+        Category,
+        Dashboard,
+        DateRange,
+        ImportSession,
+        Report,
+        Source,
+        Transaction,
+        User,
+    )
+
+    DEFAULT = "household-default"
+
+    def _set_default(mapper, connection, target):  # noqa: ARG001
+        if getattr(target, "household_id", None) is None:
+            target.household_id = DEFAULT
+
+    for model in (
+        Account,
+        Category,
+        Dashboard,
+        DateRange,
+        ImportSession,
+        Report,
+        Source,
+        Transaction,
+        User,
+    ):
+        event.listen(model, "before_insert", _set_default)
+
+
+_install_household_default()
+
+
 def _alembic_config_for_url(sync_url: str) -> AlembicConfig:
     """Build an Alembic Config pointing at the given sync DB URL.
 
@@ -192,8 +234,63 @@ def alembic_runner() -> _AlembicRunner:
     return _AlembicRunner(get_test_sync_db_url())
 
 
+DEFAULT_TEST_HOUSEHOLD_ID = "household-default"
+
+
+class _HouseholdInjectingClient(AsyncClient):
+    """Test-only AsyncClient that auto-appends `?householdId=<default>` to
+    requests against `/api/...` endpoints when one isn't already present.
+
+    Phase A1 routes require `householdId` on every household-scoped endpoint;
+    every existing test was written before that requirement, so this keeps
+    them working without thousands of per-test edits. Tests that need to
+    exercise the missing-param 400 path or pass a different household must
+    bypass this — pass `householdId=<value>` in `params` explicitly (which is
+    already a query string, so the auto-injection is skipped).
+    """
+
+    async def request(self, method, url, **kwargs):
+        url_str = str(url)
+        # Only inject for /api requests, and only when no householdId is set.
+        if url_str.startswith("/api"):
+            params = kwargs.get("params")
+            already_set = False
+            if isinstance(params, dict):
+                already_set = "householdId" in params
+            if "householdId=" in url_str:
+                already_set = True
+            if not already_set:
+                if isinstance(params, dict):
+                    params = {**params, "householdId": DEFAULT_TEST_HOUSEHOLD_ID}
+                    kwargs["params"] = params
+                else:
+                    sep = "&" if "?" in url_str else "?"
+                    url = f"{url_str}{sep}householdId={DEFAULT_TEST_HOUSEHOLD_ID}"
+        return await super().request(method, url, **kwargs)
+
+
 @pytest.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    async with _HouseholdInjectingClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def raw_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    """A vanilla AsyncClient that does NOT auto-inject householdId.
+
+    Use this in tests that verify missing-param error responses or that need
+    to bypass the auto-inject for any reason.
+    """
+
     async def override_get_db():
         yield db_session
 

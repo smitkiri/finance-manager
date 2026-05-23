@@ -66,12 +66,15 @@ def upgrade() -> None:
             f"WHERE household_id IS NULL"
         )
 
-    # 5. Rename user_id -> created_by_user_id on data tables
+    # 5. Rename user_id -> created_by_user_id on data tables and drop NOT NULL
+    # so users can be deleted without cascading row loss (FK becomes SET NULL).
     op.execute("ALTER TABLE transactions RENAME COLUMN user_id TO created_by_user_id")
     op.execute("ALTER TABLE accounts RENAME COLUMN user_id TO created_by_user_id")
     op.execute(
         "ALTER TABLE import_sessions RENAME COLUMN user_id TO created_by_user_id"
     )
+    op.execute("ALTER TABLE transactions ALTER COLUMN created_by_user_id DROP NOT NULL")
+    op.execute("ALTER TABLE accounts ALTER COLUMN created_by_user_id DROP NOT NULL")
 
     # Rename matching indexes for consistency
     op.execute(
@@ -173,7 +176,10 @@ def downgrade() -> None:
     op.execute("ALTER TABLE categories ADD PRIMARY KEY (name)")
     op.execute("ALTER TABLE categories DROP COLUMN IF EXISTS id")
 
-    # 5. Rename created_by_user_id back to user_id
+    # 5. Restore NOT NULL on created_by_user_id where it originally was, then
+    # rename back to user_id.
+    op.execute("ALTER TABLE transactions ALTER COLUMN created_by_user_id SET NOT NULL")
+    op.execute("ALTER TABLE accounts ALTER COLUMN created_by_user_id SET NOT NULL")
     op.execute(
         "ALTER INDEX IF EXISTS idx_transactions_created_by "
         "RENAME TO idx_transactions_user"

@@ -5,6 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.user import User
 from app.schemas.user import UserOut, UsersSaveRequest
 
@@ -22,8 +23,13 @@ def _parse_created_at(value: str | None) -> datetime:
 
 
 @router.get("/users")
-async def get_users(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).order_by(User.created_at))
+async def get_users(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(User).where(User.household_id == household_id).order_by(User.created_at)
+    )
     users = result.scalars().all()
     if not users:
         return {
@@ -31,6 +37,7 @@ async def get_users(db: AsyncSession = Depends(get_db)):
                 {
                     "id": "default-user",
                     "name": "Default",
+                    "householdId": household_id,
                     "createdAt": datetime.now(UTC).isoformat(),
                 }
             ]
@@ -39,13 +46,19 @@ async def get_users(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/users")
-async def save_users(body: UsersSaveRequest, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(User))
+async def save_users(
+    body: UsersSaveRequest,
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    # Bulk-replace within this household only — leaves other households untouched.
+    await db.execute(delete(User).where(User.household_id == household_id))
     for u in body.users:
         db.add(
             User(
                 id=u.id,
                 name=u.name,
+                household_id=household_id,
                 created_at=_parse_created_at(u.createdAt),
             )
         )

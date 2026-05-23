@@ -27,6 +27,7 @@ from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.date_range import DateRange
+from app.models.household import Household
 from app.models.import_session import ImportSession
 from app.models.metadata import Metadata
 from app.models.report import Report
@@ -40,7 +41,8 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 FIXTURE_PATH = Path(__file__).parent / "fixture.json"
 
 
-# Wipe order: FK-safe (children first)
+# Wipe order: FK-safe (children first). Household is wiped LAST because all
+# data tables reference it.
 _WIPE_ORDER = [
     DashboardPanel,
     Dashboard,
@@ -54,6 +56,7 @@ _WIPE_ORDER = [
     Source,
     Category,
     User,
+    Household,
 ]
 
 
@@ -63,13 +66,31 @@ async def _wipe_all(db: AsyncSession) -> None:
 
 
 async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
+    # Households — must come first so child rows can reference them.
+    # If the fixture doesn't list households (older fixtures), seed the default.
+    households = fixture.get("households") or [
+        {"id": "household-demo", "name": "Demo Household"}
+    ]
+    for h in households:
+        db.add(Household(id=h["id"], name=h["name"]))
+    await db.flush()
+
+    # Older fixtures (pre-household) don't carry household_id on rows; default
+    # them to the first household in the fixture so the legacy demo continues
+    # to work.
+    default_hid = households[0]["id"]
+
+    def _hid(item: dict[str, Any]) -> str:
+        return item.get("household_id") or default_hid
+
     # Users
     for u in fixture["users"]:
-        db.add(User(id=u["id"], name=u["name"]))
+        db.add(User(id=u["id"], name=u["name"], household_id=_hid(u)))
 
     # Categories
     for c in fixture["categories"]:
-        db.add(Category(name=c["name"]))
+        cat_id = c.get("id") or c["name"]
+        db.add(Category(id=cat_id, name=c["name"], household_id=_hid(c)))
 
     # Sources
     for s in fixture["sources"]:
@@ -77,12 +98,13 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
             Source(
                 id=s["id"],
                 name=s["name"],
+                household_id=_hid(s),
                 mappings=s.get("mappings", []),
                 flip_income_expense=s.get("flip_income_expense", False),
             )
         )
 
-    # Metadata
+    # Metadata (global key-value store; not household-scoped)
     for m in fixture.get("metadata", []):
         db.add(Metadata(key=m["key"], value=m.get("value")))
 
@@ -90,6 +112,7 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
     for dr in fixture["date_ranges"]:
         db.add(
             DateRange(
+                household_id=_hid(dr),
                 start_date=date.fromisoformat(dr["start_date"]),
                 end_date=date.fromisoformat(dr["end_date"]),
             )
@@ -101,6 +124,7 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
             Report(
                 id=r["id"],
                 name=r["name"],
+                household_id=_hid(r),
                 description=r.get("description"),
                 filters=r.get("filters"),
             )
@@ -108,6 +132,8 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
 
     # Transactions
     for t in fixture["transactions"]:
+        # Fixtures may still use `user_id`; accept either field name.
+        created_by = t.get("created_by_user_id") or t.get("user_id")
         db.add(
             Transaction(
                 id=t["id"],
@@ -116,7 +142,8 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
                 category=t["category"],
                 amount=t["amount"],
                 type=t["type"],
-                user_id=t["user_id"],
+                household_id=_hid(t),
+                created_by_user_id=created_by,
                 labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
                 transfer_info=t.get("transfer_info"),
@@ -126,10 +153,12 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
 
     # Accounts
     for a in fixture["accounts"]:
+        created_by = a.get("created_by_user_id") or a.get("user_id")
         db.add(
             Account(
                 id=a["id"],
-                user_id=a["user_id"],
+                household_id=_hid(a),
+                created_by_user_id=created_by,
                 name=a["name"],
                 type=a["type"],
                 teller_account_id=a.get("teller_account_id"),
@@ -155,6 +184,7 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
             Dashboard(
                 id=d["id"],
                 name=d["name"],
+                household_id=_hid(d),
                 is_default=d.get("is_default", False),
                 date_range_start=date.fromisoformat(d["date_range_start"]),
                 date_range_end=date.fromisoformat(d["date_range_end"]),

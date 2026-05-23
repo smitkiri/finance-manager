@@ -6,6 +6,7 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.account import Account, AccountBalance
 from app.schemas.net_worth import (
     AccountBalanceOut,
@@ -20,12 +21,28 @@ from app.schemas.net_worth import (
 router = APIRouter(prefix="/api", tags=["net_worth"])
 
 
+async def _account_in_household(
+    db: AsyncSession, account_id: str, household_id: str
+) -> Account | None:
+    result = await db.execute(
+        select(Account).where(
+            Account.id == account_id, Account.household_id == household_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 @router.get("/accounts")
 async def get_accounts(
     userId: str | None = Query(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Account).order_by(Account.type, Account.name)
+    stmt = (
+        select(Account)
+        .where(Account.household_id == household_id)
+        .order_by(Account.type, Account.name)
+    )
     if userId:
         stmt = stmt.where(Account.created_by_user_id == userId)
     result = await db.execute(stmt)
@@ -35,6 +52,7 @@ async def get_accounts(
 @router.post("/accounts")
 async def create_account(
     body: AccountCreateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.type not in ("asset", "liability"):
@@ -44,6 +62,7 @@ async def create_account(
         )
     account = Account(
         id=body.id,
+        household_id=household_id,
         created_by_user_id=body.userId,
         name=body.name,
         type=body.type,
@@ -58,6 +77,7 @@ async def create_account(
 async def update_account(
     account_id: str,
     body: AccountUpdateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.type not in ("asset", "liability"):
@@ -65,8 +85,7 @@ async def update_account(
             status_code=400,
             content={"error": 'type must be "asset" or "liability"'},
         )
-    result = await db.execute(select(Account).where(Account.id == account_id))
-    account = result.scalar_one_or_none()
+    account = await _account_in_household(db, account_id, household_id)
     if not account:
         return JSONResponse(status_code=404, content={"error": "Account not found"})
 
@@ -81,10 +100,10 @@ async def update_account(
 @router.delete("/accounts/{account_id}")
 async def delete_account(
     account_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Account).where(Account.id == account_id))
-    account = result.scalar_one_or_none()
+    account = await _account_in_household(db, account_id, household_id)
     if not account:
         return JSONResponse(status_code=404, content={"error": "Account not found"})
     await db.execute(delete(Account).where(Account.id == account_id))
@@ -96,10 +115,10 @@ async def delete_account(
 async def add_balance(
     account_id: str,
     body: BalanceCreateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Account).where(Account.id == account_id))
-    if not result.scalar_one_or_none():
+    if not await _account_in_household(db, account_id, household_id):
         return JSONResponse(status_code=404, content={"error": "Account not found"})
 
     balance = AccountBalance(
@@ -118,8 +137,11 @@ async def add_balance(
 @router.get("/accounts/{account_id}/balances")
 async def get_balances(
     account_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await _account_in_household(db, account_id, household_id):
+        return JSONResponse(status_code=404, content={"error": "Account not found"})
     result = await db.execute(
         select(AccountBalance)
         .where(AccountBalance.account_id == account_id)
@@ -135,8 +157,11 @@ async def get_balances(
 async def delete_balance(
     account_id: str,
     balance_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await _account_in_household(db, account_id, household_id):
+        return JSONResponse(status_code=404, content={"error": "Account not found"})
     result = await db.execute(
         select(AccountBalance).where(
             AccountBalance.id == balance_id,
@@ -161,9 +186,10 @@ async def delete_balance(
 @router.get("/net-worth/summary")
 async def net_worth_summary(
     userId: str | None = Query(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Account)
+    stmt = select(Account).where(Account.household_id == household_id)
     if userId:
         stmt = stmt.where(Account.created_by_user_id == userId)
     result = await db.execute(stmt)
@@ -201,10 +227,11 @@ async def net_worth_summary(
 @router.get("/net-worth/history")
 async def net_worth_history(
     userId: str | None = Query(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    account_filter = "WHERE 1=1"
-    params: dict[str, str] = {}
+    account_filter = "WHERE a.household_id = :household_id"
+    params: dict[str, str] = {"household_id": household_id}
     if userId:
         account_filter += " AND a.created_by_user_id = :user_id"
         params["user_id"] = userId

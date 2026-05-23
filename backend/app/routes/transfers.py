@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.transaction import Transaction
 from app.schemas.transfer import TransferOverrideRequest
 from app.utils.transfer_utils import run_detection
@@ -14,10 +15,14 @@ router = APIRouter(prefix="/api", tags=["transfers"])
 @router.post("/transfer-override")
 async def transfer_override(
     body: TransferOverrideRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Transaction).where(Transaction.id == body.transactionId)
+        select(Transaction).where(
+            Transaction.id == body.transactionId,
+            Transaction.household_id == household_id,
+        )
     )
     txn = result.scalar_one_or_none()
     if not txn:
@@ -38,13 +43,14 @@ async def transfer_override(
     txn.transfer_info = updated_info
     await db.flush()
 
-    # Update all linked transactions with same transferId
+    # Update all linked transactions in this household with same transferId
     transfer_id = transfer_info.get("transferId")
     if transfer_id:
         linked = await db.execute(
             select(Transaction).where(
                 Transaction.transfer_info["transferId"].astext == transfer_id,
                 Transaction.id != body.transactionId,
+                Transaction.household_id == household_id,
             )
         )
         for linked_txn in linked.scalars().all():
@@ -56,17 +62,23 @@ async def transfer_override(
 
 
 @router.post("/detect-transfers")
-async def run_detect_transfers(db: AsyncSession = Depends(get_db)):
-    result = await run_detection(db)
+async def run_detect_transfers(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await run_detection(db, household_id=household_id)
     if result is None:
         return JSONResponse(status_code=404, content={"error": "No transactions found"})
     return result
 
 
 @router.post("/rerun-transfer-detection")
-async def rerun_transfer_detection(db: AsyncSession = Depends(get_db)):
-    """Legacy endpoint — re-detects transfers from scratch."""
-    result = await run_detection(db, strip_existing=True)
+async def rerun_transfer_detection(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-detect transfers from scratch within this household."""
+    result = await run_detection(db, strip_existing=True, household_id=household_id)
     if result is None:
         return JSONResponse(status_code=404, content={"error": "No transactions found"})
     return {**result, "message": "Transfer detection completed successfully"}

@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.import_session import ImportSession
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
@@ -28,8 +29,15 @@ COLUMN_MAPPINGS_KEY = "column_mappings"
 
 
 @router.get("/export-csv")
-async def export_csv(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Transaction).order_by(Transaction.date.desc()))
+async def export_csv(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Transaction)
+        .where(Transaction.household_id == household_id)
+        .order_by(Transaction.date.desc())
+    )
     transactions = result.scalars().all()
 
     if not transactions:
@@ -93,6 +101,7 @@ async def save_column_mapping(
 @router.post("/import-csv")
 async def import_csv(
     body: ImportCsvRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Parse CSV
@@ -107,8 +116,10 @@ async def import_csv(
             "sessionId": None,
         }
 
-    # Load existing transactions
-    result = await db.execute(select(Transaction))
+    # Load existing transactions for this household
+    result = await db.execute(
+        select(Transaction).where(Transaction.household_id == household_id)
+    )
     existing_orm = result.scalars().all()
     existing_dicts = txns_to_dicts(existing_orm)
 
@@ -125,14 +136,17 @@ async def import_csv(
     session_id = f"import_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
     import_session = ImportSession(
         id=session_id,
-        user_id=body.userId,
+        household_id=household_id,
+        created_by_user_id=body.userId,
         source_name=body.fileName or "CSV Import",
         file_name=body.fileName,
         transaction_count=len(new_transactions),
     )
 
-    # Delete all existing transactions and reinsert
-    await db.execute(delete(Transaction))
+    # Delete all transactions in this household and reinsert
+    await db.execute(
+        delete(Transaction).where(Transaction.household_id == household_id)
+    )
     db.add(import_session)
     await db.flush()
 
@@ -146,7 +160,8 @@ async def import_csv(
                 category=t["category"],
                 amount=Decimal(str(t["amount"])),
                 type=t["type"],
-                user_id=t.get("user") or body.userId or "",
+                household_id=household_id,
+                created_by_user_id=t.get("user") or body.userId or None,
                 labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
                 transfer_info=t.get("transferInfo"),
@@ -170,10 +185,13 @@ async def import_csv(
 @router.post("/import-with-mapping")
 async def import_with_mapping(
     body: ImportWithMappingRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Load existing transactions for category auto-fill
-    result = await db.execute(select(Transaction))
+    result = await db.execute(
+        select(Transaction).where(Transaction.household_id == household_id)
+    )
     existing_orm = result.scalars().all()
     existing_dicts = txns_to_dicts(existing_orm)
 
@@ -209,15 +227,18 @@ async def import_with_mapping(
     session_id = f"import_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
     import_session = ImportSession(
         id=session_id,
-        user_id=body.userId,
+        household_id=household_id,
+        created_by_user_id=body.userId,
         source_id=body.mapping.id,
         source_name=body.mapping.name,
         file_name=body.fileName,
         transaction_count=len(new_transactions),
     )
 
-    # Delete all and reinsert
-    await db.execute(delete(Transaction))
+    # Delete transactions in this household and reinsert
+    await db.execute(
+        delete(Transaction).where(Transaction.household_id == household_id)
+    )
     db.add(import_session)
     await db.flush()
 
@@ -231,7 +252,8 @@ async def import_with_mapping(
                 category=t["category"],
                 amount=Decimal(str(t["amount"])),
                 type=t["type"],
-                user_id=t.get("user") or body.userId,
+                household_id=household_id,
+                created_by_user_id=t.get("user") or body.userId,
                 labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
                 transfer_info=t.get("transferInfo"),

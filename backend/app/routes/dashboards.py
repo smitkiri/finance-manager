@@ -7,6 +7,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.transaction import Transaction
 from app.schemas.dashboard import (
@@ -32,15 +33,20 @@ router = APIRouter(prefix="/api", tags=["dashboards"])
 
 
 @router.get("/dashboards")
-async def list_dashboards(db: AsyncSession = Depends(get_db)):
+async def list_dashboards(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     panel_count_subq = (
         select(func.count())
         .where(DashboardPanel.dashboard_id == Dashboard.id)
         .correlate(Dashboard)
         .scalar_subquery()
     )
-    stmt = select(Dashboard, panel_count_subq.label("panel_count")).order_by(
-        Dashboard.created_at.asc()
+    stmt = (
+        select(Dashboard, panel_count_subq.label("panel_count"))
+        .where(Dashboard.household_id == household_id)
+        .order_by(Dashboard.created_at.asc())
     )
     result = await db.execute(stmt)
     rows = result.all()
@@ -50,11 +56,14 @@ async def list_dashboards(db: AsyncSession = Depends(get_db)):
 @router.post("/dashboards", status_code=201)
 async def create_dashboard(
     body: DashboardCreateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.isDefault:
         await db.execute(
-            update(Dashboard).values(
+            update(Dashboard)
+            .where(Dashboard.household_id == household_id)
+            .values(
                 is_default=False,
                 updated_at=datetime.now(UTC).replace(tzinfo=None),
             )
@@ -63,6 +72,7 @@ async def create_dashboard(
     dashboard = Dashboard(
         id=body.id,
         name=body.name,
+        household_id=household_id,
         is_default=body.isDefault,
         date_range_start=date_type.fromisoformat(body.dateRangeStart),
         date_range_end=date_type.fromisoformat(body.dateRangeEnd),
@@ -77,6 +87,7 @@ async def create_dashboard(
 async def update_dashboard(
     dashboard_id: str,
     body: DashboardUpdateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     update_data = body.model_dump(exclude_unset=True)
@@ -86,7 +97,11 @@ async def update_dashboard(
             content={"error": "Nothing to update"},
         )
 
-    result = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id))
+    result = await db.execute(
+        select(Dashboard).where(
+            Dashboard.id == dashboard_id, Dashboard.household_id == household_id
+        )
+    )
     dashboard = result.scalar_one_or_none()
     if not dashboard:
         return JSONResponse(
@@ -96,7 +111,9 @@ async def update_dashboard(
 
     if body.isDefault:
         await db.execute(
-            update(Dashboard).values(
+            update(Dashboard)
+            .where(Dashboard.household_id == household_id)
+            .values(
                 is_default=False,
                 updated_at=datetime.now(UTC).replace(tzinfo=None),
             )
@@ -120,18 +137,37 @@ async def update_dashboard(
 @router.delete("/dashboards/{dashboard_id}")
 async def delete_dashboard(
     dashboard_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    await db.execute(delete(Dashboard).where(Dashboard.id == dashboard_id))
+    await db.execute(
+        delete(Dashboard).where(
+            Dashboard.id == dashboard_id, Dashboard.household_id == household_id
+        )
+    )
     await db.commit()
     return {"success": True}
+
+
+async def _verify_dashboard_in_household(
+    db: AsyncSession, dashboard_id: str, household_id: str
+) -> bool:
+    result = await db.execute(
+        select(Dashboard.id).where(
+            Dashboard.id == dashboard_id, Dashboard.household_id == household_id
+        )
+    )
+    return result.first() is not None
 
 
 @router.get("/dashboards/{dashboard_id}/panels")
 async def list_panels(
     dashboard_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
+        return JSONResponse(status_code=404, content={"error": "Dashboard not found"})
     result = await db.execute(
         select(DashboardPanel)
         .where(DashboardPanel.dashboard_id == dashboard_id)
@@ -144,8 +180,11 @@ async def list_panels(
 async def create_panel(
     dashboard_id: str,
     body: PanelCreateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
+        return JSONResponse(status_code=404, content={"error": "Dashboard not found"})
     count_result = await db.execute(
         select(func.count()).where(DashboardPanel.dashboard_id == dashboard_id)
     )
@@ -172,10 +211,22 @@ async def create_panel(
     return PanelOut.from_orm_model(panel)
 
 
+async def _panel_in_household(
+    db: AsyncSession, panel_id: str, household_id: str
+) -> DashboardPanel | None:
+    result = await db.execute(
+        select(DashboardPanel)
+        .join(Dashboard, Dashboard.id == DashboardPanel.dashboard_id)
+        .where(DashboardPanel.id == panel_id, Dashboard.household_id == household_id)
+    )
+    return result.scalar_one_or_none()
+
+
 @router.patch("/dashboard-panels/{panel_id}")
 async def update_panel(
     panel_id: str,
     body: PanelUpdateRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     update_data = body.model_dump(exclude_unset=True)
@@ -185,10 +236,7 @@ async def update_panel(
             content={"error": "Nothing to update"},
         )
 
-    result = await db.execute(
-        select(DashboardPanel).where(DashboardPanel.id == panel_id)
-    )
-    panel = result.scalar_one_or_none()
+    panel = await _panel_in_household(db, panel_id, household_id)
     if not panel:
         return JSONResponse(
             status_code=404,
@@ -219,8 +267,12 @@ async def update_panel(
 @router.delete("/dashboard-panels/{panel_id}")
 async def delete_panel(
     panel_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    panel = await _panel_in_household(db, panel_id, household_id)
+    if not panel:
+        return JSONResponse(status_code=404, content={"error": "Panel not found"})
     await db.execute(delete(DashboardPanel).where(DashboardPanel.id == panel_id))
     await db.commit()
     return {"success": True}
@@ -230,8 +282,11 @@ async def delete_panel(
 async def reorder_panels(
     dashboard_id: str,
     body: PanelOrderRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
+        return JSONResponse(status_code=404, content={"error": "Dashboard not found"})
     for index, panel_id in enumerate(body.panelIds):
         await db.execute(
             update(DashboardPanel)
@@ -251,9 +306,12 @@ async def reorder_panels(
 @router.post("/dashboard-panels/preview")
 async def panel_preview(
     body: PanelPreviewRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    filters = build_stats_filter(body.dateFrom, body.dateTo, body.userId)
+    filters = [Transaction.household_id == household_id] + build_stats_filter(
+        body.dateFrom, body.dateTo, body.userId
+    )
 
     fg_clause = build_filter_groups_clause(body.filterGroups)
     if fg_clause is not None:
@@ -298,6 +356,7 @@ async def panel_preview(
 @router.post("/dashboard-panels/chart-preview")
 async def chart_preview(
     body: ChartPreviewRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     stmt, _ = build_panel_data_query(
@@ -306,6 +365,7 @@ async def chart_preview(
         user_id=body.userId,
         filter_groups=body.filterGroups,
     )
+    stmt = stmt.where(Transaction.household_id == household_id)
 
     result = await db.execute(stmt)
     month_map = build_month_series(body.dateFrom or "", body.dateTo or "")
@@ -327,8 +387,11 @@ async def chart_preview(
 async def dashboard_data(
     dashboard_id: str,
     body: DashboardDataRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
+        return JSONResponse(status_code=404, content={"error": "Dashboard not found"})
     panel_result = await db.execute(
         select(DashboardPanel)
         .where(DashboardPanel.dashboard_id == dashboard_id)
@@ -344,6 +407,7 @@ async def dashboard_data(
             user_id=body.userId,
             filter_groups=panel.filterGroups,
         )
+        stmt = stmt.where(Transaction.household_id == household_id)
 
         result = await db.execute(stmt)
         month_map = build_month_series(
