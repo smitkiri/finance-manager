@@ -16,7 +16,7 @@ class TestBackup:
         self, client: AsyncClient, db_session: AsyncSession
     ):
         db_session.add(User(id="user1", name="Alice"))
-        db_session.add(Category(name="Food"))
+        db_session.add(Category(id="Food", name="Food"))
         db_session.add(
             Transaction(
                 id="t1",
@@ -25,7 +25,7 @@ class TestBackup:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         await db_session.flush()
@@ -58,7 +58,7 @@ class TestBackup:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         db_session.add(
@@ -69,7 +69,7 @@ class TestBackup:
                 category="Food",
                 amount=Decimal("3.00"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         await db_session.flush()

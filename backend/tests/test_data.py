@@ -22,7 +22,7 @@ class TestDeleteAll:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         db_session.add(Source(id="s1", name="Bank A"))
@@ -50,7 +50,7 @@ class TestDeleteSelected:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         db_session.add(Source(id="s1", name="Bank A"))
@@ -101,7 +101,7 @@ class TestUndoImport:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
                 import_id="sess1",
             )
         )
@@ -113,7 +113,7 @@ class TestUndoImport:
                 category="Food",
                 amount=Decimal("3.00"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         await db_session.flush()

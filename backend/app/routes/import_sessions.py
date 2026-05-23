@@ -5,6 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.import_session import ImportSession
 from app.models.transaction import Transaction
 from app.schemas.import_session import ImportSessionOut
@@ -14,13 +15,23 @@ router = APIRouter(prefix="/api", tags=["import_sessions"])
 
 
 @router.get("/import-sessions")
-async def get_import_sessions(db: AsyncSession = Depends(get_db)):
-    # Auto-delete sessions older than 6 months
+async def get_import_sessions(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    # Auto-delete sessions older than 6 months (within this household)
     cutoff = datetime.now() - timedelta(days=180)
-    await db.execute(delete(ImportSession).where(ImportSession.created_at < cutoff))
+    await db.execute(
+        delete(ImportSession).where(
+            ImportSession.household_id == household_id,
+            ImportSession.created_at < cutoff,
+        )
+    )
 
     result = await db.execute(
-        select(ImportSession).order_by(ImportSession.created_at.desc())
+        select(ImportSession)
+        .where(ImportSession.household_id == household_id)
+        .order_by(ImportSession.created_at.desc())
     )
     sessions = result.scalars().all()
 
@@ -30,22 +41,46 @@ async def get_import_sessions(db: AsyncSession = Depends(get_db)):
 @router.delete("/import-sessions/{session_id}")
 async def delete_import_session(
     session_id: str,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    # Count and delete transactions for this session
+    # Confirm the session belongs to this household
+    own_result = await db.execute(
+        select(ImportSession.id).where(
+            ImportSession.id == session_id,
+            ImportSession.household_id == household_id,
+        )
+    )
+    if own_result.first() is None:
+        return {"success": True, "removed": 0}
+
+    # Count and delete transactions for this session within the household
     result = await db.execute(
-        select(Transaction).where(Transaction.import_id == session_id)
+        select(Transaction).where(
+            Transaction.import_id == session_id,
+            Transaction.household_id == household_id,
+        )
     )
     session_txns = result.scalars().all()
     removed = len(session_txns)
 
-    await db.execute(delete(Transaction).where(Transaction.import_id == session_id))
+    await db.execute(
+        delete(Transaction).where(
+            Transaction.import_id == session_id,
+            Transaction.household_id == household_id,
+        )
+    )
 
     # Delete the session itself
-    await db.execute(delete(ImportSession).where(ImportSession.id == session_id))
+    await db.execute(
+        delete(ImportSession).where(
+            ImportSession.id == session_id,
+            ImportSession.household_id == household_id,
+        )
+    )
 
-    # Re-run transfer detection on remaining transactions
+    # Re-run transfer detection on remaining transactions in this household
     await db.flush()
-    await run_detection(db, strip_existing=True)
+    await run_detection(db, strip_existing=True, household_id=household_id)
 
     return {"success": True, "removed": removed}

@@ -29,7 +29,12 @@ class Transaction(Base):
     category: Mapped[str] = mapped_column(String(255))
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     type: Mapped[str] = mapped_column(String(10))
-    user_id: Mapped[str] = mapped_column(String(255))
+    household_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("households.id", ondelete="RESTRICT")
+    )
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String(255), ForeignKey("users.id", ondelete="SET NULL")
+    )
     labels: Mapped[Any] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     metadata_: Mapped[Any] = mapped_column(
         "metadata", JSONB, server_default=text("'{}'::jsonb")
@@ -55,7 +60,8 @@ class Transaction(Base):
             "type IN ('expense', 'income')", name="transactions_type_check"
         ),
         Index("idx_transactions_date", date.desc()),
-        Index("idx_transactions_user", "user_id"),
+        Index("idx_transactions_household", "household_id"),
+        Index("idx_transactions_created_by", "created_by_user_id"),
         Index("idx_transactions_category", "category"),
         Index("idx_transactions_type", "type"),
         Index("idx_transactions_excluded", "excluded_from_calculations"),

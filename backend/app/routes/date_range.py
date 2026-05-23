@@ -6,6 +6,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.date_range import DateRange
 from app.schemas.date_range import DateRangeRequest
 
@@ -13,15 +14,21 @@ router = APIRouter(prefix="/api", tags=["date-range"])
 
 
 @router.get("/date-range")
-async def get_date_range(db: AsyncSession = Depends(get_db)):
+async def get_date_range(
+    household_id: str = Depends(require_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(DateRange).order_by(DateRange.created_at.desc()).limit(1)
+        select(DateRange)
+        .where(DateRange.household_id == household_id)
+        .order_by(DateRange.created_at.desc())
+        .limit(1)
     )
     dr = result.scalar_one_or_none()
     if dr:
         return {"start": str(dr.start_date), "end": str(dr.end_date)}
 
-    # Default: 1 month ago, matching JS: new Date(y, m-1, d)
+    # Default: 1 month ago, matching legacy behavior
     today = date.today()
     start = today - relativedelta(months=1)
     return {"start": str(start), "end": str(today)}
@@ -30,19 +37,19 @@ async def get_date_range(db: AsyncSession = Depends(get_db)):
 @router.post("/date-range")
 async def save_date_range(
     body: DateRangeRequest,
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     start = date.fromisoformat(body.start)
     end = date.fromisoformat(body.end)
-    # UPSERT: matches Express ON CONFLICT (start_date, end_date)
     await db.execute(
         text("""
-            INSERT INTO date_ranges (start_date, end_date, created_at)
-            VALUES (:start, :end, clock_timestamp())
-            ON CONFLICT (start_date, end_date)
+            INSERT INTO date_ranges (household_id, start_date, end_date, created_at)
+            VALUES (:hid, :start, :end, clock_timestamp())
+            ON CONFLICT (household_id, start_date, end_date)
             DO UPDATE SET created_at = clock_timestamp()
         """),
-        {"start": start, "end": end},
+        {"hid": household_id, "start": start, "end": end},
     )
     await db.commit()
     return {"success": True}

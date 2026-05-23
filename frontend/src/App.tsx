@@ -26,7 +26,7 @@ import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
 import { generateId } from './utils';
-import { LocalStorage } from './utils/storage';
+import { ApiClient } from './utils/apiClient';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
@@ -73,10 +73,37 @@ function AppContent() {
   const [tellerEnabled, setTellerEnabled] = useState(false);
   const [showTellerImport, setShowTellerImport] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(false);
+  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [householdError, setHouseholdError] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = demoEnabled ? '(Demo) Tally' : 'Tally';
   }, [demoEnabled]);
+
+  // Fetch the household (Phase A1: a single seeded one) before any other API
+  // call so subsequent requests carry a householdId query param.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const households = await ApiClient.loadHouseholds();
+        if (cancelled) return;
+        if (households.length === 0) {
+          setHouseholdError('No household found. Contact support.');
+          return;
+        }
+        ApiClient.setHouseholdId(households[0].id);
+        setHouseholdId(households[0].id);
+      } catch {
+        if (!cancelled) {
+          setHouseholdError('Failed to load household. Try refreshing.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -84,7 +111,7 @@ function AppContent() {
 
     const saveDateRange = async () => {
       try {
-        await LocalStorage.saveDateRange(dateRange);
+        await ApiClient.saveDateRange(dateRange);
       } catch (error) {
         console.error('Error saving date range:', error);
       }
@@ -95,6 +122,7 @@ function AppContent() {
 
   // Initial load: categories, users, sources, date range only (no full expenses – defer until Dashboard/Reports)
   useEffect(() => {
+    if (!householdId) return;
     const loadData = async () => {
       try {
         const [
@@ -107,14 +135,14 @@ function AppContent() {
           loadedLabels,
           demoConfig,
         ] = await Promise.all([
-          LocalStorage.loadSources(),
-          LocalStorage.loadDateRange(),
-          LocalStorage.loadCategories(),
-          LocalStorage.loadUsers(),
-          LocalStorage.loadAccounts(),
-          LocalStorage.getTellerConfig(),
-          LocalStorage.loadLabels(),
-          LocalStorage.getDemoConfig(),
+          ApiClient.loadSources(),
+          ApiClient.loadDateRange(),
+          ApiClient.loadCategories(),
+          ApiClient.loadUsers(),
+          ApiClient.loadAccounts(),
+          ApiClient.getTellerConfig(),
+          ApiClient.loadLabels(),
+          ApiClient.getDemoConfig(),
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
@@ -133,14 +161,14 @@ function AppContent() {
       }
     };
     loadData();
-  }, []);
+  }, [householdId]);
 
   // Load dashboard stats from API (aggregates only) when user visits Dashboard
   useEffect(() => {
     if (!isInitialLoadComplete || location.pathname !== '/') return;
     let cancelled = false;
     setDashboardStatsLoading(true);
-    LocalStorage.loadStats({ dateRange, userId: selectedUserId })
+    ApiClient.loadStats({ dateRange, userId: selectedUserId })
       .then((stats) => {
         if (!cancelled) {
           setDashboardStats(stats ?? null);
@@ -160,7 +188,7 @@ function AppContent() {
     if (!isInitialLoadComplete || location.pathname !== '/reports') return;
     let cancelled = false;
     setExpensesLoading(true);
-    LocalStorage.loadExpenses()
+    ApiClient.loadExpenses()
       .then((loaded) => {
         if (!cancelled) {
           setExpenses(loaded);
@@ -181,7 +209,7 @@ function AppContent() {
     if (!isSettingsRoute && !isTransactionDetailsOpen) return;
     let cancelled = false;
     setExpensesLoading(true);
-    LocalStorage.loadExpenses()
+    ApiClient.loadExpenses()
       .then((loaded) => {
         if (!cancelled) {
           setExpenses(loaded);
@@ -218,7 +246,7 @@ function AppContent() {
     setTransactionListLoading(true);
     setTransactionList([]);
 
-    LocalStorage.loadExpensesPage({
+    ApiClient.loadExpensesPage({
       limit: ITEMS_PER_PAGE,
       offset: 0,
       dateRange,
@@ -264,7 +292,7 @@ function AppContent() {
   const handleLoadMoreTransactions = useCallback(async () => {
     const currentList = transactionList ?? [];
     const offset = currentList.length;
-    const data = await LocalStorage.loadExpensesPage({
+    const data = await ApiClient.loadExpensesPage({
       limit: ITEMS_PER_PAGE,
       offset,
       dateRange,
@@ -304,7 +332,7 @@ function AppContent() {
       };
 
       try {
-        const updatedExpenses = await LocalStorage.addExpense(newExpense);
+        const updatedExpenses = await ApiClient.addExpense(newExpense);
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
         setIsFormOpen(false);
@@ -335,7 +363,7 @@ function AppContent() {
       };
 
       try {
-        const returnedExpense = await LocalStorage.updateExpense(updatedExpense);
+        const returnedExpense = await ApiClient.updateExpense(updatedExpense);
         setExpenses((prev) => prev.map((e) => (e.id === returnedExpense.id ? returnedExpense : e)));
         setTransactionList((prev) =>
           prev.map((e) => (e.id === returnedExpense.id ? returnedExpense : e))
@@ -352,7 +380,7 @@ function AppContent() {
   const handleDeleteExpense = useCallback(
     async (id: string) => {
       try {
-        const updatedExpenses = await LocalStorage.deleteExpense(id);
+        const updatedExpenses = await ApiClient.deleteExpense(id);
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
       } catch (error) {
@@ -374,7 +402,7 @@ function AppContent() {
 
         const updatedExpenseData = { ...expenseToUpdate, category: newCategory };
 
-        const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+        const returnedExpense = await ApiClient.updateExpense(updatedExpenseData);
 
         setExpenses((prev) => prev.map((e) => (e.id === returnedExpense.id ? returnedExpense : e)));
         setTransactionList((prev) =>
@@ -404,7 +432,7 @@ function AppContent() {
           labels: [...currentLabels, label],
         };
 
-        const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+        const returnedExpense = await ApiClient.updateExpense(updatedExpenseData);
 
         setExpenses((prev) => prev.map((e) => (e.id === expenseId ? returnedExpense : e)));
         setTransactionList((prev) => prev.map((e) => (e.id === expenseId ? returnedExpense : e)));
@@ -431,7 +459,7 @@ function AppContent() {
           labels: updatedLabels,
         };
 
-        const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+        const returnedExpense = await ApiClient.updateExpense(updatedExpenseData);
 
         setExpenses((prev) => prev.map((e) => (e.id === expenseId ? returnedExpense : e)));
         setTransactionList((prev) => prev.map((e) => (e.id === expenseId ? returnedExpense : e)));
@@ -444,7 +472,7 @@ function AppContent() {
 
   const handleAddCategory = useCallback(async (category: string) => {
     try {
-      const updatedCategories = await LocalStorage.addCategory(category);
+      const updatedCategories = await ApiClient.addCategory(category);
       setCategories(updatedCategories);
     } catch (error) {
       console.error('Error adding category:', error);
@@ -455,8 +483,8 @@ function AppContent() {
     async (category: string) => {
       try {
         const [updatedCategories, updatedExpenses] = await Promise.all([
-          LocalStorage.deleteCategory(category),
-          LocalStorage.loadExpenses(),
+          ApiClient.deleteCategory(category),
+          ApiClient.loadExpenses(),
         ]);
         setCategories(updatedCategories);
         setExpenses(updatedExpenses);
@@ -472,8 +500,8 @@ function AppContent() {
     async (oldCategory: string, newCategory: string) => {
       try {
         const [updatedCategories, updatedExpenses] = await Promise.all([
-          LocalStorage.updateCategory(oldCategory, newCategory),
-          LocalStorage.loadExpenses(),
+          ApiClient.updateCategory(oldCategory, newCategory),
+          ApiClient.loadExpenses(),
         ]);
         setCategories(updatedCategories);
         setExpenses(updatedExpenses);
@@ -493,7 +521,7 @@ function AppContent() {
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
-        const preview = LocalStorage.parseCSVPreview(text);
+        const preview = ApiClient.parseCSVPreview(text);
         setCsvPreview(preview);
         setIsSourceModalOpen(true);
       } catch (error) {
@@ -505,7 +533,7 @@ function AppContent() {
 
   const handleSaveSource = async (source: Source, userId: string) => {
     try {
-      await LocalStorage.saveSource(source);
+      await ApiClient.saveSource(source);
       setSources((prev) => [...prev, source]);
       if (csvPreview) {
         const csvText = await getCSVTextFromFile();
@@ -513,21 +541,18 @@ function AppContent() {
         // Call backend API to import with source (which adds metadata and detects transfers)
         const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)
           ?.files?.[0];
-        const response = await LocalStorage.apiFetch(
-          `${LocalStorage.getApiBase()}/import-with-mapping`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              csvText,
-              mapping: source,
-              userId,
-              fileName: csvFile?.name,
-            }),
-          }
-        );
+        const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/import-with-mapping`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            csvText,
+            mapping: source,
+            userId,
+            fileName: csvFile?.name,
+          }),
+        });
 
         if (!response.ok) {
           throw new Error('Failed to import CSV with source');
@@ -576,7 +601,7 @@ function AppContent() {
         );
 
         // Reload expenses from backend
-        const updatedExpenses = await LocalStorage.loadExpenses();
+        const updatedExpenses = await ApiClient.loadExpenses();
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
       }
@@ -601,21 +626,18 @@ function AppContent() {
       const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)
         ?.files?.[0];
       // Call backend API to import with source (which adds metadata)
-      const response = await LocalStorage.apiFetch(
-        `${LocalStorage.getApiBase()}/import-with-mapping`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            csvText,
-            mapping: source,
-            userId,
-            fileName: csvFile?.name,
-          }),
-        }
-      );
+      const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/import-with-mapping`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          csvText,
+          mapping: source,
+          userId,
+          fileName: csvFile?.name,
+        }),
+      });
       if (!response.ok) {
         throw new Error('Failed to import CSV with source');
       }
@@ -663,7 +685,7 @@ function AppContent() {
       );
 
       // Reload expenses from backend
-      const updatedExpenses = await LocalStorage.loadExpenses();
+      const updatedExpenses = await ApiClient.loadExpenses();
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
       setIsSourceModalOpen(false);
@@ -683,7 +705,7 @@ function AppContent() {
 
   const handleUndoImport = async (sessionId: string) => {
     try {
-      const response = await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/undo-import`, {
+      const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/undo-import`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -708,7 +730,7 @@ function AppContent() {
       });
 
       // Reload expenses from backend
-      const updatedExpenses = await LocalStorage.loadExpenses();
+      const updatedExpenses = await ApiClient.loadExpenses();
       setExpenses(updatedExpenses);
       bumpTransactionListVersion();
     } catch (error) {
@@ -739,7 +761,7 @@ function AppContent() {
 
   const handleExportCSV = async () => {
     try {
-      const csvContent = await LocalStorage.exportData();
+      const csvContent = await ApiClient.exportData();
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -836,7 +858,7 @@ function AppContent() {
 
   const handleDeleteSource = async (id: string) => {
     try {
-      await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/sources/${id}`, {
+      await ApiClient.apiFetch(`${ApiClient.getApiBase()}/sources/${id}`, {
         method: 'DELETE',
       });
       setSources((prev) => prev.filter((source) => source.id !== id));
@@ -847,7 +869,7 @@ function AppContent() {
 
   const handleUpdateSource = async (updatedSource: Source) => {
     try {
-      const updatedSources = await LocalStorage.updateSource(updatedSource);
+      const updatedSources = await ApiClient.updateSource(updatedSource);
       setSources(updatedSources);
     } catch (error) {
       console.error('Error updating source:', error);
@@ -861,23 +883,20 @@ function AppContent() {
 
   const handleTransferOverride = async (transactionId: string, includeInCalculations: boolean) => {
     try {
-      const response = await LocalStorage.apiFetch(
-        `${LocalStorage.getApiBase()}/transfer-override`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            transactionId,
-            includeInCalculations,
-          }),
-        }
-      );
+      const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/transfer-override`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactionId,
+          includeInCalculations,
+        }),
+      });
 
       if (response.ok) {
         // Reload expenses to get updated transfer info
-        const updatedExpenses = await LocalStorage.loadExpenses();
+        const updatedExpenses = await ApiClient.loadExpenses();
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
       } else {
@@ -900,7 +919,7 @@ function AppContent() {
         excludedFromCalculations: exclude,
       };
 
-      const returnedExpense = await LocalStorage.updateExpense(updatedExpenseData);
+      const returnedExpense = await ApiClient.updateExpense(updatedExpenseData);
 
       setExpenses((prev) => prev.map((e) => (e.id === transactionId ? returnedExpense : e)));
       setTransactionList((prev) => prev.map((e) => (e.id === transactionId ? returnedExpense : e)));
@@ -924,7 +943,7 @@ function AppContent() {
         expenses.find((exp) => exp.id === pairTransactionId);
 
       if (!transaction1 || !transaction2) {
-        const allExpenses = await LocalStorage.loadExpenses();
+        const allExpenses = await ApiClient.loadExpenses();
         transaction1 = transaction1 || allExpenses.find((exp) => exp.id === transactionId);
         transaction2 = transaction2 || allExpenses.find((exp) => exp.id === pairTransactionId);
       }
@@ -944,7 +963,7 @@ function AppContent() {
       const transferType = transaction1.user === transaction2.user ? 'self' : 'user';
 
       // Update both transactions with transfer info via individual PATCH calls
-      const updatedTransaction1 = await LocalStorage.updateExpense({
+      const updatedTransaction1 = await ApiClient.updateExpense({
         ...transaction1,
         transferInfo: {
           isTransfer: true,
@@ -955,7 +974,7 @@ function AppContent() {
         },
       });
 
-      const updatedTransaction2 = await LocalStorage.updateExpense({
+      const updatedTransaction2 = await ApiClient.updateExpense({
         ...transaction2,
         transferInfo: {
           isTransfer: true,
@@ -1007,7 +1026,7 @@ function AppContent() {
 
   const handleAddUser = async (user: User) => {
     try {
-      const updatedUsers = await LocalStorage.addUser(user);
+      const updatedUsers = await ApiClient.addUser(user);
       setUsers(updatedUsers);
     } catch (error) {
       console.error('Error adding user:', error);
@@ -1016,7 +1035,7 @@ function AppContent() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const updatedUsers = await LocalStorage.deleteUser(userId);
+      const updatedUsers = await ApiClient.deleteUser(userId);
       setUsers(updatedUsers);
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -1025,12 +1044,31 @@ function AppContent() {
 
   const handleUpdateUser = async (updatedUser: User) => {
     try {
-      const updatedUsers = await LocalStorage.updateUser(updatedUser);
+      const updatedUsers = await ApiClient.updateUser(updatedUser);
       setUsers(updatedUsers);
     } catch (error) {
       console.error('Error updating user:', error);
     }
   };
+
+  // Block the app on the household discovery — every other API call relies on
+  // it being set on the ApiClient class.
+  if (householdError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white px-4">
+        <div className="max-w-md text-center">
+          <p className="mb-3 text-lg">{householdError}</p>
+        </div>
+      </div>
+    );
+  }
+  if (!householdId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400">
+        Loading…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -1137,11 +1175,11 @@ function AppContent() {
                     loadedUsers,
                     loadedLabels,
                   ] = await Promise.all([
-                    LocalStorage.loadExpenses(),
-                    LocalStorage.loadSources(),
-                    LocalStorage.loadCategories(),
-                    LocalStorage.loadUsers(),
-                    LocalStorage.loadLabels(),
+                    ApiClient.loadExpenses(),
+                    ApiClient.loadSources(),
+                    ApiClient.loadCategories(),
+                    ApiClient.loadUsers(),
+                    ApiClient.loadLabels(),
                   ]);
                   setExpenses(loadedExpenses);
                   setSources(loadedSources);

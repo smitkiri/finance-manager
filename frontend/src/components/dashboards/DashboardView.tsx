@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Dashboard, DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { DashboardPanel } from './DashboardPanel';
 import { PanelEditor } from './PanelEditor';
 import { PanelTransactionsModal } from './PanelTransactionsModal';
@@ -95,7 +95,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Fetch batched panel data
   const fetchData = useCallback(async () => {
     setDataLoading(true);
-    const results = await LocalStorage.loadDashboardData(dashboard.id, {
+    const results = await ApiClient.loadDashboardData(dashboard.id, {
       userId: selectedUserId,
       dateRangeStart: dateRange.start.toISOString().slice(0, 10),
       dateRangeEnd: dateRange.end.toISOString().slice(0, 10),
@@ -113,7 +113,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     let cancelled = false;
     const load = async () => {
       try {
-        const data = await LocalStorage.loadPanels(dashboard.id);
+        const data = await ApiClient.loadPanels(dashboard.id);
         if (!cancelled) setPanels(data);
       } catch {
         /* ignore */
@@ -136,7 +136,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const newIndex = panels.findIndex((p) => p.id === over.id);
     const reordered = arrayMove(panels, oldIndex, newIndex);
     setPanels(reordered); // optimistic update
-    await LocalStorage.reorderPanels(
+    await ApiClient.reorderPanels(
       dashboard.id,
       reordered.map((p) => p.id)
     );
@@ -159,7 +159,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleDeletePanel = async (panelId: string) => {
     if (!window.confirm('Delete this panel?')) return;
-    await LocalStorage.deletePanel(panelId);
+    await ApiClient.deletePanel(panelId);
     setPanels((prev) => prev.filter((p) => p.id !== panelId));
     setPanelDataMap((prev) => {
       const n = { ...prev };

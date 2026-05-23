@@ -1,14 +1,14 @@
 import { Source } from '../types';
-import { LocalStorage } from '../utils/storage';
+import { ApiClient } from '../utils/apiClient';
 
 export const csvService = {
   async importWithSource(source: Source, user: string): Promise<boolean> {
     try {
       const csvText = await this.getCSVTextFromFile();
-      const newExpenses = LocalStorage.parseCSVWithSource(csvText, source, user);
-      const existingExpenses = await LocalStorage.loadExpenses();
-      const mergedExpenses = LocalStorage.mergeExpenses(existingExpenses, newExpenses);
-      await LocalStorage.saveExpenses(mergedExpenses);
+      const newExpenses = ApiClient.parseCSVWithSource(csvText, source, user);
+      const existingExpenses = await ApiClient.loadExpenses();
+      const mergedExpenses = ApiClient.mergeExpenses(existingExpenses, newExpenses);
+      await ApiClient.saveExpenses(mergedExpenses);
       return true;
     } catch (error) {
       console.error('Error importing with source:', error);
@@ -18,7 +18,7 @@ export const csvService = {
 
   async exportData(): Promise<void> {
     try {
-      const csvContent = await LocalStorage.exportData();
+      const csvContent = await ApiClient.exportData();
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -46,7 +46,7 @@ export const csvService = {
 
   async saveSource(source: Source): Promise<boolean> {
     try {
-      await LocalStorage.saveSource(source);
+      await ApiClient.saveSource(source);
       return true;
     } catch (error) {
       console.error('Error saving source:', error);

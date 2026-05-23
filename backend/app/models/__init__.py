@@ -3,6 +3,7 @@ from app.models.base import Base
 from app.models.category import Category
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.date_range import DateRange
+from app.models.household import Household
 from app.models.import_session import ImportSession
 from app.models.metadata import Metadata
 from app.models.report import Report
@@ -18,6 +19,7 @@ __all__ = [
     "Dashboard",
     "DashboardPanel",
     "DateRange",
+    "Household",
     "ImportSession",
     "Metadata",
     "Report",

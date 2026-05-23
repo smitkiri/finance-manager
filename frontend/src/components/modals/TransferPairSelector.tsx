@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Search, ArrowRightLeft, Loader2 } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 
 interface TransferPairSelectorProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
     if (!isOpen) return;
     let cancelled = false;
     setLoading(true);
-    LocalStorage.loadExpenses()
+    ApiClient.loadExpenses()
       .then((loaded) => {
         if (!cancelled) {
           setAllTransactions(loaded);

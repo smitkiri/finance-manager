@@ -21,7 +21,7 @@ import {
   ImportSession,
   TellerCategoryMapping,
 } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { BackupManager } from './BackupManager';
 
 interface SettingsProps {
@@ -161,7 +161,7 @@ export const Settings: React.FC<SettingsProps> = ({
   useEffect(() => {
     if (activeSection !== 'imports') return;
     setImportSessionsLoading(true);
-    LocalStorage.loadImportSessions().then((data) => {
+    ApiClient.loadImportSessions().then((data) => {
       setImportSessions(data);
       setImportSessionsLoading(false);
     });
@@ -171,15 +171,15 @@ export const Settings: React.FC<SettingsProps> = ({
   useEffect(() => {
     if (activeSection !== 'accounts') return;
     setAccountsLoading(true);
-    LocalStorage.loadAccounts().then((data) => {
+    ApiClient.loadAccounts().then((data) => {
       setAccounts(data);
       setAccountsLoading(false);
     });
-    LocalStorage.getTellerConfig().then(async (config) => {
+    ApiClient.getTellerConfig().then(async (config) => {
       setTellerConfig(config);
       if (config.enabled) {
         try {
-          const { mappings } = await LocalStorage.getTellerCategoryMappings();
+          const { mappings } = await ApiClient.getTellerCategoryMappings();
           setCategoryMappings(mappings);
           const edits: Record<string, string> = {};
           for (const m of mappings) edits[m.tellerCategory] = m.userCategory;
@@ -201,7 +201,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleUndoImportSession = async (sessionId: string) => {
     setUndoingSessionId(sessionId);
     try {
-      const result = await LocalStorage.undoImportSession(sessionId);
+      const result = await ApiClient.undoImportSession(sessionId);
       setImportSessions((prev) => prev.filter((s) => s.id !== sessionId));
       setConfirmUndoSessionId(null);
       toast.success(`Removed ${result.removed} transactions`, {
@@ -234,7 +234,7 @@ export const Settings: React.FC<SettingsProps> = ({
           const institutionName = enrollment?.institution?.name ?? null;
           setTellerPreviewLoading(true);
           try {
-            const accounts = await LocalStorage.tellerPreviewAccounts(accessToken);
+            const accounts = await ApiClient.tellerPreviewAccounts(accessToken);
             const selections: typeof tellerAccountSelections = {};
             for (const acct of accounts) {
               selections[acct.id] = {
@@ -285,7 +285,7 @@ export const Settings: React.FC<SettingsProps> = ({
     setTellerReconnecting(enrollment.enrollmentId);
 
     try {
-      const { accessToken: currentToken } = await LocalStorage.getTellerEnrollmentToken(
+      const { accessToken: currentToken } = await ApiClient.getTellerEnrollmentToken(
         enrollment.enrollmentId
       );
 
@@ -301,7 +301,7 @@ export const Settings: React.FC<SettingsProps> = ({
           token: currentToken,
           onSuccess: async ({ accessToken: newToken }: any) => {
             try {
-              await LocalStorage.tellerUpdateEnrollmentToken(enrollment.enrollmentId, newToken);
+              await ApiClient.tellerUpdateEnrollmentToken(enrollment.enrollmentId, newToken);
               toast.success(`${enrollment.institutionName ?? 'Bank'} reconnected`, {
                 position: 'bottom-right',
                 autoClose: 3000,
@@ -363,13 +363,13 @@ export const Settings: React.FC<SettingsProps> = ({
     setTellerEnrolling(true);
     try {
       if (managingEnrollmentId) {
-        const result = await LocalStorage.tellerManageAccounts(
+        const result = await ApiClient.tellerManageAccounts(
           managingEnrollmentId,
           pendingTellerUserId,
           toAdd,
           toRemove
         );
-        const updatedAccounts = await LocalStorage.loadAccounts();
+        const updatedAccounts = await ApiClient.loadAccounts();
         setAccounts(updatedAccounts);
         const parts = [];
         if (result.added > 0)
@@ -381,7 +381,7 @@ export const Settings: React.FC<SettingsProps> = ({
           autoClose: 3000,
         });
       } else {
-        await LocalStorage.tellerEnroll(
+        await ApiClient.tellerEnroll(
           pendingTellerEnrollment.accessToken,
           pendingTellerUserId,
           pendingTellerEnrollment.enrollmentId,
@@ -389,8 +389,8 @@ export const Settings: React.FC<SettingsProps> = ({
           toAdd
         );
         const [updatedConfig, updatedAccounts] = await Promise.all([
-          LocalStorage.getTellerConfig(),
-          LocalStorage.loadAccounts(),
+          ApiClient.getTellerConfig(),
+          ApiClient.loadAccounts(),
         ]);
         setTellerConfig(updatedConfig);
         setAccounts(updatedAccounts);
@@ -416,7 +416,7 @@ export const Settings: React.FC<SettingsProps> = ({
     setTellerPreviewLoading(true);
     setManagingEnrollmentId(enrollment.enrollmentId);
     try {
-      const accts = await LocalStorage.tellerPreviewEnrollmentAccounts(enrollment.enrollmentId);
+      const accts = await ApiClient.tellerPreviewEnrollmentAccounts(enrollment.enrollmentId);
       const alreadyAdded = new Set(
         accounts
           .filter((a) => a.tellerEnrollmentId === enrollment.enrollmentId && a.tellerAccountId)
@@ -460,7 +460,7 @@ export const Settings: React.FC<SettingsProps> = ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const created = await LocalStorage.createAccount(account);
+    const created = await ApiClient.createAccount(account);
     setAccounts((prev) => [...prev, created]);
     setNewAccountName('');
   };
@@ -475,7 +475,7 @@ export const Settings: React.FC<SettingsProps> = ({
     if (!editingAccountId || !editAccountName.trim()) return;
     const original = accounts.find((a) => a.id === editingAccountId);
     if (!original) return;
-    const updated = await LocalStorage.updateAccount({
+    const updated = await ApiClient.updateAccount({
       ...original,
       name: editAccountName.trim(),
       type: editAccountType,
@@ -492,7 +492,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleDeleteAccount = async (account: Account) => {
     if (!window.confirm(`Delete "${account.name}" and all its balance history?`)) return;
-    await LocalStorage.deleteAccount(account.id);
+    await ApiClient.deleteAccount(account.id);
     setAccounts((prev) => prev.filter((a) => a.id !== account.id));
   };
 
@@ -640,7 +640,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleDeleteAll = async () => {
     setIsDeleting(true);
-    await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/delete-all`, { method: 'DELETE' });
+    await ApiClient.apiFetch(`${ApiClient.getApiBase()}/delete-all`, { method: 'DELETE' });
     setIsDeleting(false);
     setShowDeleteAllConfirm(false);
     onRefreshData();
@@ -649,7 +649,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleDeleteSelected = async () => {
     setIsDeleting(true);
-    await LocalStorage.apiFetch(`${LocalStorage.getApiBase()}/delete-selected`, {
+    await ApiClient.apiFetch(`${ApiClient.getApiBase()}/delete-selected`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1267,8 +1267,8 @@ export const Settings: React.FC<SettingsProps> = ({
                                   return;
                                 setTellerDisconnecting(enrollment.enrollmentId);
                                 try {
-                                  await LocalStorage.tellerDisconnect(enrollment.enrollmentId);
-                                  const updatedConfig = await LocalStorage.getTellerConfig();
+                                  await ApiClient.tellerDisconnect(enrollment.enrollmentId);
+                                  const updatedConfig = await ApiClient.getTellerConfig();
                                   setTellerConfig(updatedConfig);
                                   toast.success('Bank disconnected', {
                                     position: 'bottom-right',
@@ -1585,9 +1585,9 @@ export const Settings: React.FC<SettingsProps> = ({
                       tellerCategory: m.tellerCategory,
                       userCategory: categoryMappingEdits[m.tellerCategory] ?? m.userCategory,
                     }));
-                    await LocalStorage.updateTellerCategoryMappings(updated);
+                    await ApiClient.updateTellerCategoryMappings(updated);
                     // Refresh counts after update
-                    const { mappings } = await LocalStorage.getTellerCategoryMappings();
+                    const { mappings } = await ApiClient.getTellerCategoryMappings();
                     setCategoryMappings(mappings);
                     const edits: Record<string, string> = {};
                     for (const mp of mappings) edits[mp.tellerCategory] = mp.userCategory;

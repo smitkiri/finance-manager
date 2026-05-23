@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.household import require_household_id
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.date_range import DateRange
@@ -45,20 +46,68 @@ def _row_to_dict(row) -> dict:
 async def backup(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    # Fetch all reference tables
-    categories = (await db.execute(select(Category))).scalars().all()
-    users = (await db.execute(select(User))).scalars().all()
-    sources = (await db.execute(select(Source))).scalars().all()
-    reports = (await db.execute(select(Report))).scalars().all()
-    date_ranges = (await db.execute(select(DateRange))).scalars().all()
+    # Fetch household-scoped tables
+    categories = (
+        (
+            await db.execute(
+                select(Category).where(Category.household_id == household_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    users = (
+        (await db.execute(select(User).where(User.household_id == household_id)))
+        .scalars()
+        .all()
+    )
+    sources = (
+        (await db.execute(select(Source).where(Source.household_id == household_id)))
+        .scalars()
+        .all()
+    )
+    reports = (
+        (await db.execute(select(Report).where(Report.household_id == household_id)))
+        .scalars()
+        .all()
+    )
+    date_ranges = (
+        (
+            await db.execute(
+                select(DateRange).where(DateRange.household_id == household_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # Metadata is a global key-value store, not household-scoped.
     metadata_rows = (await db.execute(select(Metadata))).scalars().all()
-    accounts = (await db.execute(select(Account))).scalars().all()
-    account_balances = (await db.execute(select(AccountBalance))).scalars().all()
+    accounts = (
+        (await db.execute(select(Account).where(Account.household_id == household_id)))
+        .scalars()
+        .all()
+    )
+    account_ids = [a.id for a in accounts]
+    if account_ids:
+        account_balances = (
+            (
+                await db.execute(
+                    select(AccountBalance).where(
+                        AccountBalance.account_id.in_(account_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+    else:
+        account_balances = []
 
-    # Transactions with optional date filter
-    txn_query = select(Transaction)
+    # Transactions with optional date filter (scoped to household)
+    txn_query = select(Transaction).where(Transaction.household_id == household_id)
     if dateFrom:
         txn_query = txn_query.where(Transaction.date >= date.fromisoformat(dateFrom))
     if dateTo:
@@ -81,6 +130,7 @@ async def backup(
 @router.post("/restore")
 async def restore(
     backupFile: UploadFile | None = File(None),
+    household_id: str = Depends(require_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not backupFile:
@@ -94,20 +144,24 @@ async def restore(
     except json.JSONDecodeError:
         return JSONResponse(status_code=400, content={"error": "Invalid JSON"})
 
-    # Restore order matters for FK dependencies
+    # Restore order matters for FK dependencies. Backup content is forced into
+    # the caller's household — even if the file came from a different household,
+    # restoring it adopts the rows into the current household.
     for user in data.get("users", []):
         stmt = (
             insert(User)
-            .values(id=user["id"], name=user.get("name", ""))
+            .values(id=user["id"], name=user.get("name", ""), household_id=household_id)
             .on_conflict_do_nothing(index_elements=["id"])
         )
         await db.execute(stmt)
 
     for cat in data.get("categories", []):
+        cat_name = cat.get("name", "")
+        cat_id = cat.get("id") or cat_name
         stmt = (
             insert(Category)
-            .values(name=cat["name"])
-            .on_conflict_do_nothing(index_elements=["name"])
+            .values(id=cat_id, name=cat_name, household_id=household_id)
+            .on_conflict_do_nothing(index_elements=["id"])
         )
         await db.execute(stmt)
 
@@ -117,6 +171,7 @@ async def restore(
             .values(
                 id=source["id"],
                 name=source.get("name", ""),
+                household_id=household_id,
                 mappings=source.get("mappings"),
                 flip_income_expense=source.get("flip_income_expense", False),
             )
@@ -128,6 +183,9 @@ async def restore(
         txn_date = txn["date"]
         if isinstance(txn_date, str):
             txn_date = date.fromisoformat(txn_date)
+        # Backups taken before the household migration use `user_id`;
+        # newer backups use `created_by_user_id`.
+        created_by = txn.get("created_by_user_id") or txn.get("user_id")
         stmt = (
             insert(Transaction)
             .values(
@@ -137,7 +195,8 @@ async def restore(
                 category=txn.get("category", "Uncategorized"),
                 amount=txn["amount"],
                 type=txn["type"],
-                user_id=txn.get("user_id", ""),
+                household_id=household_id,
+                created_by_user_id=created_by,
                 labels=txn.get("labels", []),
                 metadata_=txn.get("metadata", {}),
                 transfer_info=txn.get("transfer_info"),
@@ -153,6 +212,7 @@ async def restore(
             .values(
                 id=report["id"],
                 name=report.get("name", ""),
+                household_id=household_id,
                 description=report.get("description"),
                 filters=report.get("filters"),
             )
@@ -171,6 +231,7 @@ async def restore(
             insert(DateRange)
             .values(
                 id=dr["id"],
+                household_id=household_id,
                 start_date=start,
                 end_date=end,
             )
@@ -187,11 +248,13 @@ async def restore(
         await db.execute(stmt)
 
     for acct in data.get("accounts", []):
+        created_by = acct.get("created_by_user_id") or acct.get("user_id")
         stmt = (
             insert(Account)
             .values(
                 id=acct["id"],
-                user_id=acct.get("user_id"),
+                household_id=household_id,
+                created_by_user_id=created_by,
                 name=acct.get("name", ""),
                 type=acct.get("type", "asset"),
             )

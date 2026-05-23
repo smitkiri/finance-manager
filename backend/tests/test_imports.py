@@ -20,7 +20,7 @@ class TestExportCsv:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         await db_session.flush()
@@ -128,7 +128,7 @@ class TestImportCsv:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         await db_session.flush()
@@ -221,7 +221,7 @@ class TestImportWithMapping:
                 category="Transfer",
                 amount=Decimal("100.00"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
                 metadata_={"sourceId": "src_other"},
             )
         )

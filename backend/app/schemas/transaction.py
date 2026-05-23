@@ -11,7 +11,8 @@ class TransactionOut(BaseModel):
     category: str
     amount: float
     type: str
-    user: str
+    user: str | None
+    householdId: str
     labels: list[Any]
     metadata: dict[str, Any]
     transferInfo: dict[str, Any] | None = None
@@ -27,7 +28,8 @@ class TransactionOut(BaseModel):
             category=t.category,
             amount=float(t.amount),
             type=t.type,
-            user=t.user_id,
+            user=t.created_by_user_id,
+            householdId=t.household_id,
             labels=t.labels or [],
             metadata=t.metadata_ or {},
             transferInfo=t.transfer_info if t.transfer_info else None,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LocalStorage } from '../utils/storage';
+import { ApiClient } from '../utils/apiClient';
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<string[]>([]);
@@ -8,7 +8,7 @@ export const useCategories = () => {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const loadedCategories = await LocalStorage.loadCategories();
+        const loadedCategories = await ApiClient.loadCategories();
         setCategories(loadedCategories);
       } catch (error) {
         console.error('Error loading categories:', error);
@@ -20,7 +20,7 @@ export const useCategories = () => {
 
   const addCategory = async (category: string) => {
     try {
-      const updatedCategories = await LocalStorage.addCategory(category);
+      const updatedCategories = await ApiClient.addCategory(category);
       setCategories(updatedCategories);
       return true;
     } catch (error) {
@@ -31,7 +31,7 @@ export const useCategories = () => {
 
   const deleteCategory = async (category: string) => {
     try {
-      const updatedCategories = await LocalStorage.deleteCategory(category);
+      const updatedCategories = await ApiClient.deleteCategory(category);
       setCategories(updatedCategories);
       return true;
     } catch (error) {
@@ -42,7 +42,7 @@ export const useCategories = () => {
 
   const updateCategoryName = async (oldCategory: string, newCategory: string) => {
     try {
-      const updatedCategories = await LocalStorage.updateCategory(oldCategory, newCategory);
+      const updatedCategories = await ApiClient.updateCategory(oldCategory, newCategory);
       setCategories(updatedCategories);
       return true;
     } catch (error) {

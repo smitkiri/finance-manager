@@ -1,19 +1,23 @@
 from collections.abc import AsyncGenerator
+from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
+from alembic.config import Config as AlembicConfig
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
+from alembic import command
 from app.config import Settings, settings
 from app.database import get_db
 from app.main import app
-from app.models.base import Base
 
 # Module-level container (started once, reused across tests)
 _container = None
 _async_url = None
-_tables_created = False
+_sync_url = None
+_schema_initialized = False
 
 # Reset settings to clean defaults so tests are not affected by the
 # developer's backend/.env file. Tests that need specific settings (e.g.
@@ -23,8 +27,65 @@ for field in Settings.model_fields:
     setattr(settings, field, getattr(_clean, field))
 
 
-def get_test_db_url():
-    global _container, _async_url
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+
+# Default any model that has a `household_id` column but no value at insert
+# time to the seeded test household. Production routes pass `household_id`
+# explicitly; this is purely a test convenience to avoid editing every model
+# construction in legacy tests.
+def _install_household_default() -> None:
+    from sqlalchemy import event
+
+    from app.models import (
+        Account,
+        Category,
+        Dashboard,
+        DateRange,
+        ImportSession,
+        Report,
+        Source,
+        Transaction,
+        User,
+    )
+
+    DEFAULT = "household-default"
+
+    def _set_default(mapper, connection, target):  # noqa: ARG001
+        if getattr(target, "household_id", None) is None:
+            target.household_id = DEFAULT
+
+    for model in (
+        Account,
+        Category,
+        Dashboard,
+        DateRange,
+        ImportSession,
+        Report,
+        Source,
+        Transaction,
+        User,
+    ):
+        event.listen(model, "before_insert", _set_default)
+
+
+_install_household_default()
+
+
+def _alembic_config_for_url(sync_url: str) -> AlembicConfig:
+    """Build an Alembic Config pointing at the given sync DB URL.
+
+    Uses alembic.ini's script_location but overrides sqlalchemy.url so the test
+    container is targeted regardless of env vars / app settings.
+    """
+    cfg = AlembicConfig(str(_BACKEND_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", sync_url)
+    return cfg
+
+
+def _ensure_container() -> None:
+    global _container, _async_url, _sync_url
     if _container is None:
         _container = PostgresContainer(
             image="postgres:15",
@@ -34,8 +95,58 @@ def get_test_db_url():
         )
         _container.start()
         url = _container.get_connection_url()
+        _sync_url = url
         _async_url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+
+
+def get_test_db_url() -> str:
+    _ensure_container()
+    assert _async_url is not None
     return _async_url
+
+
+def get_test_sync_db_url() -> str:
+    _ensure_container()
+    assert _sync_url is not None
+    return _sync_url
+
+
+def _initialize_schema_via_alembic() -> None:
+    """Run alembic upgrade head against the test container.
+
+    We override settings to point at the container so alembic's env.py
+    (which builds its URL from app settings) connects to the right DB.
+    """
+    parsed = urlparse(get_test_sync_db_url())
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    user = parsed.username or "test"
+    password = parsed.password or "test"
+    db = (parsed.path or "/test").lstrip("/")
+
+    prev = (
+        settings.db_host,
+        settings.db_port,
+        settings.db_user,
+        settings.db_password,
+        settings.db_name,
+    )
+    settings.db_host = host
+    settings.db_port = port
+    settings.db_user = user
+    settings.db_password = password
+    settings.db_name = db
+    try:
+        cfg = _alembic_config_for_url(get_test_sync_db_url())
+        command.upgrade(cfg, "head")
+    finally:
+        (
+            settings.db_host,
+            settings.db_port,
+            settings.db_user,
+            settings.db_password,
+            settings.db_name,
+        ) = prev
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -47,14 +158,13 @@ def pytest_sessionfinish(session, exitstatus):
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession]:
-    global _tables_created
+    global _schema_initialized
     url = get_test_db_url()
     engine = create_async_engine(url, echo=False)
 
-    if not _tables_created:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        _tables_created = True
+    if not _schema_initialized:
+        _initialize_schema_via_alembic()
+        _schema_initialized = True
 
     async with engine.connect() as connection:
         transaction = await connection.begin()
@@ -66,8 +176,121 @@ async def db_session() -> AsyncGenerator[AsyncSession]:
     await engine.dispose()
 
 
+class _AlembicRunner:
+    """Helper that exposes upgrade/downgrade against the shared test DB.
+
+    Used by migration round-trip tests. Operations COMMIT (DDL is not
+    transactional in PG for many statements), so tests using this should
+    return the DB to head before yielding.
+    """
+
+    def __init__(self, sync_url: str) -> None:
+        self._cfg = _alembic_config_for_url(sync_url)
+        self._sync_url = sync_url
+
+    def upgrade(self, target: str = "head") -> None:
+        self._with_settings(lambda: command.upgrade(self._cfg, target))
+
+    def downgrade(self, target: str) -> None:
+        self._with_settings(lambda: command.downgrade(self._cfg, target))
+
+    def _with_settings(self, fn):
+        parsed = urlparse(self._sync_url)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 5432
+        user = parsed.username or "test"
+        password = parsed.password or "test"
+        db = (parsed.path or "/test").lstrip("/")
+        prev = (
+            settings.db_host,
+            settings.db_port,
+            settings.db_user,
+            settings.db_password,
+            settings.db_name,
+        )
+        settings.db_host = host
+        settings.db_port = port
+        settings.db_user = user
+        settings.db_password = password
+        settings.db_name = db
+        try:
+            fn()
+        finally:
+            (
+                settings.db_host,
+                settings.db_port,
+                settings.db_user,
+                settings.db_password,
+                settings.db_name,
+            ) = prev
+
+
+@pytest.fixture
+def alembic_runner() -> _AlembicRunner:
+    """Provides upgrade/downgrade against the shared test DB.
+
+    Tests must restore the DB to head before yielding (use a try/finally).
+    """
+    return _AlembicRunner(get_test_sync_db_url())
+
+
+DEFAULT_TEST_HOUSEHOLD_ID = "household-default"
+
+
+class _HouseholdInjectingClient(AsyncClient):
+    """Test-only AsyncClient that auto-appends `?householdId=<default>` to
+    requests against `/api/...` endpoints when one isn't already present.
+
+    Phase A1 routes require `householdId` on every household-scoped endpoint;
+    every existing test was written before that requirement, so this keeps
+    them working without thousands of per-test edits. Tests that need to
+    exercise the missing-param 400 path or pass a different household must
+    bypass this — pass `householdId=<value>` in `params` explicitly (which is
+    already a query string, so the auto-injection is skipped).
+    """
+
+    async def request(self, method, url, **kwargs):
+        url_str = str(url)
+        # Only inject for /api requests, and only when no householdId is set.
+        if url_str.startswith("/api"):
+            params = kwargs.get("params")
+            already_set = False
+            if isinstance(params, dict):
+                already_set = "householdId" in params
+            if "householdId=" in url_str:
+                already_set = True
+            if not already_set:
+                if isinstance(params, dict):
+                    params = {**params, "householdId": DEFAULT_TEST_HOUSEHOLD_ID}
+                    kwargs["params"] = params
+                else:
+                    sep = "&" if "?" in url_str else "?"
+                    url = f"{url_str}{sep}householdId={DEFAULT_TEST_HOUSEHOLD_ID}"
+        return await super().request(method, url, **kwargs)
+
+
 @pytest.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    async with _HouseholdInjectingClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def raw_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    """A vanilla AsyncClient that does NOT auto-inject householdId.
+
+    Use this in tests that verify missing-param error responses or that need
+    to bypass the auto-inject for any reason.
+    """
+
     async def override_get_db():
         yield db_session
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DashboardPanel, Dashboard, Expense } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { formatCurrency } from '../../utils';
 import { ITEMS_PER_PAGE } from '../../constants';
 
@@ -30,7 +30,7 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
   const fetchPage = useCallback(
     async (pageNum: number) => {
       setLoading(true);
-      const result = await LocalStorage.previewPanelTransactions({
+      const result = await ApiClient.previewPanelTransactions({
         filterGroups: panel.filterGroups,
         userId: selectedUserId,
         dateFrom: dateRange.start.toISOString().slice(0, 10),

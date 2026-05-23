@@ -13,6 +13,7 @@ from app.routes.data import router as data_router
 from app.routes.date_range import router as date_range_router
 from app.routes.demo import router as demo_router
 from app.routes.expenses import router as expenses_router
+from app.routes.households import router as households_router
 from app.routes.import_sessions import router as import_sessions_router
 from app.routes.imports import router as imports_router
 from app.routes.net_worth import router as net_worth_router
@@ -53,6 +54,7 @@ async def api_key_auth(request: Request, call_next):
     return await call_next(request)
 
 
+app.include_router(households_router)
 app.include_router(categories_router)
 app.include_router(net_worth_router)
 app.include_router(date_range_router)

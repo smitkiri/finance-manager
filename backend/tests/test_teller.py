@@ -309,7 +309,7 @@ async def test_enroll_creates_accounts(client: AsyncClient, db_session: AsyncSes
     )
     account = result.scalar_one()
     assert account.name == "My Checking"
-    assert account.user_id == "u1"
+    assert account.created_by_user_id == "u1"
 
 
 @pytest.mark.asyncio
@@ -328,7 +328,7 @@ async def test_disconnect_removes_enrollment_and_accounts(
     db_session.add(
         Account(
             id="a1",
-            user_id="u1",
+            created_by_user_id="u1",
             name="Checking",
             type="asset",
             teller_account_id="tel_1",
@@ -495,7 +495,7 @@ async def test_put_category_mappings_updates_transactions(
             category="food_and_drink",
             amount=Decimal("5.50"),
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
             metadata_={
                 "teller": {"details": {"category": "food_and_drink"}},
                 "tellerTransactionId": "teller_tx_1",
@@ -539,7 +539,7 @@ async def test_get_category_mappings_with_counts(
             category="Dining",
             amount=Decimal("5.00"),
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
             metadata_={
                 "teller": {"details": {"category": "food_and_drink"}},
                 "tellerTransactionId": "teller_tx_1",

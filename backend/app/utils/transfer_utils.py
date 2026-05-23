@@ -25,7 +25,7 @@ def txns_to_dicts(
             "category": t.category,
             "amount": float(t.amount),
             "type": t.type,
-            "user": t.user_id,
+            "user": t.created_by_user_id,
             "labels": t.labels or [],
             "metadata": t.metadata_ or {},
             "transferInfo": None if strip_transfer_info else t.transfer_info,
@@ -35,13 +35,23 @@ def txns_to_dicts(
     ]
 
 
-async def run_detection(db: AsyncSession, strip_existing: bool = False) -> dict | None:
+async def run_detection(
+    db: AsyncSession,
+    strip_existing: bool = False,
+    household_id: str | None = None,
+) -> dict | None:
     """Run transfer detection on all transactions and persist results.
+
+    If `household_id` is provided, detection is scoped to that household;
+    otherwise all transactions are considered.
 
     Returns dict with success/transfersDetected/totalTransactions,
     or None if no transactions exist.
     """
-    result = await db.execute(select(Transaction))
+    stmt = select(Transaction)
+    if household_id is not None:
+        stmt = stmt.where(Transaction.household_id == household_id)
+    result = await db.execute(stmt)
     all_txns = result.scalars().all()
 
     if not all_txns:

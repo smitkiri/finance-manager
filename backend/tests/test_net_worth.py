@@ -18,7 +18,7 @@ async def test_get_accounts_empty(client: AsyncClient):
 async def test_get_accounts_returns_accounts(
     client: AsyncClient, db_session: AsyncSession
 ):
-    acct = Account(id="a1", user_id="u1", name="Checking", type="asset")
+    acct = Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
     db_session.add(acct)
     await db_session.flush()
 
@@ -36,8 +36,12 @@ async def test_get_accounts_returns_accounts(
 async def test_get_accounts_filtered_by_user(
     client: AsyncClient, db_session: AsyncSession
 ):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
-    db_session.add(Account(id="a2", user_id="u2", name="Savings", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
+    db_session.add(
+        Account(id="a2", created_by_user_id="u2", name="Savings", type="asset")
+    )
     await db_session.flush()
 
     response = await client.get("/api/accounts", params={"userId": "u1"})
@@ -73,7 +77,9 @@ async def test_create_account_invalid_type(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_account(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
 
     response = await client.put(
@@ -97,7 +103,9 @@ async def test_update_account_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_delete_account(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
 
     response = await client.delete("/api/accounts/a1")
@@ -117,7 +125,9 @@ async def test_delete_account_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_add_balance(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -149,7 +159,9 @@ async def test_add_balance_account_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_balances(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
     db_session.add(
         AccountBalance(id="b1", account_id="a1", balance=1000, date=date(2024, 5, 1))
@@ -170,7 +182,9 @@ async def test_get_balances(client: AsyncClient, db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_delete_balance(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
     db_session.add(
         AccountBalance(id="b1", account_id="a1", balance=1000, date=date(2024, 5, 1))
@@ -184,7 +198,9 @@ async def test_delete_balance(client: AsyncClient, db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_delete_balance_not_found(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
 
     response = await client.delete("/api/accounts/a1/balances/nonexistent")
@@ -201,8 +217,12 @@ async def test_net_worth_summary_empty(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_net_worth_summary(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
-    db_session.add(Account(id="a2", user_id="u1", name="Credit Card", type="liability"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
+    db_session.add(
+        Account(id="a2", created_by_user_id="u1", name="Credit Card", type="liability")
+    )
     await db_session.flush()
     db_session.add(
         AccountBalance(id="b1", account_id="a1", balance=5000, date=date(2024, 6, 1))
@@ -224,8 +244,12 @@ async def test_net_worth_summary(client: AsyncClient, db_session: AsyncSession):
 async def test_net_worth_summary_filtered_by_user(
     client: AsyncClient, db_session: AsyncSession
 ):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
-    db_session.add(Account(id="a2", user_id="u2", name="Savings", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
+    db_session.add(
+        Account(id="a2", created_by_user_id="u2", name="Savings", type="asset")
+    )
     await db_session.flush()
     db_session.add(
         AccountBalance(id="b1", account_id="a1", balance=5000, date=date(2024, 6, 1))
@@ -246,7 +270,9 @@ async def test_net_worth_summary_uses_latest_balance(
     client: AsyncClient, db_session: AsyncSession
 ):
     """Summary should use the most recent balance per account, not sum all balances."""
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
     await db_session.flush()
     db_session.add(
         AccountBalance(id="b1", account_id="a1", balance=1000, date=date(2024, 5, 1))
@@ -263,8 +289,12 @@ async def test_net_worth_summary_uses_latest_balance(
 
 @pytest.mark.asyncio
 async def test_net_worth_history(client: AsyncClient, db_session: AsyncSession):
-    db_session.add(Account(id="a1", user_id="u1", name="Checking", type="asset"))
-    db_session.add(Account(id="a2", user_id="u1", name="Loan", type="liability"))
+    db_session.add(
+        Account(id="a1", created_by_user_id="u1", name="Checking", type="asset")
+    )
+    db_session.add(
+        Account(id="a2", created_by_user_id="u1", name="Loan", type="liability")
+    )
     await db_session.flush()
     db_session.add(
         AccountBalance(id="b1", account_id="a1", balance=3000, date=date(2024, 5, 1))

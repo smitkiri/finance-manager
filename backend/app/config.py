@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Demo mode (public hosted demo)
     finance_manager_demo_mode: bool = False
 
+    # Households (Phase A1: single seeded household)
+    finance_manager_default_household_name: str = "Household"
+
     @property
     def is_teller_enabled(self) -> bool:
         return (

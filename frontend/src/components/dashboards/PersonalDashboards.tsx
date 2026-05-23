@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Star, Trash2, Pencil, Plus, LayoutDashboard } from 'lucide-react';
 import { Dashboard } from '../../types';
-import { LocalStorage } from '../../utils/storage';
+import { ApiClient } from '../../utils/apiClient';
 import { DashboardView } from './DashboardView';
 import { generateId } from '../../utils';
 import { toast } from 'react-toastify';
@@ -28,7 +28,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
 
   useEffect(() => {
     const load = async () => {
-      const list = await LocalStorage.loadDashboards();
+      const list = await ApiClient.loadDashboards();
       setDashboards(list);
       if (list.length > 0) {
         const def = list.find((d) => d.isDefault) || list[0];
@@ -47,7 +47,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
 
   const handleCreateDashboard = async () => {
     const name = `Dashboard ${dashboards.length + 1}`;
-    const created = await LocalStorage.createDashboard({
+    const created = await ApiClient.createDashboard({
       id: generateId(),
       name,
       isDefault: dashboards.length === 0,
@@ -59,7 +59,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
   };
 
   const handleSetDefault = async (id: string) => {
-    await LocalStorage.updateDashboard(id, { isDefault: true });
+    await ApiClient.updateDashboard(id, { isDefault: true });
     setDashboards((prev) =>
       prev.map((d) => ({
         ...d,
@@ -70,7 +70,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this dashboard and all its panels?')) return;
-    await LocalStorage.deleteDashboard(id);
+    await ApiClient.deleteDashboard(id);
     const remaining = dashboards.filter((d) => d.id !== id);
     setDashboards(remaining);
     if (selectedId === id) setSelectedId(remaining[0]?.id || null);
@@ -87,7 +87,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
       setRenamingId(null);
       return;
     }
-    const updated = await LocalStorage.updateDashboard(id, { name: renameValue.trim() });
+    const updated = await ApiClient.updateDashboard(id, { name: renameValue.trim() });
     setDashboards((prev) => prev.map((d) => (d.id === id ? { ...d, name: updated.name } : d)));
     setRenamingId(null);
   };

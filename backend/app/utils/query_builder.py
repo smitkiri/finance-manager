@@ -73,7 +73,7 @@ def build_expenses_filter(params: dict) -> list:
         filters.append(Transaction.date <= _parse_date(params["dateTo"]))
 
     if params.get("userId"):
-        filters.append(Transaction.user_id == params["userId"])
+        filters.append(Transaction.created_by_user_id == params["userId"])
 
     categories = params.get("categories")
     if categories and len(categories) > 0:
@@ -151,7 +151,7 @@ def build_stats_filter(
     if date_to:
         filters.append(Transaction.date <= _parse_date(date_to))
     if user_id:
-        filters.append(Transaction.user_id == user_id)
+        filters.append(Transaction.created_by_user_id == user_id)
 
     # Exclude records marked as excluded from calculations
     filters.append(Transaction.excluded_from_calculations.is_not(True))

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class ReportOut(BaseModel):
     id: str
     name: str
+    householdId: str
     description: str | None = None
     filters: dict[str, Any]
     createdAt: datetime | None = None
@@ -17,6 +18,7 @@ class ReportOut(BaseModel):
         return cls(
             id=r.id,
             name=r.name,
+            householdId=r.household_id,
             description=r.description,
             filters=r.filters or {},
             createdAt=r.created_at,

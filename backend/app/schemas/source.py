@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class SourceOut(BaseModel):
     id: str
     name: str
+    householdId: str
     mappings: Any = []
     flipIncomeExpense: bool = False
     createdAt: datetime | None = None
@@ -17,6 +18,7 @@ class SourceOut(BaseModel):
         return cls(
             id=source.id,
             name=source.name,
+            householdId=source.household_id,
             mappings=source.mappings,
             flipIncomeExpense=source.flip_income_expense,
             createdAt=source.created_at,
