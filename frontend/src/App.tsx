@@ -73,10 +73,37 @@ function AppContent() {
   const [tellerEnabled, setTellerEnabled] = useState(false);
   const [showTellerImport, setShowTellerImport] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(false);
+  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [householdError, setHouseholdError] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = demoEnabled ? '(Demo) Tally' : 'Tally';
   }, [demoEnabled]);
+
+  // Fetch the household (Phase A1: a single seeded one) before any other API
+  // call so subsequent requests carry a householdId query param.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const households = await ApiClient.loadHouseholds();
+        if (cancelled) return;
+        if (households.length === 0) {
+          setHouseholdError('No household found. Contact support.');
+          return;
+        }
+        ApiClient.setHouseholdId(households[0].id);
+        setHouseholdId(households[0].id);
+      } catch {
+        if (!cancelled) {
+          setHouseholdError('Failed to load household. Try refreshing.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -95,6 +122,7 @@ function AppContent() {
 
   // Initial load: categories, users, sources, date range only (no full expenses – defer until Dashboard/Reports)
   useEffect(() => {
+    if (!householdId) return;
     const loadData = async () => {
       try {
         const [
@@ -133,7 +161,7 @@ function AppContent() {
       }
     };
     loadData();
-  }, []);
+  }, [householdId]);
 
   // Load dashboard stats from API (aggregates only) when user visits Dashboard
   useEffect(() => {
@@ -1022,6 +1050,25 @@ function AppContent() {
       console.error('Error updating user:', error);
     }
   };
+
+  // Block the app on the household discovery — every other API call relies on
+  // it being set on the ApiClient class.
+  if (householdError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white px-4">
+        <div className="max-w-md text-center">
+          <p className="mb-3 text-lg">{householdError}</p>
+        </div>
+      </div>
+    );
+  }
+  if (!householdId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400">
+        Loading…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">

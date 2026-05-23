@@ -29,11 +29,55 @@ interface StorageMetadata {
 
 const SOURCES_STORAGE_KEY = 'sources';
 
+// Endpoints that operate on global state and must NOT have a householdId
+// appended automatically. (Teller-credential-only routes, etc.)
+const HOUSEHOLD_INDEPENDENT_PATHS = [
+  '/households',
+  '/health',
+  '/teller/config',
+  '/teller/enrollment-token',
+  '/teller/enrollment/',
+  '/teller/category-mappings',
+  '/demo/config',
+  '/column-mappings',
+];
+
+export interface HouseholdInfo {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
 export class ApiClient {
   private static API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
+  private static householdId: string | null = null;
+
+  static setHouseholdId(id: string): void {
+    ApiClient.householdId = id;
+  }
+
+  static getHouseholdId(): string | null {
+    return ApiClient.householdId;
+  }
 
   static getApiBase(): string {
     return ApiClient.API_BASE;
+  }
+
+  /** Auto-injects ?householdId=<current> for household-scoped /api calls. */
+  private static withHouseholdId(url: string): string {
+    if (!url.startsWith(ApiClient.API_BASE)) return url;
+    const path = url.slice(ApiClient.API_BASE.length).split('?')[0];
+    if (HOUSEHOLD_INDEPENDENT_PATHS.some((p) => path.startsWith(p))) return url;
+    if (url.includes('householdId=')) return url;
+    if (ApiClient.householdId === null) {
+      // Bail out: the app hasn't fetched its household yet. Calls in this
+      // window will be rejected by the backend with 400; that's safer than
+      // silently sending requests with no household.
+      return url;
+    }
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}householdId=${encodeURIComponent(ApiClient.householdId)}`;
   }
 
   static apiFetch(url: string, options?: RequestInit): Promise<Response> {
@@ -43,7 +87,16 @@ export class ApiClient {
         : {}),
       ...options?.headers,
     };
-    return fetch(url, options ? { ...options, headers } : { headers });
+    const finalUrl = ApiClient.withHouseholdId(url);
+    return fetch(finalUrl, options ? { ...options, headers } : { headers });
+  }
+
+  static async loadHouseholds(): Promise<HouseholdInfo[]> {
+    const response = await ApiClient.apiFetch(`${ApiClient.API_BASE}/households`);
+    if (!response.ok) {
+      throw new Error('Failed to load households');
+    }
+    return response.json();
   }
 
   static async saveExpenses(expenses: Expense[]): Promise<void> {
