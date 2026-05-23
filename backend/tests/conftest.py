@@ -1,19 +1,23 @@
 from collections.abc import AsyncGenerator
+from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
+from alembic.config import Config as AlembicConfig
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
+from alembic import command
 from app.config import Settings, settings
 from app.database import get_db
 from app.main import app
-from app.models.base import Base
 
 # Module-level container (started once, reused across tests)
 _container = None
 _async_url = None
-_tables_created = False
+_sync_url = None
+_schema_initialized = False
 
 # Reset settings to clean defaults so tests are not affected by the
 # developer's backend/.env file. Tests that need specific settings (e.g.
@@ -23,8 +27,23 @@ for field in Settings.model_fields:
     setattr(settings, field, getattr(_clean, field))
 
 
-def get_test_db_url():
-    global _container, _async_url
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _alembic_config_for_url(sync_url: str) -> AlembicConfig:
+    """Build an Alembic Config pointing at the given sync DB URL.
+
+    Uses alembic.ini's script_location but overrides sqlalchemy.url so the test
+    container is targeted regardless of env vars / app settings.
+    """
+    cfg = AlembicConfig(str(_BACKEND_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", sync_url)
+    return cfg
+
+
+def _ensure_container() -> None:
+    global _container, _async_url, _sync_url
     if _container is None:
         _container = PostgresContainer(
             image="postgres:15",
@@ -34,8 +53,58 @@ def get_test_db_url():
         )
         _container.start()
         url = _container.get_connection_url()
+        _sync_url = url
         _async_url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+
+
+def get_test_db_url() -> str:
+    _ensure_container()
+    assert _async_url is not None
     return _async_url
+
+
+def get_test_sync_db_url() -> str:
+    _ensure_container()
+    assert _sync_url is not None
+    return _sync_url
+
+
+def _initialize_schema_via_alembic() -> None:
+    """Run alembic upgrade head against the test container.
+
+    We override settings to point at the container so alembic's env.py
+    (which builds its URL from app settings) connects to the right DB.
+    """
+    parsed = urlparse(get_test_sync_db_url())
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    user = parsed.username or "test"
+    password = parsed.password or "test"
+    db = (parsed.path or "/test").lstrip("/")
+
+    prev = (
+        settings.db_host,
+        settings.db_port,
+        settings.db_user,
+        settings.db_password,
+        settings.db_name,
+    )
+    settings.db_host = host
+    settings.db_port = port
+    settings.db_user = user
+    settings.db_password = password
+    settings.db_name = db
+    try:
+        cfg = _alembic_config_for_url(get_test_sync_db_url())
+        command.upgrade(cfg, "head")
+    finally:
+        (
+            settings.db_host,
+            settings.db_port,
+            settings.db_user,
+            settings.db_password,
+            settings.db_name,
+        ) = prev
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -47,14 +116,13 @@ def pytest_sessionfinish(session, exitstatus):
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession]:
-    global _tables_created
+    global _schema_initialized
     url = get_test_db_url()
     engine = create_async_engine(url, echo=False)
 
-    if not _tables_created:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        _tables_created = True
+    if not _schema_initialized:
+        _initialize_schema_via_alembic()
+        _schema_initialized = True
 
     async with engine.connect() as connection:
         transaction = await connection.begin()
@@ -64,6 +132,64 @@ async def db_session() -> AsyncGenerator[AsyncSession]:
         await transaction.rollback()
 
     await engine.dispose()
+
+
+class _AlembicRunner:
+    """Helper that exposes upgrade/downgrade against the shared test DB.
+
+    Used by migration round-trip tests. Operations COMMIT (DDL is not
+    transactional in PG for many statements), so tests using this should
+    return the DB to head before yielding.
+    """
+
+    def __init__(self, sync_url: str) -> None:
+        self._cfg = _alembic_config_for_url(sync_url)
+        self._sync_url = sync_url
+
+    def upgrade(self, target: str = "head") -> None:
+        self._with_settings(lambda: command.upgrade(self._cfg, target))
+
+    def downgrade(self, target: str) -> None:
+        self._with_settings(lambda: command.downgrade(self._cfg, target))
+
+    def _with_settings(self, fn):
+        parsed = urlparse(self._sync_url)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 5432
+        user = parsed.username or "test"
+        password = parsed.password or "test"
+        db = (parsed.path or "/test").lstrip("/")
+        prev = (
+            settings.db_host,
+            settings.db_port,
+            settings.db_user,
+            settings.db_password,
+            settings.db_name,
+        )
+        settings.db_host = host
+        settings.db_port = port
+        settings.db_user = user
+        settings.db_password = password
+        settings.db_name = db
+        try:
+            fn()
+        finally:
+            (
+                settings.db_host,
+                settings.db_port,
+                settings.db_user,
+                settings.db_password,
+                settings.db_name,
+            ) = prev
+
+
+@pytest.fixture
+def alembic_runner() -> _AlembicRunner:
+    """Provides upgrade/downgrade against the shared test DB.
+
+    Tests must restore the DB to head before yielding (use a try/finally).
+    """
+    return _AlembicRunner(get_test_sync_db_url())
 
 
 @pytest.fixture
