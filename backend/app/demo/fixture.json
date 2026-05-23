@@ -1,4 +1,10 @@
 {
+  "households": [
+    {
+      "id": "household-demo",
+      "name": "Demo Household"
+    }
+  ],
   "users": [
     {
       "id": "user-alice",
