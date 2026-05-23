@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 class AccountOut(BaseModel):
     id: str
-    userId: str
+    userId: str | None = None
+    householdId: str
     name: str
     type: str
     tellerAccountId: str | None = None
@@ -17,7 +18,8 @@ class AccountOut(BaseModel):
     def from_orm_model(cls, a) -> AccountOut:
         return cls(
             id=a.id,
-            userId=a.user_id,
+            userId=a.created_by_user_id,
+            householdId=a.household_id,
             name=a.name,
             type=a.type,
             tellerAccountId=a.teller_account_id,
@@ -29,7 +31,7 @@ class AccountOut(BaseModel):
 
 class AccountCreateRequest(BaseModel):
     id: str
-    userId: str
+    userId: str | None = None
     name: str
     type: str
 

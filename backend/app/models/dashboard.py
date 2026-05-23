@@ -23,6 +23,9 @@ class Dashboard(TimestampMixin, Base):
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
+    household_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("households.id", ondelete="RESTRICT")
+    )
     is_default: Mapped[bool] = mapped_column(Boolean, server_default="false")
     date_range_start: Mapped[date] = mapped_column(Date)
     date_range_end: Mapped[date] = mapped_column(Date)
@@ -30,6 +33,8 @@ class Dashboard(TimestampMixin, Base):
     panels = relationship(
         "DashboardPanel", back_populates="dashboard", cascade="all, delete-orphan"
     )
+
+    __table_args__ = (Index("idx_dashboards_household", "household_id"),)
 
 
 class DashboardPanel(TimestampMixin, Base):

@@ -7,6 +7,7 @@ class ImportSessionOut(BaseModel):
     id: str
     createdAt: datetime
     userId: str | None = None
+    householdId: str
     sourceId: str | None = None
     sourceName: str
     fileName: str | None = None
@@ -17,7 +18,8 @@ class ImportSessionOut(BaseModel):
         return cls(
             id=s.id,
             createdAt=s.created_at,
-            userId=s.user_id,
+            userId=s.created_by_user_id,
+            householdId=s.household_id,
             sourceId=s.source_id,
             sourceName=s.source_name,
             fileName=s.file_name,

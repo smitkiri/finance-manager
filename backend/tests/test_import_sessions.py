@@ -21,7 +21,7 @@ class TestGetImportSessions:
         db_session.add(
             ImportSession(
                 id="sess1",
-                user_id="user1",
+                created_by_user_id="user1",
                 source_name="test.csv",
                 file_name="test.csv",
                 transaction_count=5,
@@ -87,7 +87,7 @@ class TestDeleteImportSession:
                 category="Food",
                 amount=Decimal("4.50"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
                 import_id="sess1",
             )
         )
@@ -99,7 +99,7 @@ class TestDeleteImportSession:
                 category="Food",
                 amount=Decimal("3.00"),
                 type="expense",
-                user_id="user1",
+                created_by_user_id="user1",
             )
         )
         await db_session.flush()

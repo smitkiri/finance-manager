@@ -20,7 +20,12 @@ class Account(TimestampMixin, Base):
     __tablename__ = "accounts"
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(255))
+    household_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("households.id", ondelete="RESTRICT")
+    )
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String(255), ForeignKey("users.id", ondelete="SET NULL")
+    )
     name: Mapped[str] = mapped_column(String(255))
     type: Mapped[str] = mapped_column(String(20))
     teller_account_id: Mapped[str | None] = mapped_column(String(255))
@@ -32,7 +37,8 @@ class Account(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint("type IN ('asset', 'liability')", name="accounts_type_check"),
-        Index("idx_accounts_user", "user_id"),
+        Index("idx_accounts_household", "household_id"),
+        Index("idx_accounts_created_by", "created_by_user_id"),
         Index("idx_accounts_teller_enrollment_id", "teller_enrollment_id"),
         Index("idx_accounts_teller_account_id", "teller_account_id"),
     )

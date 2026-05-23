@@ -224,15 +224,15 @@ async def teller_config(db: AsyncSession = Depends(get_db)):
             result = await db.execute(
                 text(
                     "SELECT DISTINCT ON (teller_enrollment_id) "
-                    "teller_enrollment_id, user_id "
+                    "teller_enrollment_id, created_by_user_id "
                     "FROM accounts "
                     "WHERE teller_enrollment_id = ANY(:ids) "
-                    "AND user_id IS NOT NULL"
+                    "AND created_by_user_id IS NOT NULL"
                 ),
                 {"ids": enrollment_ids},
             )
             for row in result.all():
-                account_user_map[row.teller_enrollment_id] = row.user_id
+                account_user_map[row.teller_enrollment_id] = row.created_by_user_id
 
         return {
             "enabled": True,
@@ -391,7 +391,7 @@ async def enroll(body: EnrollRequest, db: AsyncSession = Depends(get_db)):
                     db.add(
                         Account(
                             id=account_id,
-                            user_id=account_user_id,
+                            created_by_user_id=account_user_id,
                             name=acct.alias,
                             type=acct.accountType,
                             teller_account_id=acct.tellerAccountId,
@@ -515,7 +515,7 @@ async def manage_accounts(
                 db.add(
                     Account(
                         id=account_id,
-                        user_id=account_user_id,
+                        created_by_user_id=account_user_id,
                         name=acct.alias,
                         type=acct.accountType,
                         teller_account_id=acct.tellerAccountId,
@@ -809,7 +809,7 @@ async def preview_import(
                     "accountId": account_id,
                     "accountName": account.name,
                     "accountType": account.type,
-                    "userId": account.user_id,
+                    "userId": account.created_by_user_id,
                     "tellerAccountId": account.teller_account_id,
                     "newTransactions": new_txs,
                     "newCount": len(new_txs),
@@ -920,7 +920,7 @@ async def import_transactions(
             db.add(
                 ImportSession(
                     id=session_id,
-                    user_id=account.get("userId"),
+                    created_by_user_id=account.get("userId"),
                     source_name=f"Teller: {account['accountName']}",
                     transaction_count=len(account["newTransactions"]),
                 )
@@ -1014,7 +1014,7 @@ async def import_transactions(
                     "category": t.category,
                     "amount": float(t.amount),
                     "type": t.type,
-                    "user": t.user_id,
+                    "user": t.created_by_user_id,
                     "labels": t.labels or [],
                     "metadata": t.metadata_ or {},
                     "transferInfo": t.transfer_info,

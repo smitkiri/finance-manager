@@ -92,7 +92,8 @@ async def get_stats(
             Transaction.amount,
             Transaction.category,
             Transaction.description,
-            Transaction.user_id,
+            Transaction.created_by_user_id,
+            Transaction.household_id,
         )
         .where(*filters)
         .subquery()
@@ -221,7 +222,7 @@ async def get_stats(
                 base.c.description,
                 base.c.category,
                 base.c.amount,
-                base.c.user_id,
+                base.c.created_by_user_id,
             )
             .select_from(base)
             .where(base.c.type == "expense")
@@ -237,7 +238,7 @@ async def get_stats(
             "category": r.category,
             "amount": float(r.amount),
             "type": "expense",
-            "user": r.user_id or "",
+            "user": r.created_by_user_id or "",
         }
         for r in top_exp_rows
     ]
@@ -251,7 +252,7 @@ async def get_stats(
                 base.c.description,
                 base.c.category,
                 base.c.amount,
-                base.c.user_id,
+                base.c.created_by_user_id,
             )
             .select_from(base)
             .where(base.c.type == "income")
@@ -267,7 +268,7 @@ async def get_stats(
             "category": r.category,
             "amount": float(r.amount),
             "type": "income",
-            "user": r.user_id or "",
+            "user": r.created_by_user_id or "",
         }
         for r in top_inc_rows
     ]
@@ -313,7 +314,7 @@ async def update_expense(
         txn.type = body.type
         updated = True
     if body.user is not None:
-        txn.user_id = body.user
+        txn.created_by_user_id = body.user
         updated = True
     if body.labels is not None:
         txn.labels = body.labels
@@ -351,7 +352,7 @@ async def bulk_save_expenses(
             category=exp.category or "Uncategorized",
             amount=exp.amount,
             type=exp.type,
-            user_id=exp.user,
+            created_by_user_id=exp.user,
             labels=exp.labels or [],
             metadata_=exp.metadata or {},
             transfer_info=exp.transferInfo,

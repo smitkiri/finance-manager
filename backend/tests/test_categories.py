@@ -72,7 +72,7 @@ async def test_get_labels_returns_unique_labels(
             category="Food",
             amount=Decimal("10.00"),
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
             labels=["groceries", "weekly"],
         )
     )
@@ -84,7 +84,7 @@ async def test_get_labels_returns_unique_labels(
             category="Food",
             amount=Decimal("20.00"),
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
             labels=["groceries", "monthly"],
         )
     )

@@ -428,7 +428,7 @@ async def test_panel_preview(client: AsyncClient, db_session: AsyncSession):
             category="Food",
             amount=50.00,
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     db_session.add(
@@ -439,7 +439,7 @@ async def test_panel_preview(client: AsyncClient, db_session: AsyncSession):
             category="Income",
             amount=3000.00,
             type="income",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     await db_session.flush()
@@ -476,7 +476,7 @@ async def test_panel_preview_pagination(client: AsyncClient, db_session: AsyncSe
                 category="Food",
                 amount=10.00,
                 type="expense",
-                user_id="u1",
+                created_by_user_id="u1",
             )
         )
     await db_session.flush()
@@ -506,7 +506,7 @@ async def test_chart_preview(client: AsyncClient, db_session: AsyncSession):
             category="Food",
             amount=50.00,
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     db_session.add(
@@ -517,7 +517,7 @@ async def test_chart_preview(client: AsyncClient, db_session: AsyncSession):
             category="Income",
             amount=3000.00,
             type="income",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     await db_session.flush()
@@ -568,7 +568,7 @@ async def test_dashboard_data(client: AsyncClient, db_session: AsyncSession):
             category="Food",
             amount=50.00,
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     await db_session.flush()
@@ -621,7 +621,7 @@ async def test_dashboard_data_net_amount_mode(
             category="Food",
             amount=50.00,
             type="expense",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     db_session.add(
@@ -632,7 +632,7 @@ async def test_dashboard_data_net_amount_mode(
             category="Income",
             amount=3000.00,
             type="income",
-            user_id="u1",
+            created_by_user_id="u1",
         )
     )
     await db_session.flush()

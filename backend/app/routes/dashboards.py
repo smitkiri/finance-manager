@@ -271,7 +271,7 @@ async def panel_preview(
             Transaction.category,
             Transaction.amount,
             Transaction.type,
-            Transaction.user_id,
+            Transaction.created_by_user_id,
         )
         .where(*filters)
         .order_by(Transaction.date.desc())
@@ -287,7 +287,7 @@ async def panel_preview(
             "category": row.category,
             "amount": float(row.amount),
             "type": row.type,
-            "user": row.user_id,
+            "user": row.created_by_user_id,
         }
         for row in data_result.all()
     ]

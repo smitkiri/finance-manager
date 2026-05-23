@@ -27,7 +27,7 @@ async def get_accounts(
 ):
     stmt = select(Account).order_by(Account.type, Account.name)
     if userId:
-        stmt = stmt.where(Account.user_id == userId)
+        stmt = stmt.where(Account.created_by_user_id == userId)
     result = await db.execute(stmt)
     return [AccountOut.from_orm_model(a) for a in result.scalars().all()]
 
@@ -44,7 +44,7 @@ async def create_account(
         )
     account = Account(
         id=body.id,
-        user_id=body.userId,
+        created_by_user_id=body.userId,
         name=body.name,
         type=body.type,
     )
@@ -165,7 +165,7 @@ async def net_worth_summary(
 ):
     stmt = select(Account)
     if userId:
-        stmt = stmt.where(Account.user_id == userId)
+        stmt = stmt.where(Account.created_by_user_id == userId)
     result = await db.execute(stmt)
     accounts = result.scalars().all()
 
@@ -206,7 +206,7 @@ async def net_worth_history(
     account_filter = "WHERE 1=1"
     params: dict[str, str] = {}
     if userId:
-        account_filter += " AND a.user_id = :user_id"
+        account_filter += " AND a.created_by_user_id = :user_id"
         params["user_id"] = userId
 
     sql = text(f"""

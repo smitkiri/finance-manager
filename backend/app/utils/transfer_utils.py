@@ -25,7 +25,7 @@ def txns_to_dicts(
             "category": t.category,
             "amount": float(t.amount),
             "type": t.type,
-            "user": t.user_id,
+            "user": t.created_by_user_id,
             "labels": t.labels or [],
             "metadata": t.metadata_ or {},
             "transferInfo": None if strip_transfer_info else t.transfer_info,

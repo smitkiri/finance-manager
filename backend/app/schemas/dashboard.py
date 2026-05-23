@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class DashboardOut(BaseModel):
     id: str
     name: str
+    householdId: str
     isDefault: bool
     dateRangeStart: str
     dateRangeEnd: str
@@ -15,12 +16,11 @@ class DashboardOut(BaseModel):
     updatedAt: datetime | None = None
 
     @classmethod
-    def from_orm_model(
-        cls, d, panel_count: int | None = None
-    ) -> DashboardOut:
+    def from_orm_model(cls, d, panel_count: int | None = None) -> DashboardOut:
         return cls(
             id=d.id,
             name=d.name,
+            householdId=d.household_id,
             isDefault=d.is_default,
             dateRangeStart=str(d.date_range_start),
             dateRangeEnd=str(d.date_range_end),
