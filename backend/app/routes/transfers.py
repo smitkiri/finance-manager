@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.transaction import Transaction
 from app.schemas.transfer import TransferOverrideRequest
 from app.utils.transfer_utils import run_detection
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api", tags=["transfers"])
 @router.post("/transfer-override")
 async def transfer_override(
     body: TransferOverrideRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -63,7 +63,7 @@ async def transfer_override(
 
 @router.post("/detect-transfers")
 async def run_detect_transfers(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await run_detection(db, household_id=household_id)
@@ -74,7 +74,7 @@ async def run_detect_transfers(
 
 @router.post("/rerun-transfer-detection")
 async def rerun_transfer_detection(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Re-detect transfers from scratch within this household."""

@@ -6,7 +6,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.date_range import DateRange
 from app.schemas.date_range import DateRangeRequest
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api", tags=["date-range"])
 
 @router.get("/date-range")
 async def get_date_range(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -37,7 +37,7 @@ async def get_date_range(
 @router.post("/date-range")
 async def save_date_range(
     body: DateRangeRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     start = date.fromisoformat(body.start)

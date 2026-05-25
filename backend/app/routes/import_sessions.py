@@ -5,7 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.transaction import Transaction
 from app.schemas.import_session import ImportSessionOut
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["import_sessions"])
 
 @router.get("/import-sessions")
 async def get_import_sessions(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Auto-delete sessions older than 6 months (within this household)
@@ -41,7 +41,7 @@ async def get_import_sessions(
 @router.delete("/import-sessions/{session_id}")
 async def delete_import_session(
     session_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Confirm the session belongs to this household

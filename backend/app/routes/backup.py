@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.date_range import DateRange
@@ -46,7 +46,7 @@ def _row_to_dict(row) -> dict:
 async def backup(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Fetch household-scoped tables
@@ -130,7 +130,7 @@ async def backup(
 @router.post("/restore")
 async def restore(
     backupFile: UploadFile | None = File(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not backupFile:

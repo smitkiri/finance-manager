@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.source import Source
 from app.schemas.source import (
     SourceCreateRequest,
@@ -28,7 +28,7 @@ async def _get_all_sources(db: AsyncSession, household_id: str) -> list[dict]:
 
 @router.get("/sources")
 async def get_sources(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -42,7 +42,7 @@ async def get_sources(
 @router.post("/sources")
 async def create_source(
     body: SourceCreateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     src = body.source
@@ -74,7 +74,7 @@ async def create_source(
 async def update_source(
     source_id: str,
     body: SourceUpdateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     src = body.source
@@ -115,7 +115,7 @@ async def update_source(
 @router.delete("/sources/{source_name}")
 async def delete_source(
     source_name: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(

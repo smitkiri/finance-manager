@@ -21,13 +21,3 @@ class UserOut(BaseModel):
             householdId=user.household_id,
             createdAt=user.created_at,
         )
-
-
-class UserIn(BaseModel):
-    id: str
-    name: str
-    createdAt: str | None = None
-
-
-class UsersSaveRequest(BaseModel):
-    users: list[UserIn]

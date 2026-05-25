@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.auth import get_current_household_id
 from app.models import Household
 from app.schemas.household import HouseholdOut
 
@@ -10,11 +10,14 @@ router = APIRouter(prefix="/api", tags=["households"])
 
 
 @router.get("/households", response_model=list[HouseholdOut])
-async def list_households(db: AsyncSession = Depends(get_db)) -> list[HouseholdOut]:
-    """List all households.
+async def list_households(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[HouseholdOut]:
+    """Return the caller's household (single-element list).
 
-    Phase A1 (no auth): returns every household — typically the seeded default.
-    Phase A2+: will filter by the authenticated user's membership.
+    Returned as a list to keep the A1-era client contract working; phase B
+    will likely replace with /households/me or fold into /auth/me.
     """
-    result = await db.execute(select(Household).order_by(Household.created_at))
-    return [HouseholdOut.from_orm_model(h) for h in result.scalars().all()]
+    h = await db.get(Household, household_id)
+    return [HouseholdOut.from_orm_model(h)] if h else []

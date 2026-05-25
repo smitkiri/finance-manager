@@ -6,7 +6,7 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.account import Account, AccountBalance
 from app.schemas.net_worth import (
     AccountBalanceOut,
@@ -35,7 +35,7 @@ async def _account_in_household(
 @router.get("/accounts")
 async def get_accounts(
     userId: str | None = Query(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = (
@@ -52,7 +52,7 @@ async def get_accounts(
 @router.post("/accounts")
 async def create_account(
     body: AccountCreateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.type not in ("asset", "liability"):
@@ -77,7 +77,7 @@ async def create_account(
 async def update_account(
     account_id: str,
     body: AccountUpdateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.type not in ("asset", "liability"):
@@ -100,7 +100,7 @@ async def update_account(
 @router.delete("/accounts/{account_id}")
 async def delete_account(
     account_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     account = await _account_in_household(db, account_id, household_id)
@@ -115,7 +115,7 @@ async def delete_account(
 async def add_balance(
     account_id: str,
     body: BalanceCreateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _account_in_household(db, account_id, household_id):
@@ -137,7 +137,7 @@ async def add_balance(
 @router.get("/accounts/{account_id}/balances")
 async def get_balances(
     account_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _account_in_household(db, account_id, household_id):
@@ -157,7 +157,7 @@ async def get_balances(
 async def delete_balance(
     account_id: str,
     balance_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _account_in_household(db, account_id, household_id):
@@ -186,7 +186,7 @@ async def delete_balance(
 @router.get("/net-worth/summary")
 async def net_worth_summary(
     userId: str | None = Query(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Account).where(Account.household_id == household_id)
@@ -227,7 +227,7 @@ async def net_worth_summary(
 @router.get("/net-worth/history")
 async def net_worth_history(
     userId: str | None = Query(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     account_filter = "WHERE a.household_id = :household_id"

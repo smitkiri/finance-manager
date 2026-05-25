@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.report import Report
 from app.schemas.report import ReportOut, ReportSaveRequest
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["reports"])
 
 @router.get("/reports")
 async def get_reports(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -30,7 +30,7 @@ async def get_reports(
 @router.post("/reports")
 async def save_report(
     body: ReportSaveRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     r = body.report
@@ -67,7 +67,7 @@ async def save_report(
 @router.delete("/reports/{report_id}")
 async def delete_report(
     report_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(
