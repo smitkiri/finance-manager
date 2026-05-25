@@ -28,75 +28,109 @@ interface StorageMetadata {
 }
 
 const SOURCES_STORAGE_KEY = 'sources';
+const AUTH_TOKEN_KEY = 'tally_auth_token';
 
-// Endpoints that operate on global state and must NOT have a householdId
-// appended automatically. (Teller-credential-only routes, etc.)
-const HOUSEHOLD_INDEPENDENT_PATHS = [
-  '/households',
-  '/health',
-  '/teller/config',
-  '/teller/enrollment-token',
-  '/teller/enrollment/',
-  '/teller/category-mappings',
-  '/demo/config',
-  '/column-mappings',
-];
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  householdId: string;
+  createdAt?: string;
+}
 
-export interface HouseholdInfo {
+export interface AuthHousehold {
   id: string;
   name: string;
   createdAt?: string;
 }
 
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+  household: AuthHousehold;
+}
+
+// A1 introduced household_<id>_ key prefixes; A2 drops them since household
+// is implicit in the session. One-shot cleanup runs the first time A2 loads.
+if (typeof window !== 'undefined') {
+  for (let i = window.localStorage.length - 1; i >= 0; i--) {
+    const key = window.localStorage.key(i);
+    if (key && key.startsWith('household_')) {
+      window.localStorage.removeItem(key);
+    }
+  }
+}
+
 export class ApiClient {
   private static API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
-  private static householdId: string | null = null;
+  private static authToken: string | null =
+    typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_TOKEN_KEY) : null;
 
-  static setHouseholdId(id: string): void {
-    ApiClient.householdId = id;
+  static setAuthToken(token: string | null): void {
+    ApiClient.authToken = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } else {
+        window.localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    }
   }
 
-  static getHouseholdId(): string | null {
-    return ApiClient.householdId;
+  static getAuthToken(): string | null {
+    return ApiClient.authToken;
   }
 
   static getApiBase(): string {
     return ApiClient.API_BASE;
   }
 
-  /** Auto-injects ?householdId=<current> for household-scoped /api calls. */
-  private static withHouseholdId(url: string): string {
-    if (!url.startsWith(ApiClient.API_BASE)) return url;
-    const path = url.slice(ApiClient.API_BASE.length).split('?')[0];
-    if (HOUSEHOLD_INDEPENDENT_PATHS.some((p) => path.startsWith(p))) return url;
-    if (url.includes('householdId=')) return url;
-    if (ApiClient.householdId === null) {
-      // Bail out: the app hasn't fetched its household yet. Calls in this
-      // window will be rejected by the backend with 400; that's safer than
-      // silently sending requests with no household.
-      return url;
-    }
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}householdId=${encodeURIComponent(ApiClient.householdId)}`;
-  }
-
   static apiFetch(url: string, options?: RequestInit): Promise<Response> {
-    const headers = {
-      ...(process.env.REACT_APP_API_SECRET
-        ? { 'x-api-key': process.env.REACT_APP_API_SECRET }
-        : {}),
-      ...options?.headers,
+    const headers: Record<string, string> = {
+      ...(ApiClient.authToken ? { Authorization: `Bearer ${ApiClient.authToken}` } : {}),
+      ...((options?.headers as Record<string, string>) || {}),
     };
-    const finalUrl = ApiClient.withHouseholdId(url);
-    return fetch(finalUrl, options ? { ...options, headers } : { headers });
+    return fetch(url, options ? { ...options, headers } : { headers });
   }
 
-  static async loadHouseholds(): Promise<HouseholdInfo[]> {
-    const response = await ApiClient.apiFetch(`${ApiClient.API_BASE}/households`);
-    if (!response.ok) {
-      throw new Error('Failed to load households');
+  static async signup(input: {
+    email: string;
+    password: string;
+    name: string;
+  }): Promise<AuthResponse> {
+    const res = await fetch(`${ApiClient.API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  static async login(input: { email: string; password: string }): Promise<AuthResponse> {
+    const res = await fetch(`${ApiClient.API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  static async logout(): Promise<void> {
+    try {
+      await ApiClient.apiFetch(`${ApiClient.API_BASE}/auth/logout`, { method: 'POST' });
+    } finally {
+      ApiClient.setAuthToken(null);
     }
-    return response.json();
+  }
+
+  static async getMe(): Promise<{ user: AuthUser; household: AuthHousehold }> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/auth/me`);
+    if (!res.ok) {
+      throw new Error(`getMe failed: ${res.status}`);
+    }
+    return res.json();
   }
 
   static async saveExpenses(expenses: Expense[]): Promise<void> {
@@ -919,28 +953,6 @@ export class ApiClient {
   }
 
   // User Management Methods
-  static async saveUsers(users: import('../types').User[]): Promise<void> {
-    try {
-      const response = await ApiClient.apiFetch(`${this.API_BASE}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ users }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save users');
-      }
-
-      console.warn(`Saved ${users.length} users`);
-    } catch (error) {
-      console.error('Error saving users:', error);
-      // Fallback to localStorage
-      localStorage.setItem('users', JSON.stringify(users));
-    }
-  }
-
   static async loadUsers(): Promise<import('../types').User[]> {
     try {
       const response = await ApiClient.apiFetch(`${this.API_BASE}/users`);
@@ -959,51 +971,23 @@ export class ApiClient {
     }
   }
 
-  static async addUser(user: import('../types').User): Promise<import('../types').User[]> {
-    try {
-      const existingUsers = await this.loadUsers();
-
-      if (!existingUsers.some((u) => u.name === user.name)) {
-        const updatedUsers = [...existingUsers, user];
-        await this.saveUsers(updatedUsers);
-        return updatedUsers;
+  static async updateUser(user: { id: string; name: string }): Promise<{
+    id: string;
+    name: string;
+    email: string;
+    householdId: string;
+    createdAt?: string;
+  }> {
+    const res = await ApiClient.apiFetch(
+      `${ApiClient.API_BASE}/users/${encodeURIComponent(user.id)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: user.name }),
       }
-
-      return existingUsers;
-    } catch (error) {
-      console.error('Error adding user:', error);
-      throw error;
-    }
-  }
-
-  static async deleteUser(userId: string): Promise<import('../types').User[]> {
-    try {
-      const existingUsers = await this.loadUsers();
-      const updatedUsers = existingUsers.filter((user) => user.id !== userId);
-
-      await this.saveUsers(updatedUsers);
-      return updatedUsers;
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
-  }
-
-  static async updateUser(
-    updatedUser: import('../types').User
-  ): Promise<import('../types').User[]> {
-    try {
-      const existingUsers = await this.loadUsers();
-      const updatedUsers = existingUsers.map((user) =>
-        user.id === updatedUser.id ? updatedUser : user
-      );
-
-      await this.saveUsers(updatedUsers);
-      return updatedUsers;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
+    );
+    if (!res.ok) throw new Error(`updateUser failed: ${res.status}`);
+    return res.json();
   }
 
   // Net Worth Methods
