@@ -20,11 +20,19 @@ DB_PORT=5432
 DB_USER=<from your Postgres resource>
 DB_PASSWORD=<from your Postgres resource>
 DB_NAME=<from your Postgres resource>
-API_SECRET=<random secret>
-REACT_APP_API_SECRET=<same value as API_SECRET>
+JWT_SIGNING_SECRET=<any non-empty value; ignored at runtime in demo mode>
 FINANCE_MANAGER_DEMO_MODE=true
 FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=false
 ```
+
+When `FINANCE_MANAGER_DEMO_MODE=true`, the backend short-circuits the auth
+dependency to return the seeded demo user (id: `demo-user`, household:
+`household-demo`) for every request, regardless of `Authorization` header.
+`POST /api/auth/login` and `POST /api/auth/signup` return 503. The frontend
+skips its auth check entirely in demo mode and calls `GET /api/auth/me`
+directly. The startup check that demands `JWT_SIGNING_SECRET` is also
+skipped in demo mode, but Coolify env-var entries can't be blank, so set the
+variable to any placeholder string.
 
 Deploy the app once. The `backend-migrate` service will run Alembic to create the tables. The demo backend will start, but the database is still empty — visitors landing on the URL right now would see a blank app. The next step seeds it.
 

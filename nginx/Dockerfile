@@ -15,9 +15,7 @@ COPY frontend/ ./
 
 # CRA bakes these into the JS bundle at build time
 ARG REACT_APP_API_BASE_URL=/api
-ARG REACT_APP_API_SECRET
 ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
-ENV REACT_APP_API_SECRET=${REACT_APP_API_SECRET}
 
 RUN npm run build
 

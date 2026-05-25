@@ -35,7 +35,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
-      API_SECRET: ${API_SECRET}
+      JWT_SIGNING_SECRET: ${JWT_SIGNING_SECRET}
       FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED: ${FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED:-false}
       FINANCE_MANAGER_TELLER_APP_ID: ${FINANCE_MANAGER_TELLER_APP_ID:-}
       FINANCE_MANAGER_TELLER_PRIVATE_KEY: /secrets/teller/private_key.pem
@@ -57,7 +57,6 @@ services:
       dockerfile: nginx/Dockerfile
       args:
         REACT_APP_API_BASE_URL: /api
-        REACT_APP_API_SECRET: ${REACT_APP_API_SECRET}
     depends_on:
       - backend
     ports:
