@@ -35,8 +35,6 @@ interface SettingsProps {
   expenses: any[];
   sources: Source[];
   users: User[];
-  onAddUser: (user: User) => void;
-  onDeleteUser: (userId: string) => void;
   onUpdateUser: (user: User) => void;
   onRefreshData: () => void;
   onExportCSV: () => void;
@@ -61,8 +59,6 @@ export const Settings: React.FC<SettingsProps> = ({
   expenses,
   sources,
   users,
-  onAddUser,
-  onDeleteUser,
   onUpdateUser,
   onRefreshData,
   onExportCSV,
@@ -88,7 +84,6 @@ export const Settings: React.FC<SettingsProps> = ({
     { csvColumn: string; standardColumn: StandardizedColumn | 'Ignore' }[]
   >([]);
   const [editSourceFlipIncomeExpense, setEditSourceFlipIncomeExpense] = useState(false);
-  const [newUser, setNewUser] = useState('');
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editUserName, setEditUserName] = useState('');
 
@@ -503,18 +498,6 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleAddUser = () => {
-    if (newUser.trim() && !users.some((u) => u.name === newUser.trim())) {
-      const newUserObj: User = {
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-        name: newUser.trim(),
-        createdAt: new Date().toISOString(),
-      };
-      onAddUser(newUserObj);
-      setNewUser('');
-    }
-  };
-
   const handleStartEdit = (category: string) => {
     setEditingCategory(category);
     setEditValue(category);
@@ -666,16 +649,6 @@ export const Settings: React.FC<SettingsProps> = ({
     setSelectedSourceIds([]);
     onRefreshData();
     setShowDeleteSuccess(true);
-  };
-
-  const handleDeleteUser = (user: User) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete the user "${user.name}"? This action cannot be undone.`
-      )
-    ) {
-      onDeleteUser(user.id);
-    }
   };
 
   if (!asPage && !isOpen) return null;
@@ -1051,36 +1024,8 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Users</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Manage your users. You can add, edit, and delete users.
+                  Rename users in your household. Member add/remove is coming with invitations.
                 </p>
-                {/* Add New User */}
-                <div className="mb-4">
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={newUser}
-                      onChange={(e) => setNewUser(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleAddUser();
-                        }
-                      }}
-                      placeholder="Enter new user name"
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                    />
-                    <button
-                      onClick={handleAddUser}
-                      disabled={!newUser.trim() || users.some((u) => u.name === newUser.trim())}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 text-sm"
-                    >
-                      <Plus size={14} />
-                      <span>Add</span>
-                    </button>
-                  </div>
-                  {newUser.trim() && users.some((u) => u.name === newUser.trim()) && (
-                    <p className="text-red-500 text-xs mt-1">User already exists</p>
-                  )}
-                </div>
                 {/* Users List */}
                 <div className="space-y-1">
                   {users.map((user) => (
@@ -1150,15 +1095,6 @@ export const Settings: React.FC<SettingsProps> = ({
                             >
                               <Edit size={12} />
                             </button>
-                            {user.name !== 'Default' && (
-                              <button
-                                onClick={() => handleDeleteUser(user)}
-                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                title="Delete user"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
                           </div>
                         </>
                       )}
@@ -1167,7 +1103,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 {users.length === 0 && (
                   <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                    <p className="text-sm">No users yet. Add your first user above.</p>
+                    <p className="text-sm">No users in this household yet.</p>
                   </div>
                 )}
               </div>
