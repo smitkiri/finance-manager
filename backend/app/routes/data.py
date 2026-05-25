@@ -3,7 +3,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.source import Source
 from app.models.transaction import Transaction
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api", tags=["data"])
 
 @router.delete("/delete-all")
 async def delete_all(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(
@@ -29,7 +29,7 @@ async def delete_all(
 @router.post("/delete-selected")
 async def delete_selected(
     body: DeleteSelectedRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.deleteTransactions:
@@ -51,7 +51,7 @@ async def delete_selected(
 @router.post("/undo-import")
 async def undo_import(
     body: UndoImportRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Count and delete transactions for this session within the household

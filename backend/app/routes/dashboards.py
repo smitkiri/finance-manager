@@ -7,7 +7,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.transaction import Transaction
 from app.schemas.dashboard import (
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api", tags=["dashboards"])
 
 @router.get("/dashboards")
 async def list_dashboards(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     panel_count_subq = (
@@ -56,7 +56,7 @@ async def list_dashboards(
 @router.post("/dashboards", status_code=201)
 async def create_dashboard(
     body: DashboardCreateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if body.isDefault:
@@ -87,7 +87,7 @@ async def create_dashboard(
 async def update_dashboard(
     dashboard_id: str,
     body: DashboardUpdateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     update_data = body.model_dump(exclude_unset=True)
@@ -137,7 +137,7 @@ async def update_dashboard(
 @router.delete("/dashboards/{dashboard_id}")
 async def delete_dashboard(
     dashboard_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(
@@ -163,7 +163,7 @@ async def _verify_dashboard_in_household(
 @router.get("/dashboards/{dashboard_id}/panels")
 async def list_panels(
     dashboard_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
@@ -180,7 +180,7 @@ async def list_panels(
 async def create_panel(
     dashboard_id: str,
     body: PanelCreateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
@@ -226,7 +226,7 @@ async def _panel_in_household(
 async def update_panel(
     panel_id: str,
     body: PanelUpdateRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     update_data = body.model_dump(exclude_unset=True)
@@ -267,7 +267,7 @@ async def update_panel(
 @router.delete("/dashboard-panels/{panel_id}")
 async def delete_panel(
     panel_id: str,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     panel = await _panel_in_household(db, panel_id, household_id)
@@ -282,7 +282,7 @@ async def delete_panel(
 async def reorder_panels(
     dashboard_id: str,
     body: PanelOrderRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
@@ -306,7 +306,7 @@ async def reorder_panels(
 @router.post("/dashboard-panels/preview")
 async def panel_preview(
     body: PanelPreviewRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     filters = [Transaction.household_id == household_id] + build_stats_filter(
@@ -356,7 +356,7 @@ async def panel_preview(
 @router.post("/dashboard-panels/chart-preview")
 async def chart_preview(
     body: ChartPreviewRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     stmt, _ = build_panel_data_query(
@@ -387,7 +387,7 @@ async def chart_preview(
 async def dashboard_data(
     dashboard_id: str,
     body: DashboardDataRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not await _verify_dashboard_in_household(db, dashboard_id, household_id):

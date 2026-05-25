@@ -85,7 +85,15 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
 
     # Users
     for u in fixture["users"]:
-        db.add(User(id=u["id"], name=u["name"], household_id=_hid(u)))
+        db.add(
+            User(
+                id=u["id"],
+                name=u["name"],
+                email=u["email"],
+                password_hash=u["password_hash"],
+                household_id=_hid(u),
+            )
+        )
 
     # Categories
     for c in fixture["categories"]:

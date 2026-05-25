@@ -14,6 +14,9 @@ dependencies = [
     "uvicorn[standard]>=0.42.0",
     "alembic>=1.15.0",
     "psycopg2-binary>=2.9.10",
+    "pyjwt>=2.9.0",
+    "argon2-cffi>=23.1.0",
+    "email-validator>=2.0.0",
 ]
 
 [dependency-groups]
@@ -46,3 +49,4 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "app/routes/*.py" = ["B008"]  # Depends() in defaults is standard FastAPI
+"app/dependencies/*.py" = ["B008"]  # Depends() in defaults is standard FastAPI

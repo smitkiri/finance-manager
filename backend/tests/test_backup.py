@@ -44,7 +44,8 @@ class TestBackup:
         assert "accounts" in data
         assert "account_balances" in data
 
-        assert len(data["users"]) == 1
+        # Conftest seeds a default user; this test adds one more.
+        assert len(data["users"]) == 2
         assert len(data["transactions"]) == 1
 
     async def test_backup_with_date_filter(

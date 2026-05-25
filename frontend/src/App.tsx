@@ -26,7 +26,7 @@ import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
 import { generateId } from './utils';
-import { ApiClient } from './utils/apiClient';
+import { ApiClient, AuthUser, AuthHousehold } from './utils/apiClient';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
@@ -73,31 +73,43 @@ function AppContent() {
   const [tellerEnabled, setTellerEnabled] = useState(false);
   const [showTellerImport, setShowTellerImport] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(false);
-  const [householdId, setHouseholdId] = useState<string | null>(null);
-  const [householdError, setHouseholdError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentHousehold, setCurrentHousehold] = useState<AuthHousehold | null>(null);
 
   useEffect(() => {
     document.title = demoEnabled ? '(Demo) Tally' : 'Tally';
   }, [demoEnabled]);
 
-  // Fetch the household (Phase A1: a single seeded one) before any other API
-  // call so subsequent requests carry a householdId query param.
+  // Resolve current user + household via the JWT, or fall back to the demo
+  // bypass when the backend is in demo mode (no token needed).
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let isDemo = false;
       try {
-        const households = await ApiClient.loadHouseholds();
-        if (cancelled) return;
-        if (households.length === 0) {
-          setHouseholdError('No household found. Contact support.');
-          return;
-        }
-        ApiClient.setHouseholdId(households[0].id);
-        setHouseholdId(households[0].id);
+        const demoConfig = await ApiClient.getDemoConfig();
+        isDemo = !!demoConfig?.enabled;
       } catch {
-        if (!cancelled) {
-          setHouseholdError('Failed to load household. Try refreshing.');
-        }
+        // Demo probe failure is non-fatal.
+      }
+
+      if (!isDemo && !ApiClient.getAuthToken()) {
+        if (!cancelled) setAuthChecked(true);
+        return;
+      }
+
+      try {
+        const me = await ApiClient.getMe();
+        if (cancelled) return;
+        setCurrentUser(me.user);
+        setCurrentHousehold(me.household);
+      } catch {
+        if (cancelled) return;
+        // Token expired/invalid or demo deploy not yet seeded — clear it.
+        ApiClient.setAuthToken(null);
+      } finally {
+        if (!cancelled) setAuthChecked(true);
       }
     })();
     return () => {
@@ -122,7 +134,7 @@ function AppContent() {
 
   // Initial load: categories, users, sources, date range only (no full expenses – defer until Dashboard/Reports)
   useEffect(() => {
-    if (!householdId) return;
+    if (!currentUser) return;
     const loadData = async () => {
       try {
         const [
@@ -161,7 +173,7 @@ function AppContent() {
       }
     };
     loadData();
-  }, [householdId]);
+  }, [currentUser]);
 
   // Load dashboard stats from API (aggregates only) when user visits Dashboard
   useEffect(() => {
@@ -1024,48 +1036,33 @@ function AppContent() {
     }
   };
 
-  const handleAddUser = async (user: User) => {
-    try {
-      const updatedUsers = await ApiClient.addUser(user);
-      setUsers(updatedUsers);
-    } catch (error) {
-      console.error('Error adding user:', error);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    try {
-      const updatedUsers = await ApiClient.deleteUser(userId);
-      setUsers(updatedUsers);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-    }
-  };
-
   const handleUpdateUser = async (updatedUser: User) => {
     try {
-      const updatedUsers = await ApiClient.updateUser(updatedUser);
-      setUsers(updatedUsers);
+      const renamed = await ApiClient.updateUser(updatedUser);
+      setUsers((prev) => prev.map((u) => (u.id === renamed.id ? { ...u, name: renamed.name } : u)));
     } catch (error) {
       console.error('Error updating user:', error);
     }
   };
 
-  // Block the app on the household discovery — every other API call relies on
-  // it being set on the ApiClient class.
-  if (householdError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white px-4">
-        <div className="max-w-md text-center">
-          <p className="mb-3 text-lg">{householdError}</p>
-        </div>
-      </div>
-    );
-  }
-  if (!householdId) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400">
         Loading…
+      </div>
+    );
+  }
+
+  if (!currentUser || !currentHousehold) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white px-4">
+        <div className="max-w-md text-center">
+          <p className="mb-3 text-lg">Sign in (UI coming in A3).</p>
+          <p className="text-sm text-gray-500">
+            For now, log in via curl and paste the token into{' '}
+            <code>localStorage.tally_auth_token</code>, then reload.
+          </p>
+        </div>
       </div>
     );
   }
@@ -1164,8 +1161,6 @@ function AppContent() {
                 expenses={expenses}
                 sources={sources}
                 users={users}
-                onAddUser={handleAddUser}
-                onDeleteUser={handleDeleteUser}
                 onUpdateUser={handleUpdateUser}
                 onRefreshData={async () => {
                   const [

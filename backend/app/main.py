@@ -1,11 +1,11 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.routes.auth import router as auth_router
 from app.routes.backup import router as backup_router
 from app.routes.categories import router as categories_router
 from app.routes.dashboards import router as dashboards_router
@@ -28,6 +28,10 @@ from app.routes.users import router as users_router
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _check_teller_credentials()
+    if not settings.finance_manager_demo_mode and not settings.jwt_signing_secret:
+        raise RuntimeError(
+            "JWT_SIGNING_SECRET is not set. Refusing to serve without auth."
+        )
     yield
 
 
@@ -41,19 +45,7 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def api_key_auth(request: Request, call_next):
-    if (
-        settings.api_secret
-        and request.url.path.startswith("/api")
-        and request.method != "OPTIONS"
-    ):
-        api_key = request.headers.get("x-api-key")
-        if api_key != settings.api_secret:
-            return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    return await call_next(request)
-
-
+app.include_router(auth_router)
 app.include_router(households_router)
 app.include_router(categories_router)
 app.include_router(net_worth_router)

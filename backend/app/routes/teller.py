@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.import_session import ImportSession
@@ -369,7 +369,7 @@ async def preview_accounts(
 @router.post("/enroll")
 async def enroll(
     body: EnrollRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -439,7 +439,7 @@ async def enroll(
 @router.post("/disconnect")
 async def disconnect(
     body: DisconnectRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -508,7 +508,7 @@ async def enrollment_preview_accounts(
 async def manage_accounts(
     enrollmentId: str,
     body: ManageAccountsRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -572,7 +572,7 @@ async def manage_accounts(
 
 @router.post("/refresh-balances")
 async def refresh_balances(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not settings.is_teller_enabled:
@@ -745,7 +745,7 @@ async def update_category_mappings(
 @router.post("/preview-import")
 async def preview_import(
     body: PreviewImportRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     if not settings.is_teller_enabled:
@@ -936,7 +936,7 @@ async def preview_import(
 @router.post("/import-transactions")
 async def import_transactions(
     body: ImportTransactionsRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     _clean_expired_previews()

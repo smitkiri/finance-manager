@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     db_user: str = "finance_manager"
     db_password: str = "finance_manager_password"
     db_name: str = "finance_manager"
-    api_secret: str | None = None
     port: int = 8000
 
     # Teller bank integration
@@ -18,9 +17,16 @@ class Settings(BaseSettings):
 
     # Demo mode (public hosted demo)
     finance_manager_demo_mode: bool = False
+    demo_user_id: str = "demo-user"
+    demo_household_id: str = "household-demo"
 
-    # Households (Phase A1: single seeded household)
+    # Households
     finance_manager_default_household_name: str = "Household"
+
+    # Auth (A2). Default empty here for tests/imports; a startup check in
+    # main.py refuses to serve if it's unset in production-ish runs.
+    jwt_signing_secret: str = ""
+    jwt_access_token_ttl_days: int = 30
 
     @property
     def is_teller_enabled(self) -> bool:

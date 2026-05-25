@@ -34,6 +34,8 @@ export interface User {
   id: string;
   name: string;
   createdAt: string;
+  email?: string;
+  householdId?: string;
 }
 
 export interface Category {

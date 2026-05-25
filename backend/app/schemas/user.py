@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class UserOut(BaseModel):
     id: str
     name: str
+    email: str
     householdId: str
     createdAt: datetime | None = None
 
@@ -16,16 +17,7 @@ class UserOut(BaseModel):
         return cls(
             id=user.id,
             name=user.name,
+            email=user.email,
             householdId=user.household_id,
             createdAt=user.created_at,
         )
-
-
-class UserIn(BaseModel):
-    id: str
-    name: str
-    createdAt: str | None = None
-
-
-class UsersSaveRequest(BaseModel):
-    users: list[UserIn]

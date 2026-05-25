@@ -210,16 +210,15 @@ PostgreSQL is **not** in this compose file — it is provisioned as a separate C
 2.  **Create a Docker Compose application** in Coolify pointing at this repo with `docker-compose.prod.yml` as the compose file.
 3.  **Set the following environment variables** in Coolify's app config:
 
-    | Variable                                     | Description                                                      |
-    | -------------------------------------------- | ---------------------------------------------------------------- |
-    | `DB_HOST`                                    | Coolify Postgres internal hostname                               |
-    | `DB_PORT`                                    | `5432` (default if unset)                                        |
-    | `DB_USER` / `DB_PASSWORD` / `DB_NAME`        | Postgres credentials                                             |
-    | `API_SECRET`                                 | Random secret for the backend's `x-api-key` middleware           |
-    | `REACT_APP_API_SECRET`                       | Must match `API_SECRET`. Baked into the JS bundle at build time. |
-    | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | `true` or `false`                                                |
-    | `FINANCE_MANAGER_TELLER_APP_ID`              | (only if Teller enabled)                                         |
-    | `TELLER_SECRETS_PATH`                        | Absolute host path to the folder holding the Teller PEM files    |
+    | Variable                                     | Description                                                                   |
+    | -------------------------------------------- | ----------------------------------------------------------------------------- |
+    | `DB_HOST`                                    | Coolify Postgres internal hostname                                            |
+    | `DB_PORT`                                    | `5432` (default if unset)                                                     |
+    | `DB_USER` / `DB_PASSWORD` / `DB_NAME`        | Postgres credentials                                                          |
+    | `JWT_SIGNING_SECRET`                         | HS256 signing secret for issued JWTs. Generate via `openssl rand -base64 48`. |
+    | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | `true` or `false`                                                             |
+    | `FINANCE_MANAGER_TELLER_APP_ID`              | (only if Teller enabled)                                                      |
+    | `TELLER_SECRETS_PATH`                        | Absolute host path to the folder holding the Teller PEM files                 |
 
 4.  **Place the Teller secrets on the Coolify host.** SSH into the server, create a folder (e.g., `/opt/finance-manager/teller/`), and copy `private_key.pem` and `certificate.pem` into it. Set `TELLER_SECRETS_PATH` to that absolute path — compose bind-mounts it read-only at `/secrets/teller/`. (Skip this step if Teller integration is disabled; the default `./teller_secrets` relative path will be used and the backend will simply not find the files.)
 5.  **Attach a domain** to the `nginx` service. Coolify auto-issues SSL via Traefik / Let's Encrypt.
@@ -239,15 +238,30 @@ docker compose up -d postgres   # start the dev postgres
 DB_HOST=host.docker.internal \
 DB_PORT=5432 \
 DB_USER=finance_manager DB_PASSWORD=finance_manager_password DB_NAME=finance_manager \
-API_SECRET=local_test_secret REACT_APP_API_SECRET=local_test_secret \
+JWT_SIGNING_SECRET=local-test-jwt-signing-secret-please-change \
 FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=false \
 NGINX_PORT=8083 \
 docker compose -f docker-compose.prod.yml up --build
 
 # In another shell:
-curl -H "x-api-key: local_test_secret" http://localhost:8083/api/health
+curl http://localhost:8083/api/health
 # → {"status":"ok"}
 ```
+
+### Setting initial passwords after the A2 migration
+
+After the A2 migration runs, each pre-existing user has a placeholder email
+and an empty password hash. Set real credentials for each user via the
+operator CLI:
+
+```bash
+uv run python -m app.cli.set_password \
+    --user <existing-user-id> \
+    --email <real@example.com> \
+    --password '<chosen-password>'
+```
+
+The CLI prints `DONE: password set for user <id> (email <email>)` on success.
 
 ## 🎈 Hosting a Public Demo
 

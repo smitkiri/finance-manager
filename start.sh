@@ -41,12 +41,26 @@ echo
 echo "STEP 4: Checking frontend environment..."
 if [ ! -f frontend/.env ]; then
   echo "REACT_APP_API_BASE_URL=http://localhost:3002/api" > frontend/.env
-  echo "⚠️  Created frontend/.env with default API base URL — add REACT_APP_API_SECRET if needed"
+  echo "⚠️  Created frontend/.env with default API base URL"
 else
   echo "✅ frontend/.env exists"
 fi
 
+# Verify backend JWT secret exists
+echo
+echo "STEP 5: Checking backend JWT secret..."
+if [ ! -f backend/.env ] || ! grep -q '^JWT_SIGNING_SECRET=' backend/.env; then
+  if [ ! -f backend/.env ]; then
+    touch backend/.env
+  fi
+  JWT_SECRET="$(openssl rand -base64 48)"
+  echo "JWT_SIGNING_SECRET=$JWT_SECRET" >> backend/.env
+  echo "⚠️  Generated JWT_SIGNING_SECRET and appended to backend/.env"
+else
+  echo "✅ JWT_SIGNING_SECRET already set in backend/.env"
+fi
+
 # Delegate to Makefile for docker, migrations, and dev servers
 echo
-echo "STEP 5: Starting the dev stack via make up..."
+echo "STEP 6: Starting the dev stack via make up..."
 make up

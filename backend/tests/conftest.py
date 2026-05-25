@@ -55,6 +55,16 @@ def _install_household_default() -> None:
         if getattr(target, "household_id", None) is None:
             target.household_id = DEFAULT
 
+    def _set_user_defaults(mapper, connection, target):  # noqa: ARG001
+        if getattr(target, "household_id", None) is None:
+            target.household_id = DEFAULT
+        # email + password_hash became NOT NULL in A2; default placeholders so
+        # tests that construct User() without them continue to work.
+        if getattr(target, "email", None) is None:
+            target.email = f"{target.id}@test.local"
+        if getattr(target, "password_hash", None) is None:
+            target.password_hash = ""
+
     for model in (
         Account,
         Category,
@@ -64,9 +74,9 @@ def _install_household_default() -> None:
         Report,
         Source,
         Transaction,
-        User,
     ):
         event.listen(model, "before_insert", _set_default)
+    event.listen(User, "before_insert", _set_user_defaults)
 
 
 _install_household_default()
@@ -237,47 +247,66 @@ def alembic_runner() -> _AlembicRunner:
 DEFAULT_TEST_HOUSEHOLD_ID = "household-default"
 
 
-class _HouseholdInjectingClient(AsyncClient):
-    """Test-only AsyncClient that auto-appends `?householdId=<default>` to
-    requests against `/api/...` endpoints when one isn't already present.
+class _AuthInjectingClient(AsyncClient):
+    """Test-only AsyncClient that auto-attaches a Bearer token for /api calls.
 
-    Phase A1 routes require `householdId` on every household-scoped endpoint;
-    every existing test was written before that requirement, so this keeps
-    them working without thousands of per-test edits. Tests that need to
-    exercise the missing-param 400 path or pass a different household must
-    bypass this — pass `householdId=<value>` in `params` explicitly (which is
-    already a query string, so the auto-injection is skipped).
+    All existing tests were written before A2 added auth; this keeps them
+    working without per-test Authorization plumbing. Tests that need to
+    exercise the missing-auth 401 path should use `raw_client` instead.
     """
+
+    def __init__(self, *args, token: str, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._token = token
 
     async def request(self, method, url, **kwargs):
         url_str = str(url)
-        # Only inject for /api requests, and only when no householdId is set.
         if url_str.startswith("/api"):
-            params = kwargs.get("params")
-            already_set = False
-            if isinstance(params, dict):
-                already_set = "householdId" in params
-            if "householdId=" in url_str:
-                already_set = True
-            if not already_set:
-                if isinstance(params, dict):
-                    params = {**params, "householdId": DEFAULT_TEST_HOUSEHOLD_ID}
-                    kwargs["params"] = params
-                else:
-                    sep = "&" if "?" in url_str else "?"
-                    url = f"{url_str}{sep}householdId={DEFAULT_TEST_HOUSEHOLD_ID}"
+            headers = kwargs.get("headers") or {}
+            if "authorization" not in {k.lower() for k in headers}:
+                headers = {**headers, "Authorization": f"Bearer {self._token}"}
+                kwargs["headers"] = headers
         return await super().request(method, url, **kwargs)
 
 
 @pytest.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    """Authenticated test client. Seeds a default household + user once per
+    test and injects a Bearer token on every /api request."""
+    from app.models import User
+    from app.utils.jwt_tokens import encode_access_token
+    from app.utils.passwords import hash_password
+
+    # Force a stable secret for the token-encoder.
+    settings.jwt_signing_secret = "test-secret"
+    settings.jwt_access_token_ttl_days = 30
+
+    # The DEFAULT_TEST_HOUSEHOLD_ID row was seeded by the A1 migration and
+    # is already committed; only the user needs to be inserted in this test
+    # transaction (and will roll back with it).
+    db_session.add(
+        User(
+            id="default-user",
+            name="Default",
+            email="default@test.local",
+            password_hash=hash_password("test-pass-12"),
+            household_id=DEFAULT_TEST_HOUSEHOLD_ID,
+        )
+    )
+    await db_session.flush()
+
+    token = encode_access_token(
+        user_id="default-user", household_id=DEFAULT_TEST_HOUSEHOLD_ID
+    )
+
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    async with _HouseholdInjectingClient(
+    async with _AuthInjectingClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
+        token=token,
     ) as ac:
         yield ac
     app.dependency_overrides.clear()

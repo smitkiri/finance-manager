@@ -3,7 +3,7 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.category import Category
 from app.schemas.category import CategoriesSaveRequest
 
@@ -25,7 +25,7 @@ DEFAULT_CATEGORIES = [
 
 @router.get("/categories")
 async def get_categories(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -42,7 +42,7 @@ async def get_categories(
 @router.post("/categories")
 async def save_categories(
     body: CategoriesSaveRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(delete(Category).where(Category.household_id == household_id))
@@ -62,7 +62,7 @@ async def save_categories(
 
 @router.get("/labels")
 async def get_labels(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(

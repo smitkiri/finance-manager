@@ -1,66 +1,50 @@
-from datetime import UTC, datetime
-
-from fastapi import APIRouter, Depends
-from sqlalchemy import delete, select
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.user import User
-from app.schemas.user import UserOut, UsersSaveRequest
+from app.schemas.user import UserOut
 
 router = APIRouter(prefix="/api", tags=["users"])
 
 
-def _parse_created_at(value: str | None) -> datetime:
-    """Parse an ISO datetime string to a naive UTC datetime for TIMESTAMP columns."""
-    if value:
-        dt = datetime.fromisoformat(value)
-        if dt.tzinfo is not None:
-            dt = dt.astimezone(UTC).replace(tzinfo=None)
-        return dt
-    return datetime.now(UTC).replace(tzinfo=None)
+class UserPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
 
 
 @router.get("/users")
 async def get_users(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(User).where(User.household_id == household_id).order_by(User.created_at)
     )
     users = result.scalars().all()
-    if not users:
-        return {
-            "users": [
-                {
-                    "id": "default-user",
-                    "name": "Default",
-                    "householdId": household_id,
-                    "createdAt": datetime.now(UTC).isoformat(),
-                }
-            ]
-        }
     return {"users": [UserOut.from_orm_model(u) for u in users]}
 
 
-@router.post("/users")
-async def save_users(
-    body: UsersSaveRequest,
-    household_id: str = Depends(require_household_id),
+@router.patch("/users/{user_id}", response_model=UserOut)
+async def patch_user(
+    user_id: str,
+    body: UserPatch,
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    # Bulk-replace within this household only — leaves other households untouched.
-    await db.execute(delete(User).where(User.household_id == household_id))
-    for u in body.users:
-        db.add(
-            User(
-                id=u.id,
-                name=u.name,
-                household_id=household_id,
-                created_at=_parse_created_at(u.createdAt),
-            )
+    """Rename a user. 404 if the user is not a member of the caller's household."""
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.household_id == household_id)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+
+    user.name = body.name
     await db.commit()
-    return {"success": True, "count": len(body.users)}
+    await db.refresh(user)
+    return UserOut.from_orm_model(user)

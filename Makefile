@@ -1,4 +1,4 @@
-.PHONY: up down
+.PHONY: up down db
 
 # Start the entire local stack: Docker services, migrations, and dev servers
 up:
@@ -21,3 +21,7 @@ down:
 	@echo "Stopping Docker services..."
 	docker-compose down --remove-orphans
 	@echo "Done."
+
+# Open a psql shell against the local dev database
+db:
+	docker exec -it finance_manager_db psql -U finance_manager -d finance_manager

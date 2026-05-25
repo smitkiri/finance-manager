@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
@@ -30,7 +30,7 @@ COLUMN_MAPPINGS_KEY = "column_mappings"
 
 @router.get("/export-csv")
 async def export_csv(
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -101,7 +101,7 @@ async def save_column_mapping(
 @router.post("/import-csv")
 async def import_csv(
     body: ImportCsvRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Parse CSV
@@ -185,7 +185,7 @@ async def import_csv(
 @router.post("/import-with-mapping")
 async def import_with_mapping(
     body: ImportWithMappingRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Load existing transactions for category auto-fill

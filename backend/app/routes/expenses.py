@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.household import require_household_id
+from app.dependencies.auth import get_current_household_id
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.schemas.transaction import (
@@ -42,7 +42,7 @@ async def get_expenses(
     minAmount: str | None = Query(None),
     maxAmount: str | None = Query(None),
     search: str | None = Query(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     filter_params = {
@@ -85,7 +85,7 @@ async def get_stats(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     userId: str | None = Query(None),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     filters = [Transaction.household_id == household_id] + build_stats_filter(
@@ -297,7 +297,7 @@ async def get_stats(
 async def update_expense(
     expense_id: str,
     body: TransactionUpdate = Body(...),
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -350,7 +350,7 @@ async def update_expense(
 @router.post("/expenses")
 async def bulk_save_expenses(
     body: ExpenseBulkSaveRequest,
-    household_id: str = Depends(require_household_id),
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Delete existing transactions for this household only.
