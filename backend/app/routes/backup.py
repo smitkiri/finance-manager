@@ -148,9 +148,20 @@ async def restore(
     # the caller's household — even if the file came from a different household,
     # restoring it adopts the rows into the current household.
     for user in data.get("users", []):
+        # Pre-A2 backups have no email/password_hash; emit placeholders that
+        # the operator can later reset via the set_password CLI.
+        user_id = user["id"]
+        email = user.get("email") or f"{user_id}@placeholder.local"
+        password_hash = user.get("password_hash") or ""
         stmt = (
             insert(User)
-            .values(id=user["id"], name=user.get("name", ""), household_id=household_id)
+            .values(
+                id=user_id,
+                name=user.get("name", ""),
+                email=email,
+                password_hash=password_hash,
+                household_id=household_id,
+            )
             .on_conflict_do_nothing(index_elements=["id"])
         )
         await db.execute(stmt)
