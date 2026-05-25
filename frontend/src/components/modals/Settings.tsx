@@ -1083,6 +1083,11 @@ export const Settings: React.FC<SettingsProps> = ({
                             <span className="font-medium text-gray-900 dark:text-white text-sm">
                               {user.name}
                             </span>
+                            {user.email && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {user.email}
+                              </div>
+                            )}
                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Created: {new Date(user.createdAt).toLocaleDateString()}
                             </div>
