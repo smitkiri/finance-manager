@@ -1,6 +1,7 @@
 """End-to-end test for the add-user-credentials migration."""
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,22 +9,23 @@ from app.models import Household, User
 
 
 @pytest.mark.asyncio
-async def test_existing_users_backfilled_with_placeholder_email_and_empty_hash(
+async def test_schema_enforces_not_null_on_email_and_password_hash(
     db_session: AsyncSession,
 ):
-    """A pre-existing user (no email/hash in raw insert) gains the placeholder
-    values after upgrade is in head state.
-
-    The db_session fixture already ran `upgrade head`. We assert that an
-    insert with explicit nullable columns is impossible AND that the
-    existing schema enforces NOT NULL + unique.
+    """Raw insert that bypasses the ORM (and thus the conftest before_insert
+    listener that supplies placeholders) must fail because email and
+    password_hash are NOT NULL.
     """
-    # NOT NULL enforced on email.
     db_session.add(Household(id="hh-mig", name="MigTest"))
     await db_session.flush()
 
     with pytest.raises((IntegrityError, DBAPIError)):
-        db_session.add(User(id="u-no-email", name="X", household_id="hh-mig"))
+        await db_session.execute(
+            text(
+                "INSERT INTO users (id, name, household_id) "
+                "VALUES ('u-no-email', 'X', 'hh-mig')"
+            )
+        )
         await db_session.flush()
     await db_session.rollback()
 
