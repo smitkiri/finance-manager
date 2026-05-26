@@ -85,12 +85,24 @@ export class ApiClient {
     return ApiClient.API_BASE;
   }
 
-  static apiFetch(url: string, options?: RequestInit): Promise<Response> {
+  static async apiFetch(url: string, options?: RequestInit): Promise<Response> {
     const headers: Record<string, string> = {
       ...(ApiClient.authToken ? { Authorization: `Bearer ${ApiClient.authToken}` } : {}),
       ...((options?.headers as Record<string, string>) || {}),
     };
-    return fetch(url, options ? { ...options, headers } : { headers });
+    const response = await fetch(url, options ? { ...options, headers } : { headers });
+
+    // Centralized 401 handling: any non-auth endpoint returning 401 means
+    // our token is no longer valid. Clear it and redirect to /login,
+    // preserving the current path so the user lands back where they were.
+    if (response.status === 401 && !url.includes('/api/auth/')) {
+      ApiClient.setAuthToken(null);
+      // Lazy import to avoid a circular type dependency at module load.
+      const { navigateToLogin } = await import('./authNavigation');
+      navigateToLogin(window.location.pathname + window.location.search);
+    }
+
+    return response;
   }
 
   static async signup(input: {

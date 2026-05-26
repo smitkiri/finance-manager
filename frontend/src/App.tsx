@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthGuard } from './components/auth/AuthGuard';
+import { LoginPage } from './components/auth/LoginPage';
+import { SignupPage } from './components/auth/SignupPage';
 import { Plus, Upload, Sun, Moon, Building2 } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -26,12 +30,13 @@ import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
 import { generateId } from './utils';
-import { ApiClient, AuthUser, AuthHousehold } from './utils/apiClient';
+import { ApiClient } from './utils/apiClient';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
 import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
+import { UserMenu } from './components/UserMenu';
 import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
 import { DemoBanner } from './components/DemoBanner';
 import { Logo } from './components/Logo';
@@ -39,6 +44,7 @@ import { ITEMS_PER_PAGE } from './constants';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
+  const { currentUser } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -73,49 +79,10 @@ function AppContent() {
   const [tellerEnabled, setTellerEnabled] = useState(false);
   const [showTellerImport, setShowTellerImport] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [currentHousehold, setCurrentHousehold] = useState<AuthHousehold | null>(null);
 
   useEffect(() => {
     document.title = demoEnabled ? '(Demo) Tally' : 'Tally';
   }, [demoEnabled]);
-
-  // Resolve current user + household via the JWT, or fall back to the demo
-  // bypass when the backend is in demo mode (no token needed).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let isDemo = false;
-      try {
-        const demoConfig = await ApiClient.getDemoConfig();
-        isDemo = !!demoConfig?.enabled;
-      } catch {
-        // Demo probe failure is non-fatal.
-      }
-
-      if (!isDemo && !ApiClient.getAuthToken()) {
-        if (!cancelled) setAuthChecked(true);
-        return;
-      }
-
-      try {
-        const me = await ApiClient.getMe();
-        if (cancelled) return;
-        setCurrentUser(me.user);
-        setCurrentHousehold(me.household);
-      } catch {
-        if (cancelled) return;
-        // Token expired/invalid or demo deploy not yet seeded — clear it.
-        ApiClient.setAuthToken(null);
-      } finally {
-        if (!cancelled) setAuthChecked(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Save date range whenever it changes (but not during initial load)
   useEffect(() => {
@@ -1045,28 +1012,6 @@ function AppContent() {
     }
   };
 
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400">
-        Loading…
-      </div>
-    );
-  }
-
-  if (!currentUser || !currentHousehold) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white px-4">
-        <div className="max-w-md text-center">
-          <p className="mb-3 text-lg">Sign in (UI coming in A3).</p>
-          <p className="text-sm text-gray-500">
-            For now, log in via curl and paste the token into{' '}
-            <code>localStorage.tally_auth_token</code>, then reload.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
@@ -1119,11 +1064,12 @@ function AppContent() {
                 </label>
                 <button
                   onClick={() => setIsFormOpen(true)}
-                  className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   title="Add Transaction"
                 >
                   <Plus size={24} />
                 </button>
+                <UserMenu demoEnabled={demoEnabled} />
               </div>
             </div>
           </div>
@@ -1334,10 +1280,23 @@ function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          <AppContent />
-          <ToastContainer />
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route
+                path="/*"
+                element={
+                  <AuthGuard>
+                    <AppContent />
+                  </AuthGuard>
+                }
+              />
+            </Routes>
+            <ToastContainer />
+          </div>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   );
