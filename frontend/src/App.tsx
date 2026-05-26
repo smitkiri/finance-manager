@@ -1038,7 +1038,6 @@ function AppContent() {
                   selectedUserId={selectedUserId}
                   onUserChange={setSelectedUserId}
                 />
-                <UserMenu demoEnabled={demoEnabled} />
                 <DateRangePicker currentRange={dateRange} onDateRangeChange={setDateRange} />
                 <button
                   onClick={toggleTheme}
@@ -1065,11 +1064,12 @@ function AppContent() {
                 </label>
                 <button
                   onClick={() => setIsFormOpen(true)}
-                  className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   title="Add Transaction"
                 >
                   <Plus size={24} />
                 </button>
+                <UserMenu demoEnabled={demoEnabled} />
               </div>
             </div>
           </div>
