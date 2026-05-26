@@ -36,6 +36,7 @@ import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
 import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
+import { UserMenu } from './components/UserMenu';
 import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
 import { DemoBanner } from './components/DemoBanner';
 import { Logo } from './components/Logo';
@@ -1037,6 +1038,7 @@ function AppContent() {
                   selectedUserId={selectedUserId}
                   onUserChange={setSelectedUserId}
                 />
+                <UserMenu demoEnabled={demoEnabled} />
                 <DateRangePicker currentRange={dateRange} onDateRangeChange={setDateRange} />
                 <button
                   onClick={toggleTheme}
