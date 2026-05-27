@@ -17,6 +17,7 @@ from app.schemas.invitation import (
     InvitationCreated,
     InvitationCreateRequest,
     InvitationInviter,
+    InvitationListItem,
 )
 from app.utils.invitation_tokens import generate_invitation_token
 
@@ -93,3 +94,41 @@ async def create_invitation(
         invited_by=InvitationInviter(id=current_user.id, name=current_user.name),
         token=invite.token,
     )
+
+
+@router.get("", response_model=list[InvitationListItem])
+async def list_invitations(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[InvitationListItem]:
+    """Return pending invitations for the caller's household."""
+    now = datetime.now(UTC).replace(tzinfo=None)
+    rows = (
+        await db.execute(
+            select(Invitation, User)
+            .outerjoin(User, User.id == Invitation.invited_by_user_id)
+            .where(
+                Invitation.household_id == household_id,
+                Invitation.consumed_at.is_(None),
+                Invitation.revoked_at.is_(None),
+                Invitation.expires_at > now,
+            )
+            .order_by(Invitation.created_at.desc())
+        )
+    ).all()
+
+    return [
+        InvitationListItem(
+            id=inv.id,
+            email=inv.email,
+            status="pending",
+            created_at=inv.created_at,
+            expires_at=inv.expires_at,
+            invited_by=(
+                InvitationInviter(id=inviter.id, name=inviter.name)
+                if inviter is not None
+                else None
+            ),
+        )
+        for inv, inviter in rows
+    ]

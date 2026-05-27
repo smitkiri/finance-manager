@@ -139,3 +139,103 @@ async def test_create_invitation_503_in_demo_mode(
 
     r = await raw_client.post("/api/invitations", json={"email": "x@example.com"})
     assert r.status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# GET /api/invitations
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_pending_invitations(raw_client: AsyncClient, signed_in_user):
+    _user, _household, token = signed_in_user
+    await raw_client.post(
+        "/api/invitations",
+        headers=auth_headers(token),
+        json={"email": "a@example.com"},
+    )
+    await raw_client.post(
+        "/api/invitations",
+        headers=auth_headers(token),
+        json={"email": "b@example.com"},
+    )
+    r = await raw_client.get("/api/invitations", headers=auth_headers(token))
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 2
+    emails = {row["email"] for row in rows}
+    assert emails == {"a@example.com", "b@example.com"}
+    # No raw token in list response
+    assert "token" not in rows[0]
+    # invitedBy is the caller
+    assert rows[0]["invitedBy"]["name"]
+
+
+@pytest.mark.asyncio
+async def test_list_excludes_revoked_consumed_expired(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    signed_in_user,
+):
+    user, household, token = signed_in_user
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db_session.add_all(
+        [
+            Invitation(
+                id="i_pending",
+                household_id=household.id,
+                email="p@x.com",
+                token="tp-list-pending",
+                invited_by_user_id=user.id,
+                expires_at=now + timedelta(days=7),
+            ),
+            Invitation(
+                id="i_revoked",
+                household_id=household.id,
+                email="r@x.com",
+                token="tr-list-rev",
+                invited_by_user_id=user.id,
+                expires_at=now + timedelta(days=7),
+                revoked_at=now,
+            ),
+            Invitation(
+                id="i_expired",
+                household_id=household.id,
+                email="e@x.com",
+                token="te-list-exp",
+                invited_by_user_id=user.id,
+                expires_at=now - timedelta(days=1),
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    r = await raw_client.get("/api/invitations", headers=auth_headers(token))
+    assert r.status_code == 200
+    ids = {row["id"] for row in r.json()}
+    assert ids == {"i_pending"}
+
+
+@pytest.mark.asyncio
+async def test_list_cross_household_isolation(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    two_households_two_users,
+):
+    _user_a, _user_b, _h1, h2, token_a = two_households_two_users
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db_session.add(
+        Invitation(
+            id="i_h2",
+            household_id=h2.id,
+            email="x@x.com",
+            token="tx-isolation",
+            invited_by_user_id=None,
+            expires_at=now + timedelta(days=7),
+        )
+    )
+    await db_session.flush()
+
+    r = await raw_client.get("/api/invitations", headers=auth_headers(token_a))
+    assert r.status_code == 200
+    assert all(row["id"] != "i_h2" for row in r.json())
