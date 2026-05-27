@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from './AuthLayout';
 import { ApiClient } from '../../utils/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
+import type { InvitationLookup } from '../../types';
 
 function safeNext(raw: string | null): string {
   if (!raw) return '/';
@@ -14,13 +15,17 @@ export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
+  const inviteToken = params.get('invite');
+  const prefillEmail = params.get('email');
   const { setAuth } = useAuth();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<React.ReactNode | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState<boolean | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<InvitationLookup | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +41,26 @@ export const SignupPage: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!inviteToken) return undefined;
+    let cancelled = false;
+    ApiClient.lookupInvitation(inviteToken)
+      .then((data) => {
+        if (!cancelled) setInviteInfo(data);
+      })
+      .catch((err: { status?: number; body?: { status?: string } }) => {
+        if (cancelled) return;
+        if (err.status === 410) {
+          setInviteError('This invite is no longer valid.');
+        } else {
+          setInviteError('This invite link is invalid.');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
+
   if (demoEnabled) return <Navigate to="/" replace />;
 
   const passwordOk = password.length >= 8;
@@ -49,12 +74,28 @@ export const SignupPage: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      const { token, user, household } = await ApiClient.signup({ name, email, password });
+      const { token, user, household } = await ApiClient.signup({
+        name,
+        email,
+        password,
+        inviteToken: inviteToken ?? undefined,
+      });
       ApiClient.setAuthToken(token);
       setAuth(user, household);
       navigate(next, { replace: true });
     } catch (err) {
       const msg = (err as Error).message || '';
+      const status = (err as Error & { status?: number }).status;
+      if (status === 410 || msg.includes('invite is no longer valid')) {
+        setError('This invite is no longer valid. Ask the sender for a new one.');
+        setSubmitting(false);
+        return;
+      }
+      if (status === 403 || msg.includes('different email')) {
+        setError('This invite is for a different email address.');
+        setSubmitting(false);
+        return;
+      }
       if (msg.includes('Email already registered')) {
         setError(
           <>
@@ -78,8 +119,27 @@ export const SignupPage: React.FC = () => {
 
   const clearError = () => setError(null);
 
+  const title = inviteInfo ? `Join ${inviteInfo.householdName}` : 'Create your Tally account';
+
   return (
-    <AuthLayout title="Create your Tally account">
+    <AuthLayout title={title}>
+      {inviteInfo && !inviteError ? (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg text-sm text-blue-900 dark:text-blue-200">
+          You&apos;re joining <strong>{inviteInfo.householdName}</strong>
+          {inviteInfo.inviterName ? (
+            <>
+              {' '}
+              invited by <strong>{inviteInfo.inviterName}</strong>
+            </>
+          ) : null}
+          .
+        </div>
+      ) : null}
+      {inviteError ? (
+        <div role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">
+          {inviteError}
+        </div>
+      ) : null}
       <form onSubmit={onSubmit} noValidate>
         <div className="mb-4">
           <label
@@ -118,7 +178,8 @@ export const SignupPage: React.FC = () => {
               clearError();
             }}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+            disabled={!!prefillEmail}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
           />
         </div>
         <div className="mb-4">

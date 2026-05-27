@@ -16,6 +16,7 @@ jest.mock('../../utils/apiClient', () => {
       getDemoConfig: jest.fn().mockResolvedValue({ enabled: false }),
       setAuthToken: jest.fn(),
       getAuthToken: jest.fn().mockReturnValue(null),
+      lookupInvitation: jest.fn(),
     },
   };
 });
@@ -96,5 +97,53 @@ describe('SignupPage', () => {
     (ApiClient.getDemoConfig as jest.Mock).mockResolvedValueOnce({ enabled: true });
     renderAt('/signup');
     expect(await screen.findByText('HOME')).toBeInTheDocument();
+  });
+});
+
+describe('SignupPage invite mode', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('pre-fills and disables email when ?invite=&email= present', async () => {
+    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+      householdName: 'Smith Family',
+      inviterName: 'Alice',
+      email: 'bob@x.com',
+      status: 'pending',
+      expiresAt: '2026-12-01',
+    });
+    renderAt('/signup?invite=t1&email=bob%40x.com');
+    const emailInput = await screen.findByLabelText(/email/i);
+    expect(emailInput).toHaveValue('bob@x.com');
+    expect(emailInput).toBeDisabled();
+    expect(await screen.findByRole('heading', { name: /Join Smith Family/ })).toBeInTheDocument();
+  });
+
+  it('sends inviteToken in submit body when present', async () => {
+    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+      householdName: 'H',
+      inviterName: 'A',
+      email: 'b@x.com',
+      status: 'pending',
+      expiresAt: '2026-12-01',
+    });
+    (ApiClient.signup as jest.Mock).mockResolvedValue({
+      user: { id: 'u', email: 'b@x.com', name: 'B', householdId: 'h' },
+      household: { id: 'h', name: 'H' },
+      token: 't',
+    });
+    renderAt('/signup?invite=t1&email=b%40x.com');
+    await userEvent.type(await screen.findByLabelText(/name/i), 'B');
+    await userEvent.type(screen.getByLabelText(/password/i), 'supersecret');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() =>
+      expect(ApiClient.signup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inviteToken: 't1',
+          email: 'b@x.com',
+          name: 'B',
+        })
+      )
+    );
   });
 });
