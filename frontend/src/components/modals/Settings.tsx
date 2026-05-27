@@ -23,6 +23,7 @@ import {
 } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { BackupManager } from './BackupManager';
+import { HouseholdSection } from '../settings/HouseholdSection';
 
 interface SettingsProps {
   asPage?: boolean;
@@ -68,7 +69,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [activeSection, setActiveSection] = useState<
-    'categories' | 'general' | 'sources' | 'users' | 'accounts' | 'imports'
+    'categories' | 'general' | 'sources' | 'users' | 'household' | 'accounts' | 'imports'
   >('general');
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [showSelectDelete, setShowSelectDelete] = useState(false);
@@ -688,6 +689,12 @@ export const Settings: React.FC<SettingsProps> = ({
           Users
         </button>
         <button
+          className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'household' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+          onClick={() => setActiveSection('household')}
+        >
+          Household
+        </button>
+        <button
           className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'accounts' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
           onClick={() => setActiveSection('accounts')}
         >
@@ -1113,6 +1120,17 @@ export const Settings: React.FC<SettingsProps> = ({
                 )}
               </div>
             </>
+          )}
+          {activeSection === 'household' && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                Household
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Rename your household, manage members, and send invites.
+              </p>
+              <HouseholdSection demoMode={false} />
+            </div>
           )}
           {activeSection === 'accounts' && (
             <div className="mb-6">
