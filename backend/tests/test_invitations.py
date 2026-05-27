@@ -239,3 +239,89 @@ async def test_list_cross_household_isolation(
     r = await raw_client.get("/api/invitations", headers=auth_headers(token_a))
     assert r.status_code == 200
     assert all(row["id"] != "i_h2" for row in r.json())
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/invitations/{id}
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_revoke_pending_invitation(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    signed_in_user,
+):
+    _user, _household, token = signed_in_user
+    r = await raw_client.post(
+        "/api/invitations",
+        headers=auth_headers(token),
+        json={"email": "v@example.com"},
+    )
+    invite_id = r.json()["id"]
+
+    r2 = await raw_client.delete(
+        f"/api/invitations/{invite_id}",
+        headers=auth_headers(token),
+    )
+    assert r2.status_code == 204
+
+    row = (
+        await db_session.execute(select(Invitation).where(Invitation.id == invite_id))
+    ).scalar_one()
+    assert row.revoked_at is not None
+
+
+@pytest.mark.asyncio
+async def test_revoke_already_consumed_returns_409(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    signed_in_user,
+):
+    user, household, token = signed_in_user
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db_session.add(
+        Invitation(
+            id="i_consumed",
+            household_id=household.id,
+            email="c@x.com",
+            token="tcc-revoke",
+            invited_by_user_id=user.id,
+            expires_at=now + timedelta(days=7),
+            consumed_at=now,
+        )
+    )
+    await db_session.flush()
+
+    r = await raw_client.delete(
+        "/api/invitations/i_consumed",
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_revoke_other_households_invite_returns_404(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    two_households_two_users,
+):
+    _user_a, _user_b, _h1, h2, token_a = two_households_two_users
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db_session.add(
+        Invitation(
+            id="i_h2x",
+            household_id=h2.id,
+            email="z@x.com",
+            token="tz-revoke-cross",
+            invited_by_user_id=None,
+            expires_at=now + timedelta(days=7),
+        )
+    )
+    await db_session.flush()
+
+    r = await raw_client.delete(
+        "/api/invitations/i_h2x",
+        headers=auth_headers(token_a),
+    )
+    assert r.status_code == 404
