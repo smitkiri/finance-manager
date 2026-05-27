@@ -7,14 +7,31 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies.auth import get_current_household_id, get_current_user
-from app.models import Household, Invitation, User
+from app.models import (
+    Account,
+    AccountBalance,
+    Category,
+    Dashboard,
+    DashboardPanel,
+    DateRange,
+    Household,
+    ImportSession,
+    Invitation,
+    Report,
+    Source,
+    Transaction,
+    User,
+)
+from app.schemas.auth import MeResponse
+from app.schemas.household import HouseholdOut
 from app.schemas.invitation import (
+    InvitationAcceptRequest,
     InvitationCreated,
     InvitationCreateRequest,
     InvitationInviter,
@@ -22,6 +39,7 @@ from app.schemas.invitation import (
     InvitationLookupResponse,
     InvitationStatus,
 )
+from app.schemas.user import UserOut
 from app.utils.invitation_tokens import generate_invitation_token
 
 router = APIRouter(prefix="/api/invitations", tags=["invitations"])
@@ -209,3 +227,120 @@ async def lookup_invitation(
     if inv_status != "pending":
         return JSONResponse(status_code=410, content=body)
     return body
+
+
+@router.post("/accept", response_model=MeResponse)
+async def accept_invitation(
+    payload: InvitationAcceptRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MeResponse:
+    _refuse_in_demo_mode()
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+
+    invite = (
+        await db.execute(
+            select(Invitation)
+            .where(Invitation.token == payload.token)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if invite is None or _derive_status(invite, now) != "pending":
+        raise HTTPException(status_code=410, detail="This invite is no longer valid")
+
+    if invite.email.lower() != current_user.email.lower():
+        raise HTTPException(
+            status_code=403,
+            detail="This invite is for a different email address",
+        )
+
+    if current_user.household_id == invite.household_id:
+        raise HTTPException(status_code=409, detail="You're already in this household")
+
+    old_household_id = current_user.household_id
+    new_household_id = invite.household_id
+
+    # 1. Move the user
+    await db.execute(
+        update(User)
+        .where(User.id == current_user.id)
+        .values(household_id=new_household_id)
+    )
+
+    # 2. Consume the invitation
+    invite.consumed_at = now
+
+    # 3. Revoke any outgoing invites the user issued in the old household.
+    # In the sole-member case the old household and its invitations are
+    # deleted below; this step is the explicit "still relevant" handling
+    # for multi-member households.
+    await db.execute(
+        update(Invitation)
+        .where(
+            Invitation.invited_by_user_id == current_user.id,
+            Invitation.household_id == old_household_id,
+            Invitation.consumed_at.is_(None),
+            Invitation.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+
+    # 4. If the user was the sole member of the old household, wipe it
+    remaining = (
+        await db.execute(
+            select(func.count())
+            .select_from(User)
+            .where(User.household_id == old_household_id)
+        )
+    ).scalar_one()
+
+    if remaining == 0:
+        # account_balances and dashboard_panels are scoped to their parent,
+        # not to household_id directly — delete via subquery on the parent.
+        await db.execute(
+            delete(AccountBalance).where(
+                AccountBalance.account_id.in_(
+                    select(Account.id).where(Account.household_id == old_household_id)
+                )
+            )
+        )
+        await db.execute(
+            delete(DashboardPanel).where(
+                DashboardPanel.dashboard_id.in_(
+                    select(Dashboard.id).where(
+                        Dashboard.household_id == old_household_id
+                    )
+                )
+            )
+        )
+        for model in (
+            Transaction,
+            ImportSession,
+            Account,
+            Category,
+            Source,
+            Dashboard,
+            Report,
+            DateRange,
+        ):
+            await db.execute(
+                delete(model).where(model.household_id == old_household_id)
+            )
+        await db.execute(
+            delete(Invitation).where(Invitation.household_id == old_household_id)
+        )
+        await db.execute(delete(Household).where(Household.id == old_household_id))
+
+    await db.commit()
+
+    await db.refresh(current_user)
+    new_household = (
+        await db.execute(select(Household).where(Household.id == new_household_id))
+    ).scalar_one()
+
+    return MeResponse(
+        user=UserOut.from_orm_model(current_user),
+        household=HouseholdOut.from_orm_model(new_household),
+    )
