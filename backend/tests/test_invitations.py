@@ -325,3 +325,87 @@ async def test_revoke_other_households_invite_returns_404(
         headers=auth_headers(token_a),
     )
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/invitations/lookup
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_lookup_unknown_token_returns_404(raw_client: AsyncClient):
+    r = await raw_client.get("/api/invitations/lookup?token=nope")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_lookup_pending_returns_details_no_auth(
+    raw_client: AsyncClient,
+    signed_in_user,
+):
+    user, household, token = signed_in_user
+    r = await raw_client.post(
+        "/api/invitations",
+        headers=auth_headers(token),
+        json={"email": "look@example.com"},
+    )
+    invite_token = r.json()["token"]
+    # NOTE: no Authorization header
+    r2 = await raw_client.get(f"/api/invitations/lookup?token={invite_token}")
+    assert r2.status_code == 200
+    data = r2.json()
+    assert data["householdName"] == household.name
+    assert data["inviterName"] == user.name
+    assert data["email"] == "look@example.com"
+    assert data["status"] == "pending"
+
+
+@pytest.mark.asyncio
+async def test_lookup_revoked_returns_410(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    signed_in_user,
+):
+    user, household, _token = signed_in_user
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db_session.add(
+        Invitation(
+            id="i_rev_lookup",
+            household_id=household.id,
+            email="r@x.com",
+            token="revoked-token-lookup",
+            invited_by_user_id=user.id,
+            expires_at=now + timedelta(days=7),
+            revoked_at=now,
+        )
+    )
+    await db_session.flush()
+
+    r = await raw_client.get("/api/invitations/lookup?token=revoked-token-lookup")
+    assert r.status_code == 410
+    assert r.json()["status"] == "revoked"
+
+
+@pytest.mark.asyncio
+async def test_lookup_expired_returns_410(
+    raw_client: AsyncClient,
+    db_session: AsyncSession,
+    signed_in_user,
+):
+    user, household, _token = signed_in_user
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db_session.add(
+        Invitation(
+            id="i_exp_lookup",
+            household_id=household.id,
+            email="e@x.com",
+            token="expired-token-lookup",
+            invited_by_user_id=user.id,
+            expires_at=now - timedelta(hours=1),
+        )
+    )
+    await db_session.flush()
+
+    r = await raw_client.get("/api/invitations/lookup?token=expired-token-lookup")
+    assert r.status_code == 410
+    assert r.json()["status"] == "expired"

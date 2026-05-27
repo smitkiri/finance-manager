@@ -5,19 +5,22 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies.auth import get_current_household_id, get_current_user
-from app.models import Invitation, User
+from app.models import Household, Invitation, User
 from app.schemas.invitation import (
     InvitationCreated,
     InvitationCreateRequest,
     InvitationInviter,
     InvitationListItem,
+    InvitationLookupResponse,
+    InvitationStatus,
 )
 from app.utils.invitation_tokens import generate_invitation_token
 
@@ -161,3 +164,48 @@ async def revoke_invitation(
     invite.revoked_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
     return Response(status_code=204)
+
+
+def _derive_status(invite: Invitation, now: datetime) -> InvitationStatus:
+    if invite.revoked_at is not None:
+        return "revoked"
+    if invite.consumed_at is not None:
+        return "consumed"
+    if invite.expires_at <= now:
+        return "expired"
+    return "pending"
+
+
+@router.get("/lookup")
+async def lookup_invitation(
+    token: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db),
+):
+    """Public — used by the accept-invite landing page before sign-in."""
+    row = (
+        await db.execute(
+            select(Invitation, Household, User)
+            .join(Household, Household.id == Invitation.household_id)
+            .outerjoin(User, User.id == Invitation.invited_by_user_id)
+            .where(Invitation.token == token)
+        )
+    ).one_or_none()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    invite, household, inviter = row
+    now = datetime.now(UTC).replace(tzinfo=None)
+    inv_status = _derive_status(invite, now)
+
+    body = InvitationLookupResponse(
+        household_name=household.name,
+        inviter_name=inviter.name if inviter is not None else None,
+        email=invite.email,
+        status=inv_status,
+        expires_at=invite.expires_at,
+    ).model_dump(by_alias=True, mode="json")
+
+    if inv_status != "pending":
+        return JSONResponse(status_code=410, content=body)
+    return body
