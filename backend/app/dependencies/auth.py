@@ -1,9 +1,15 @@
 """Auth dependency: resolves the current user and household from a JWT.
 
-Demo mode short-circuits both helpers: when settings.finance_manager_demo_mode
-is true, no token is required and the seeded demo user is returned. Per-
-request DB fetch (not in-process cache) because the daily reset wipes and
-reseeds the demo row.
+Demo mode short-circuits: when settings.finance_manager_demo_mode is true,
+no token is required and the seeded demo user is returned. Per-request DB
+fetch (not in-process cache) because the daily reset wipes and reseeds
+the demo row.
+
+`get_current_household_id` resolves the household from the loaded User
+row, not from a JWT claim. This guarantees that a token minted before a
+household change does not grant access to the old household. The DB hit
+is amortized: FastAPI's dependency cache means endpoints that also
+depend on `get_current_user` only load the user once.
 """
 
 from fastapi import Depends, Header, HTTPException, status
@@ -72,28 +78,12 @@ async def get_current_user(
 
 
 async def get_current_household_id(
-    authorization: str | None = Header(default=None),
+    user: User = Depends(get_current_user),
 ) -> str:
-    """Return the household ID from the JWT (no DB hit), or 401.
+    """Return the current user's household_id.
 
-    In demo mode returns settings.demo_household_id without inspecting the
-    header.
+    Resolves from the loaded User row, not the JWT claim. FastAPI's
+    dependency cache means endpoints that also depend on `get_current_user`
+    only load the user once per request.
     """
-    if settings.finance_manager_demo_mode:
-        return settings.demo_household_id
-
-    token = _parse_bearer(authorization)
-    try:
-        claims = decode_access_token(token)
-    except InvalidTokenError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        ) from exc
-    household_id = claims.get("household_id")
-    if not household_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
-    return household_id
+    return user.household_id

@@ -13,9 +13,12 @@ from app.utils.jwt_tokens import encode_access_token
 
 
 def _token_for(user_id: str, household_id: str) -> str:
+    # household_id retained on signature so this file's callers don't churn —
+    # it is no longer encoded in the token (resolved from user row instead).
+    del household_id
     settings.jwt_signing_secret = "test-secret"
     settings.jwt_access_token_ttl_days = 30
-    return encode_access_token(user_id=user_id, household_id=household_id)
+    return encode_access_token(user_id=user_id)
 
 
 @pytest.mark.asyncio

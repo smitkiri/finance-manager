@@ -69,7 +69,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
     await db.refresh(household)
 
-    token = encode_access_token(user_id=user.id, household_id=household.id)
+    token = encode_access_token(user_id=user.id)
     return AuthResponse(
         token=token,
         user=UserOut.from_orm_model(user),
@@ -99,7 +99,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="Household missing for user",
         )
 
-    token = encode_access_token(user_id=user.id, household_id=household.id)
+    token = encode_access_token(user_id=user.id)
     return AuthResponse(
         token=token,
         user=UserOut.from_orm_model(user),

@@ -295,9 +295,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     )
     await db_session.flush()
 
-    token = encode_access_token(
-        user_id="default-user", household_id=DEFAULT_TEST_HOUSEHOLD_ID
-    )
+    token = encode_access_token(user_id="default-user")
 
     async def override_get_db():
         yield db_session
