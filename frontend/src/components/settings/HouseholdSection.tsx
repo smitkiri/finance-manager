@@ -153,6 +153,8 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
   const [members, setMembers] = useState<ApiUser[] | null>(null);
   const [pending, setPending] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   const refresh = useCallback(async () => {
     const list = await ApiClient.loadUsers();
@@ -171,6 +173,32 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
       </div>
     );
   }
+
+  const startEdit = (m: ApiUser) => {
+    setEditingId(m.id);
+    setEditName(m.name);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const original = members.find((m) => m.id === editingId);
+    const trimmed = editName.trim();
+    if (!original || !trimmed || trimmed === original.name) {
+      cancelEdit();
+      return;
+    }
+    try {
+      await ApiClient.updateUser({ id: editingId, name: trimmed });
+      await refresh();
+    } finally {
+      cancelEdit();
+    }
+  };
 
   const onConfirm = async () => {
     if (!pending) return;
@@ -201,22 +229,54 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
           </tr>
         </thead>
         <tbody>
-          {members.map((m) => (
-            <tr key={m.id} className="border-t border-gray-200 dark:border-gray-800">
-              <td className="py-2 text-gray-900 dark:text-white">{m.name}</td>
-              <td className="py-2 text-gray-700 dark:text-gray-300">{m.email}</td>
-              <td className="py-2 text-right">
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => setPending({ id: m.id, name: m.name })}
-                  className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {m.id === currentUserId ? 'Leave household' : 'Remove'}
-                </button>
-              </td>
-            </tr>
-          ))}
+          {members.map((m) => {
+            const isEditing = editingId === m.id;
+            return (
+              <tr key={m.id} className="border-t border-gray-200 dark:border-gray-800">
+                <td className="py-2 text-gray-900 dark:text-white">
+                  {isEditing ? (
+                    <input
+                      aria-label={`Edit name for ${m.name}`}
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void saveEdit();
+                        else if (e.key === 'Escape') cancelEdit();
+                      }}
+                      onBlur={() => void saveEdit()}
+                      autoFocus
+                      className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+                    />
+                  ) : (
+                    m.name
+                  )}
+                </td>
+                <td className="py-2 text-gray-700 dark:text-gray-300">{m.email}</td>
+                <td className="py-2 text-right">
+                  <div className="flex justify-end gap-3">
+                    {!isEditing ? (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => startEdit(m)}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Rename
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={disabled || isEditing}
+                      onClick={() => setPending({ id: m.id, name: m.name })}
+                      className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {m.id === currentUserId ? 'Leave household' : 'Remove'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

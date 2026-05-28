@@ -36,7 +36,6 @@ interface SettingsProps {
   expenses: any[];
   sources: Source[];
   users: User[];
-  onUpdateUser: (user: User) => void;
   onRefreshData: () => void;
   onExportCSV: () => void;
   onUpdateSource: (source: Source) => void;
@@ -60,7 +59,6 @@ export const Settings: React.FC<SettingsProps> = ({
   expenses,
   sources,
   users,
-  onUpdateUser,
   onRefreshData,
   onExportCSV,
   onUpdateSource,
@@ -69,7 +67,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [activeSection, setActiveSection] = useState<
-    'categories' | 'general' | 'sources' | 'users' | 'household' | 'accounts' | 'imports'
+    'categories' | 'general' | 'sources' | 'household' | 'accounts' | 'imports'
   >('general');
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [showSelectDelete, setShowSelectDelete] = useState(false);
@@ -85,8 +83,6 @@ export const Settings: React.FC<SettingsProps> = ({
     { csvColumn: string; standardColumn: StandardizedColumn | 'Ignore' }[]
   >([]);
   const [editSourceFlipIncomeExpense, setEditSourceFlipIncomeExpense] = useState(false);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editUserName, setEditUserName] = useState('');
 
   // Teller state
   const [tellerConfig, setTellerConfig] = useState<{
@@ -572,32 +568,6 @@ export const Settings: React.FC<SettingsProps> = ({
     return STANDARDIZED_COLUMNS.filter((col) => !usedColumns.includes(col));
   };
 
-  const handleStartEditUser = (user: User) => {
-    setEditingUser(user.id);
-    setEditUserName(user.name);
-  };
-
-  const handleSaveEditUser = () => {
-    if (
-      editingUser &&
-      editUserName.trim() &&
-      editUserName.trim() !== users.find((u) => u.id === editingUser)?.name
-    ) {
-      const userToUpdate = users.find((u) => u.id === editingUser);
-      if (userToUpdate) {
-        const updatedUser = { ...userToUpdate, name: editUserName.trim() };
-        onUpdateUser(updatedUser);
-      }
-    }
-    setEditingUser(null);
-    setEditUserName('');
-  };
-
-  const handleCancelEditUser = () => {
-    setEditingUser(null);
-    setEditUserName('');
-  };
-
   const handleDeleteCategory = (category: string) => {
     if (
       window.confirm(
@@ -681,12 +651,6 @@ export const Settings: React.FC<SettingsProps> = ({
           onClick={() => setActiveSection('sources')}
         >
           Sources
-        </button>
-        <button
-          className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-          onClick={() => setActiveSection('users')}
-        >
-          Users
         </button>
         <button
           className={`w-full text-left px-6 py-2 mb-2 rounded-lg font-medium text-sm transition-colors ${activeSection === 'household' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
@@ -1020,102 +984,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     <p className="text-sm">
                       No sources yet. Sources are created when you import CSV files.
                     </p>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-          {activeSection === 'users' && (
-            <>
-              {/* Users Section */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Users</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Rename users in your household. Member add/remove is coming with invitations.
-                </p>
-                {/* Users List */}
-                <div className="space-y-1">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                    >
-                      {editingUser === user.id ? (
-                        <div className="flex items-center space-x-1 flex-1">
-                          <input
-                            type="text"
-                            value={editUserName}
-                            onChange={(e) => setEditUserName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleSaveEditUser();
-                              } else if (e.key === 'Escape') {
-                                handleCancelEditUser();
-                              }
-                            }}
-                            onBlur={handleSaveEditUser}
-                            autoFocus
-                            className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          />
-                          <button
-                            onClick={handleSaveEditUser}
-                            className="p-1 text-green-600 hover:text-green-700 transition-colors"
-                            title="Save"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={handleCancelEditUser}
-                            className="p-1 text-gray-600 hover:text-gray-700 transition-colors"
-                            title="Cancel"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex-1">
-                            <span className="font-medium text-gray-900 dark:text-white text-sm">
-                              {user.name}
-                            </span>
-                            {user.email && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {user.email}
-                              </div>
-                            )}
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Created: {new Date(user.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={() => handleStartEditUser(user)}
-                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                              title="Edit user name"
-                            >
-                              <Edit size={12} />
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {users.length === 0 && (
-                  <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                    <p className="text-sm">No users in this household yet.</p>
                   </div>
                 )}
               </div>

@@ -1004,15 +1004,6 @@ function AppContent() {
     }
   };
 
-  const handleUpdateUser = async (updatedUser: User) => {
-    try {
-      const renamed = await ApiClient.updateUser(updatedUser);
-      setUsers((prev) => prev.map((u) => (u.id === renamed.id ? { ...u, name: renamed.name } : u)));
-    } catch (error) {
-      console.error('Error updating user:', error);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
@@ -1108,7 +1099,6 @@ function AppContent() {
                 expenses={expenses}
                 sources={sources}
                 users={users}
-                onUpdateUser={handleUpdateUser}
                 onRefreshData={async () => {
                   const [
                     loadedExpenses,

@@ -16,6 +16,7 @@ jest.mock('../../utils/apiClient', () => {
       renameHousehold: jest.fn(),
       loadUsers: jest.fn().mockResolvedValue([]),
       removeMember: jest.fn(),
+      updateUser: jest.fn(),
       listInvitations: jest.fn().mockResolvedValue([]),
       createInvitation: jest.fn(),
       revokeInvitation: jest.fn(),
@@ -102,6 +103,28 @@ describe('HouseholdSection — members', () => {
     expect(within(aliceRow).getByRole('button', { name: /leave household/i })).toBeInTheDocument();
     const bobRow = screen.getByText('Bob').closest('tr')!;
     expect(within(bobRow).getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
+  });
+
+  it('Rename other member updates via ApiClient.updateUser', async () => {
+    (ApiClient.loadUsers as jest.Mock).mockResolvedValue([
+      { id: 'u', email: 'a@x.com', name: 'Alice' },
+      { id: 'u2', email: 'b@x.com', name: 'Bob' },
+    ]);
+    (ApiClient.updateUser as jest.Mock).mockResolvedValue({
+      id: 'u2',
+      name: 'Bobby',
+      email: 'b@x.com',
+      householdId: 'h',
+    });
+    renderSection();
+    const bobRow = (await screen.findByText('Bob')).closest('tr')!;
+    await userEvent.click(within(bobRow).getByRole('button', { name: /rename/i }));
+    const input = screen.getByLabelText(/edit name for bob/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Bobby{enter}');
+    await waitFor(() =>
+      expect(ApiClient.updateUser).toHaveBeenCalledWith({ id: 'u2', name: 'Bobby' })
+    );
   });
 
   it('Remove opens confirm modal then calls removeMember', async () => {
