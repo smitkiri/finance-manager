@@ -29,6 +29,7 @@ from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.date_range import DateRange
 from app.models.household import Household
 from app.models.import_session import ImportSession
+from app.models.invitation import Invitation
 from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
@@ -55,6 +56,7 @@ _WIPE_ORDER = [
     Metadata,
     Source,
     Category,
+    Invitation,
     User,
     Household,
 ]

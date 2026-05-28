@@ -295,9 +295,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     )
     await db_session.flush()
 
-    token = encode_access_token(
-        user_id="default-user", household_id=DEFAULT_TEST_HOUSEHOLD_ID
-    )
+    token = encode_access_token(user_id="default-user")
 
     async def override_get_db():
         yield db_session
@@ -330,3 +328,122 @@ async def raw_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     ) as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+# ---------------------------------------------------------------------------
+# Phase B (invitations / household management) fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def signed_in_user(db_session: AsyncSession):
+    """Seed a single user in their own household; return (user, household, token).
+
+    The seeded user lives in the existing default test household so household-
+    scoped data created in the same test rolls back cleanly.
+    """
+    from app.models import Household, User
+    from app.utils.jwt_tokens import encode_access_token
+    from app.utils.passwords import hash_password
+
+    settings.jwt_signing_secret = "test-secret"
+    settings.jwt_access_token_ttl_days = 30
+
+    household = Household(id="hh-signed-in", name="Signed In Household")
+    db_session.add(household)
+    await db_session.flush()
+    user = User(
+        id="u-signed-in",
+        name="Alice",
+        email="alice@example.com",
+        password_hash=hash_password("test-pass-12"),
+        household_id=household.id,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    token = encode_access_token(user_id=user.id)
+    return user, household, token
+
+
+@pytest.fixture
+async def two_member_household(db_session: AsyncSession):
+    """Two users (A and B) in the same household. Returns
+    (user_a, user_b, household, token_a)."""
+    from app.models import Household, User
+    from app.utils.jwt_tokens import encode_access_token
+    from app.utils.passwords import hash_password
+
+    settings.jwt_signing_secret = "test-secret"
+    settings.jwt_access_token_ttl_days = 30
+
+    household = Household(id="hh-two-member", name="Two-Member")
+    db_session.add(household)
+    await db_session.flush()
+    user_a = User(
+        id="u-twm-a",
+        name="Alice",
+        email="alice-twm@example.com",
+        password_hash=hash_password("test-pass-12"),
+        household_id=household.id,
+    )
+    user_b = User(
+        id="u-twm-b",
+        name="Bob",
+        email="bob-twm@example.com",
+        password_hash=hash_password("test-pass-12"),
+        household_id=household.id,
+    )
+    db_session.add_all([user_a, user_b])
+    await db_session.flush()
+
+    token_a = encode_access_token(user_id=user_a.id)
+    return user_a, user_b, household, token_a
+
+
+@pytest.fixture
+async def two_households_two_users(db_session: AsyncSession):
+    """User A in H1 and User B in H2. Returns
+    (user_a, user_b, h1, h2, token_a)."""
+    from app.models import Household, User
+    from app.utils.jwt_tokens import encode_access_token
+    from app.utils.passwords import hash_password
+
+    settings.jwt_signing_secret = "test-secret"
+    settings.jwt_access_token_ttl_days = 30
+
+    h1 = Household(id="hh-thtu-1", name="H1")
+    h2 = Household(id="hh-thtu-2", name="H2")
+    db_session.add_all([h1, h2])
+    await db_session.flush()
+    user_a = User(
+        id="u-thtu-a",
+        name="Alice",
+        email="alice-thtu@example.com",
+        password_hash=hash_password("test-pass-12"),
+        household_id=h1.id,
+    )
+    user_b = User(
+        id="u-thtu-b",
+        name="Bob",
+        email="bob-thtu@example.com",
+        password_hash=hash_password("test-pass-12"),
+        household_id=h2.id,
+    )
+    db_session.add_all([user_a, user_b])
+    await db_session.flush()
+
+    token_a = encode_access_token(user_id=user_a.id)
+    return user_a, user_b, h1, h2, token_a
+
+
+@pytest.fixture
+def demo_mode_enabled(monkeypatch):
+    """Turn on demo mode for the duration of the test."""
+    monkeypatch.setattr(settings, "finance_manager_demo_mode", True)
+    yield
+
+
+def auth_headers(token: str) -> dict[str, str]:
+    """Helper to build the bearer header for invitation/management tests."""
+    return {"Authorization": f"Bearer {token}"}

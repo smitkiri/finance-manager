@@ -5,6 +5,7 @@
       "name": "Demo Household"
     }
   ],
+  "invitations": [],
   "users": [
     {
       "id": "demo-user",

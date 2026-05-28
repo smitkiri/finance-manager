@@ -288,3 +288,42 @@ export interface PanelData {
   panelId: string;
   data: PanelMonthData[];
 }
+
+// Invitations (Phase B)
+
+export type InvitationStatus = 'pending' | 'consumed' | 'revoked' | 'expired';
+
+export interface InvitationInviter {
+  id: string;
+  name: string;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  status: InvitationStatus;
+  createdAt: string;
+  expiresAt: string;
+  invitedBy: InvitationInviter | null;
+}
+
+export interface InvitationCreated extends Invitation {
+  token: string;
+}
+
+export interface InvitationLookup {
+  householdName: string;
+  inviterName: string | null;
+  email: string;
+  status: InvitationStatus;
+  expiresAt: string;
+}
+
+export interface HouseholdSummary {
+  transactions: number;
+  accounts: number;
+  categories: number;
+  sources: number;
+  dashboards: number;
+  reports: number;
+}

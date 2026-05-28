@@ -15,6 +15,10 @@ import {
   DashboardPanel,
   PanelData,
   FilterGroup,
+  Invitation,
+  InvitationCreated,
+  InvitationLookup,
+  HouseholdSummary,
 } from '../types';
 
 interface StorageMetadata {
@@ -109,13 +113,21 @@ export class ApiClient {
     email: string;
     password: string;
     name: string;
+    inviteToken?: string;
   }): Promise<AuthResponse> {
+    const { inviteToken, ...rest } = input;
+    const body: Record<string, unknown> = { ...rest };
+    if (inviteToken) body.invite_token = inviteToken;
     const res = await fetch(`${ApiClient.API_BASE}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const err = new Error(await res.text()) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
     return res.json();
   }
 
@@ -1484,5 +1496,116 @@ export class ApiClient {
       console.error('Error fetching chart preview:', error);
       return { rows: [], monthMap: {} };
     }
+  }
+
+  // ------------------------------------------------------------------
+  // Invitations / household management (Phase B)
+  // ------------------------------------------------------------------
+
+  static async createInvitation(payload: { email: string }): Promise<InvitationCreated> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/invitations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      const err = new Error(body) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  static async listInvitations(): Promise<Invitation[]> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/invitations`);
+    if (!res.ok) throw new Error(`listInvitations failed: ${res.status}`);
+    return res.json();
+  }
+
+  static async revokeInvitation(id: string): Promise<void> {
+    const res = await ApiClient.apiFetch(
+      `${ApiClient.API_BASE}/invitations/${encodeURIComponent(id)}`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok) {
+      const err = new Error(await res.text()) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+  }
+
+  static async lookupInvitation(token: string): Promise<InvitationLookup> {
+    // Public endpoint: no Authorization header, no 401 interceptor.
+    const res = await fetch(
+      `${ApiClient.API_BASE}/invitations/lookup?token=${encodeURIComponent(token)}`
+    );
+    if (!res.ok) {
+      let body: unknown = undefined;
+      try {
+        body = await res.json();
+      } catch {
+        body = undefined;
+      }
+      const err = new Error(`lookupInvitation failed: ${res.status}`) as Error & {
+        status?: number;
+        body?: unknown;
+      };
+      err.status = res.status;
+      err.body = body;
+      throw err;
+    }
+    return res.json();
+  }
+
+  static async acceptInvitation(
+    token: string
+  ): Promise<{ user: AuthUser; household: AuthHousehold }> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/invitations/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) {
+      const err = new Error(await res.text()) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  static async removeMember(userId: string): Promise<void> {
+    const res = await ApiClient.apiFetch(
+      `${ApiClient.API_BASE}/users/${encodeURIComponent(userId)}/membership`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok) {
+      const err = new Error(await res.text()) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+  }
+
+  static async renameHousehold(id: string, name: string): Promise<AuthHousehold> {
+    const res = await ApiClient.apiFetch(
+      `${ApiClient.API_BASE}/households/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      }
+    );
+    if (!res.ok) {
+      const err = new Error(await res.text()) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  static async getHouseholdSummary(): Promise<HouseholdSummary> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/households/me/summary`);
+    if (!res.ok) throw new Error(`getHouseholdSummary failed: ${res.status}`);
+    return res.json();
   }
 }

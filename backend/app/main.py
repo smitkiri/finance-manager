@@ -16,6 +16,7 @@ from app.routes.expenses import router as expenses_router
 from app.routes.households import router as households_router
 from app.routes.import_sessions import router as import_sessions_router
 from app.routes.imports import router as imports_router
+from app.routes.invitations import router as invitations_router
 from app.routes.net_worth import router as net_worth_router
 from app.routes.reports import router as reports_router
 from app.routes.sources import router as sources_router
@@ -62,6 +63,7 @@ app.include_router(transfers_router)
 app.include_router(users_router)
 app.include_router(dashboards_router)
 app.include_router(teller_router)
+app.include_router(invitations_router)
 
 
 @app.get("/api/health")

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
+import { AcceptInvitePage } from './components/auth/AcceptInvitePage';
 import { Plus, Upload, Sun, Moon, Building2 } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -1003,15 +1004,6 @@ function AppContent() {
     }
   };
 
-  const handleUpdateUser = async (updatedUser: User) => {
-    try {
-      const renamed = await ApiClient.updateUser(updatedUser);
-      setUsers((prev) => prev.map((u) => (u.id === renamed.id ? { ...u, name: renamed.name } : u)));
-    } catch (error) {
-      console.error('Error updating user:', error);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
@@ -1107,7 +1099,6 @@ function AppContent() {
                 expenses={expenses}
                 sources={sources}
                 users={users}
-                onUpdateUser={handleUpdateUser}
                 onRefreshData={async () => {
                   const [
                     loadedExpenses,
@@ -1285,6 +1276,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              <Route path="/accept-invite" element={<AcceptInvitePage />} />
               <Route
                 path="/*"
                 element={
