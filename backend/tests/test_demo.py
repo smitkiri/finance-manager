@@ -23,3 +23,15 @@ async def test_demo_config_enabled(client: AsyncClient):
         assert response.json() == {"enabled": True}
     finally:
         settings.finance_manager_demo_mode = original
+
+
+@pytest.mark.asyncio
+async def test_delete_all_refused_in_demo_mode(
+    client: AsyncClient, demo_mode_with_default_user
+):
+    """DELETE /api/delete-all must 503 in demo mode. Demo disables auth, so
+    this endpoint would otherwise let anonymous internet visitors wipe the
+    demo household between resets."""
+    response = await client.delete("/api/delete-all")
+    assert response.status_code == 503
+    assert "demo" in response.json()["detail"].lower()

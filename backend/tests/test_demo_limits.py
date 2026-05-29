@@ -181,20 +181,6 @@ def test_refuse_in_demo_mode_raises_503_when_demo_on(demo_mode_enabled):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def demo_mode_with_default_user(monkeypatch):
-    """Enable demo mode and route demo_user_id to the seeded test user.
-
-    The `client` fixture in conftest seeds `default-user`. When demo mode is
-    on, `get_current_user` ignores the bearer token and loads
-    `settings.demo_user_id`. Pointing demo_user_id at the seeded user lets
-    demo-mode endpoint tests use the existing client without re-seeding.
-    """
-    monkeypatch.setattr(settings, "finance_manager_demo_mode", True)
-    monkeypatch.setattr(settings, "demo_user_id", "default-user")
-    yield
-
-
 async def test_import_csv_rejects_oversized_body_in_demo_mode(
     client: AsyncClient, demo_mode_with_default_user
 ):

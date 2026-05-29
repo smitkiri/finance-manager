@@ -3,6 +3,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.demo.limits import refuse_in_demo_mode
 from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.source import Source
@@ -18,6 +19,7 @@ async def delete_all(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     await db.execute(
         delete(Transaction).where(Transaction.household_id == household_id)
     )
