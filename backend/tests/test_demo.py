@@ -158,3 +158,12 @@ async def test_bulk_save_expenses_allows_delete_one_in_demo_mode(
         },
     )
     assert response.status_code == 200, response.json()
+
+
+@pytest.mark.asyncio
+async def test_patch_user_refused_in_demo_mode(client, demo_mode_with_default_user):
+    """PATCH /api/users/{user_id} must 503 in demo mode. Without this guard,
+    anyone could rename the demo user (or any user in the demo household) via
+    an anonymous request."""
+    response = await client.patch("/api/users/default-user", json={"name": "Hacker"})
+    assert response.status_code == 503

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.demo.limits import refuse_in_demo_mode
 from app.dependencies.auth import get_current_household_id
 from app.models import Household, Invitation, User
 from app.schemas.user import UserOut
@@ -43,6 +44,7 @@ async def patch_user(
     db: AsyncSession = Depends(get_db),
 ):
     """Rename a user. 404 if the user is not a member of the caller's household."""
+    refuse_in_demo_mode()
     result = await db.execute(
         select(User).where(User.id == user_id, User.household_id == household_id)
     )
