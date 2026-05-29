@@ -247,3 +247,44 @@ async def test_import_csv_rejects_when_merged_exceeds_cap(
     assert response.status_code == 403
     assert "Demo limit" in response.json()["detail"]
     assert "transactions" in response.json()["detail"]
+
+
+async def test_post_expenses_rejects_when_payload_exceeds_cap(
+    client: AsyncClient, demo_mode_with_default_user, monkeypatch
+):
+    """Demo mode: posting more transactions than the cap is rejected."""
+    monkeypatch.setattr(settings, "demo_max_transactions", 2)
+    expenses = [
+        {
+            "id": f"t{i}",
+            "date": "2026-01-01",
+            "description": f"Item {i}",
+            "category": "Food & Drink",
+            "amount": 1.0,
+            "type": "expense",
+        }
+        for i in range(3)
+    ]
+    response = await client.post("/api/expenses", json={"expenses": expenses})
+    assert response.status_code == 403
+    assert "transactions" in response.json()["detail"]
+
+
+async def test_post_expenses_accepts_at_cap(
+    client: AsyncClient, demo_mode_with_default_user, monkeypatch
+):
+    """Demo mode: posting exactly cap transactions is accepted."""
+    monkeypatch.setattr(settings, "demo_max_transactions", 2)
+    expenses = [
+        {
+            "id": f"t{i}",
+            "date": "2026-01-01",
+            "description": f"Item {i}",
+            "category": "Food & Drink",
+            "amount": 1.0,
+            "type": "expense",
+        }
+        for i in range(2)
+    ]
+    response = await client.post("/api/expenses", json={"expenses": expenses})
+    assert response.status_code == 200
