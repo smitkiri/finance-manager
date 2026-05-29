@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
+from app.demo.limits import assert_demo_replace_count
 from app.dependencies.auth import get_current_household_id
 from app.models.category import Category
 from app.schemas.category import CategoriesSaveRequest
@@ -45,6 +47,11 @@ async def save_categories(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    assert_demo_replace_count(
+        len(body.categories),
+        cap=settings.demo_max_per_entity,
+        entity="categories",
+    )
     await db.execute(delete(Category).where(Category.household_id == household_id))
     for name in body.categories:
         # id is just the name (matches the migration's surrogate-id backfill)

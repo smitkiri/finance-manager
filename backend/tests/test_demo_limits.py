@@ -288,3 +288,26 @@ async def test_post_expenses_accepts_at_cap(
     ]
     response = await client.post("/api/expenses", json={"expenses": expenses})
     assert response.status_code == 200
+
+
+async def test_post_categories_rejects_over_cap(
+    client: AsyncClient, demo_mode_with_default_user, monkeypatch
+):
+    """Demo mode: posting more categories than cap is rejected."""
+    monkeypatch.setattr(settings, "demo_max_per_entity", 3)
+    response = await client.post(
+        "/api/categories", json={"categories": ["a", "b", "c", "d"]}
+    )
+    assert response.status_code == 403
+    assert "categories" in response.json()["detail"]
+
+
+async def test_post_categories_accepts_at_cap(
+    client: AsyncClient, demo_mode_with_default_user, monkeypatch
+):
+    """Demo mode: cap categories accepted exactly."""
+    monkeypatch.setattr(settings, "demo_max_per_entity", 3)
+    response = await client.post(
+        "/api/categories", json={"categories": ["a", "b", "c"]}
+    )
+    assert response.status_code == 200
