@@ -102,3 +102,25 @@ def refuse_in_demo_mode() -> None:
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="This feature isn't available in demo mode",
     )
+
+
+async def assert_demo_not_mass_delete(
+    db: AsyncSession, model, household_id: str, new_count: int
+) -> None:
+    """In demo mode, block bulk-replace endpoints from being used as a wipe.
+
+    Allows add-one (N→N+1) and delete-one (N→N-1); refuses larger reductions
+    (e.g. POST /api/expenses with `expenses: []` to clear the household).
+    """
+    if not settings.finance_manager_demo_mode:
+        return
+    stmt = _count_for_household(model, household_id)
+    existing = (await db.execute(stmt)).scalar_one()
+    if new_count < existing - 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Demo limit: bulk-replace cannot remove more than one row at "
+                "a time. Demo data resets daily."
+            ),
+        )

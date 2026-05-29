@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.demo.limits import assert_demo_replace_count
+from app.demo.limits import assert_demo_not_mass_delete, assert_demo_replace_count
 from app.dependencies.auth import get_current_household_id
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
@@ -360,6 +360,7 @@ async def bulk_save_expenses(
         cap=settings.demo_max_transactions,
         entity="transactions",
     )
+    await assert_demo_not_mass_delete(db, Transaction, household_id, len(body.expenses))
 
     # Delete existing transactions for this household only.
     await db.execute(

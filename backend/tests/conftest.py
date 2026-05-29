@@ -444,6 +444,20 @@ def demo_mode_enabled(monkeypatch):
     yield
 
 
+@pytest.fixture
+def demo_mode_with_default_user(monkeypatch):
+    """Enable demo mode and route demo_user_id to the seeded test user.
+
+    The `client` fixture seeds `default-user`. When demo mode is on,
+    `get_current_user` ignores the bearer token and loads
+    `settings.demo_user_id`. Pointing demo_user_id at the seeded user lets
+    demo-mode endpoint tests use the existing client without re-seeding.
+    """
+    monkeypatch.setattr(settings, "finance_manager_demo_mode", True)
+    monkeypatch.setattr(settings, "demo_user_id", "default-user")
+    yield
+
+
 def auth_headers(token: str) -> dict[str, str]:
     """Helper to build the bearer header for invitation/management tests."""
     return {"Authorization": f"Bearer {token}"}
