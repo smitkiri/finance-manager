@@ -7,6 +7,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.demo.limits import assert_demo_can_add_entity
 from app.dependencies.auth import get_current_household_id
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.transaction import Transaction
@@ -59,6 +60,7 @@ async def create_dashboard(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_demo_can_add_entity(db, Dashboard, household_id)
     if body.isDefault:
         await db.execute(
             update(Dashboard)
@@ -185,6 +187,7 @@ async def create_panel(
 ):
     if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
         return JSONResponse(status_code=404, content={"error": "Dashboard not found"})
+    await assert_demo_can_add_entity(db, DashboardPanel, household_id)
     count_result = await db.execute(
         select(func.count()).where(DashboardPanel.dashboard_id == dashboard_id)
     )

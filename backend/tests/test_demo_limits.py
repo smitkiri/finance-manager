@@ -14,6 +14,8 @@ from app.models import (
     AccountBalance,
     Dashboard,
     DashboardPanel,
+    DateRange,
+    Report,
     Source,
 )
 from tests.conftest import DEFAULT_TEST_HOUSEHOLD_ID
@@ -311,3 +313,200 @@ async def test_post_categories_accepts_at_cap(
         "/api/categories", json={"categories": ["a", "b", "c"]}
     )
     assert response.status_code == 200
+
+
+async def test_post_sources_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    for i in range(2):
+        db_session.add(Source(id=f"src{i}", name=f"src-{i}"))
+    await db_session.flush()
+    response = await client.post(
+        "/api/sources",
+        json={"source": {"id": "src-extra", "name": "src-extra", "mappings": []}},
+    )
+    assert response.status_code == 403
+    assert "sources" in response.json()["detail"]
+
+
+async def test_post_dashboards_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    from datetime import date as _date
+
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    for i in range(2):
+        db_session.add(
+            Dashboard(
+                id=f"d{i}",
+                name=f"D{i}",
+                date_range_start=_date(2026, 1, 1),
+                date_range_end=_date(2026, 12, 31),
+            )
+        )
+    await db_session.flush()
+    response = await client.post(
+        "/api/dashboards",
+        json={
+            "id": "d-extra",
+            "name": "D-extra",
+            "isDefault": False,
+            "dateRangeStart": "2026-01-01",
+            "dateRangeEnd": "2026-12-31",
+        },
+    )
+    assert response.status_code == 403
+    assert "dashboards" in response.json()["detail"]
+
+
+async def test_post_dashboard_panels_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    from datetime import date as _date
+
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    db_session.add(
+        Dashboard(
+            id="dp",
+            name="DP",
+            date_range_start=_date(2026, 1, 1),
+            date_range_end=_date(2026, 12, 31),
+        )
+    )
+    await db_session.flush()
+    for i in range(2):
+        db_session.add(
+            DashboardPanel(
+                id=f"pp{i}",
+                dashboard_id="dp",
+                title=f"P{i}",
+                chart_type="bar",
+                panel_order=i,
+            )
+        )
+    await db_session.flush()
+    response = await client.post(
+        "/api/dashboards/dp/panels",
+        json={
+            "id": "pp-extra",
+            "title": "P-extra",
+            "chartType": "bar",
+            "filterGroups": [],
+            "panelOrder": 5,
+        },
+    )
+    assert response.status_code == 403
+    assert "dashboard_panels" in response.json()["detail"]
+
+
+async def test_post_reports_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    for i in range(2):
+        db_session.add(Report(id=f"r{i}", name=f"R{i}", filters={}))
+    await db_session.flush()
+    response = await client.post(
+        "/api/reports",
+        json={
+            "report": {
+                "id": "r-extra",
+                "name": "R-extra",
+                "description": None,
+                "filters": {},
+                "createdAt": None,
+                "lastModified": None,
+            }
+        },
+    )
+    assert response.status_code == 403
+    assert "reports" in response.json()["detail"]
+
+
+async def test_post_accounts_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    for i in range(2):
+        db_session.add(Account(id=f"acct{i}", name=f"A{i}", type="asset"))
+    await db_session.flush()
+    response = await client.post(
+        "/api/accounts",
+        json={"id": "acct-extra", "name": "A-extra", "type": "asset"},
+    )
+    assert response.status_code == 403
+    assert "accounts" in response.json()["detail"]
+
+
+async def test_post_account_balances_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    from datetime import date as _date
+
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    db_session.add(Account(id="abacct", name="A", type="asset"))
+    await db_session.flush()
+    for i in range(2):
+        db_session.add(
+            AccountBalance(
+                id=f"bb{i}",
+                account_id="abacct",
+                balance=0,
+                date=_date(2026, 1, 1),
+            )
+        )
+    await db_session.flush()
+    response = await client.post(
+        "/api/accounts/abacct/balances",
+        json={
+            "id": "bb-extra",
+            "balance": 100,
+            "date": "2026-02-01",
+        },
+    )
+    assert response.status_code == 403
+    assert "account_balances" in response.json()["detail"]
+
+
+async def test_post_date_range_rejects_over_cap(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    from datetime import date as _date
+
+    monkeypatch.setattr(settings, "demo_max_per_entity", 2)
+    for i in range(2):
+        db_session.add(
+            DateRange(
+                start_date=_date(2026, 1, i + 1),
+                end_date=_date(2026, 12, 31),
+            )
+        )
+    await db_session.flush()
+    response = await client.post(
+        "/api/date-range",
+        json={"start": "2026-03-01", "end": "2026-12-31"},
+    )
+    assert response.status_code == 403
+    assert "date_ranges" in response.json()["detail"]

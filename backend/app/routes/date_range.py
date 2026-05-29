@@ -6,6 +6,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.demo.limits import assert_demo_can_add_entity
 from app.dependencies.auth import get_current_household_id
 from app.models.date_range import DateRange
 from app.schemas.date_range import DateRangeRequest
@@ -40,6 +41,7 @@ async def save_date_range(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_demo_can_add_entity(db, DateRange, household_id)
     start = date.fromisoformat(body.start)
     end = date.fromisoformat(body.end)
     await db.execute(
