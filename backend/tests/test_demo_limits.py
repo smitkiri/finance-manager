@@ -510,3 +510,30 @@ async def test_post_date_range_rejects_over_cap(
     )
     assert response.status_code == 403
     assert "date_ranges" in response.json()["detail"]
+
+
+async def test_restore_disabled_in_demo_mode(
+    client: AsyncClient, demo_mode_with_default_user
+):
+    """Demo mode: /restore is fully disabled with 503."""
+    backup_json = (
+        b'{"users": [], "categories": [], "sources": [], "reports": [], '
+        b'"date_ranges": [], "metadata": [], "accounts": [], '
+        b'"account_balances": [], "transactions": []}'
+    )
+    files = {"backupFile": ("backup.json", backup_json, "application/json")}
+    response = await client.post("/api/restore", files=files)
+    assert response.status_code == 503
+    assert "demo" in response.json()["detail"].lower()
+
+
+async def test_restore_works_outside_demo_mode(client: AsyncClient):
+    """Regression: /restore still works when demo mode is off."""
+    backup_json = (
+        b'{"users": [], "categories": [], "sources": [], "reports": [], '
+        b'"date_ranges": [], "metadata": [], "accounts": [], '
+        b'"account_balances": [], "transactions": []}'
+    )
+    files = {"backupFile": ("backup.json", backup_json, "application/json")}
+    response = await client.post("/api/restore", files=files)
+    assert response.status_code != 503
