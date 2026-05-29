@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.demo.limits import refuse_in_demo_mode
 from app.dependencies.auth import get_current_household_id
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
@@ -303,6 +304,7 @@ async def update_enrollment_token(
     body: UpdateTokenRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     if not settings.is_teller_enabled:
         return JSONResponse(
             status_code=400, content={"error": "Teller integration not enabled"}
@@ -372,6 +374,7 @@ async def enroll(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     try:
         enrollments = await _read_enrollments(db)
 
@@ -442,6 +445,7 @@ async def disconnect(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     try:
         result = await db.execute(
             delete(Account)
@@ -511,6 +515,7 @@ async def manage_accounts(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     try:
         enrollments = await _read_enrollments(db)
         enrollment = next(
@@ -701,6 +706,7 @@ async def update_category_mappings(
     body: CategoryMappingsUpdateRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     try:
         # Load existing mappings to detect changes
         result = await db.execute(
@@ -939,6 +945,7 @@ async def import_transactions(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     _clean_expired_previews()
     preview = _import_preview_cache.get(body.previewToken)
     if not preview:

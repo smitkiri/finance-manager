@@ -71,6 +71,50 @@ async def test_bulk_save_expenses_blocks_wipe_in_demo_mode(
     assert "demo" in response.json()["detail"].lower()
 
 
+TELLER_MUTATE_ROUTES = [
+    (
+        "post",
+        "/api/teller/enroll",
+        {
+            "accessToken": "x",
+            "userId": "u",
+            "enrollmentId": "e",
+            "institutionName": "i",
+            "selectedAccounts": [],
+        },
+    ),
+    ("post", "/api/teller/disconnect", {"enrollmentId": "e"}),
+    ("put", "/api/teller/enrollment/e/token", {"accessToken": "x"}),
+    ("put", "/api/teller/category-mappings", {"mappings": []}),
+    (
+        "post",
+        "/api/teller/enrollments/e/manage-accounts",
+        {"userId": "u", "toAdd": [], "toRemove": []},
+    ),
+    (
+        "post",
+        "/api/teller/import-transactions",
+        {"previewToken": "x", "userMappings": {}},
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method,path,body", TELLER_MUTATE_ROUTES)
+async def test_teller_mutate_refused_in_demo_mode(
+    client, demo_mode_with_default_user, method: str, path: str, body: dict
+):
+    """Teller mutation endpoints (enroll, disconnect, token updates, category
+    mapping writes, account add/remove, transaction imports) must 503 in
+    demo mode. These touch bank credentials and shouldn't be callable by
+    anonymous demo visitors even if Teller is disabled in the deploy."""
+    response = await getattr(client, method)(path, json=body)
+    assert response.status_code == 503, (
+        f"{method.upper()} {path} -> {response.status_code} (expected 503); "
+        f"body={response.text}"
+    )
+
+
 @pytest.mark.asyncio
 async def test_bulk_save_expenses_allows_delete_one_in_demo_mode(
     client, demo_mode_with_default_user, db_session
