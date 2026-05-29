@@ -100,5 +100,5 @@ def refuse_in_demo_mode() -> None:
         return
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Disabled in demo mode",
+        detail="This feature isn't available in demo mode",
     )

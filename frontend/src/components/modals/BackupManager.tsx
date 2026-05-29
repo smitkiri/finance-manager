@@ -84,7 +84,7 @@ export const BackupManager: React.FC = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to restore from backup.');
+        throw new Error(result.detail || result.error || 'Failed to restore from backup.');
       }
 
       setNotification({ message: result.message || 'Restore successful!', type: 'success' });
