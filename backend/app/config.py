@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     finance_manager_demo_mode: bool = False
     demo_user_id: str = "demo-user"
     demo_household_id: str = "household-demo"
+    demo_max_csv_bytes: int = 1_048_576  # 1 MB
+    demo_max_transactions: int = 5_000
+    demo_max_per_entity: int = 50
 
     # Households
     finance_manager_default_household_name: str = "Household"

@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.demo.limits import assert_demo_can_add_entity
 from app.dependencies.auth import get_current_household_id
 from app.models.report import Report
 from app.schemas.report import ReportOut, ReportSaveRequest
@@ -33,6 +34,7 @@ async def save_report(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_demo_can_add_entity(db, Report, household_id)
     r = body.report
     now = datetime.now(UTC).replace(tzinfo=None)
     created = datetime.fromisoformat(r.createdAt) if r.createdAt else now

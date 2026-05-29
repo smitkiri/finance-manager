@@ -6,6 +6,7 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.demo.limits import assert_demo_can_add_entity
 from app.dependencies.auth import get_current_household_id
 from app.models.account import Account, AccountBalance
 from app.schemas.net_worth import (
@@ -55,6 +56,7 @@ async def create_account(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_demo_can_add_entity(db, Account, household_id)
     if body.type not in ("asset", "liability"):
         return JSONResponse(
             status_code=400,
@@ -120,6 +122,7 @@ async def add_balance(
 ):
     if not await _account_in_household(db, account_id, household_id):
         return JSONResponse(status_code=404, content={"error": "Account not found"})
+    await assert_demo_can_add_entity(db, AccountBalance, household_id)
 
     balance = AccountBalance(
         id=body.id,

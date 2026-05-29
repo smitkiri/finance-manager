@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.demo.limits import refuse_in_demo_mode
 from app.dependencies.auth import get_current_household_id
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
@@ -133,6 +134,7 @@ async def restore(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    refuse_in_demo_mode()
     if not backupFile:
         return JSONResponse(
             status_code=400, content={"error": "No backup file provided"}
