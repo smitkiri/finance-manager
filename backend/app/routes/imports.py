@@ -7,7 +7,9 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
+from app.demo.limits import assert_demo_csv_size, assert_demo_replace_count
 from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.metadata import Metadata
@@ -104,6 +106,8 @@ async def import_csv(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    assert_demo_csv_size(body.csvText)
+
     # Parse CSV
     new_transactions = parse_csv(body.csvText, body.fileName, body.userId)
     if not new_transactions:
@@ -131,6 +135,10 @@ async def import_csv(
     # Run transfer detection on full merged set
     detection = detect_transfers(merged)
     updated = detection["updatedTransactions"]
+
+    assert_demo_replace_count(
+        len(updated), cap=settings.demo_max_transactions, entity="transactions"
+    )
 
     # Create import session
     session_id = f"import_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
@@ -188,6 +196,8 @@ async def import_with_mapping(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    assert_demo_csv_size(body.csvText)
+
     # Load existing transactions for category auto-fill
     result = await db.execute(
         select(Transaction).where(Transaction.household_id == household_id)
@@ -222,6 +232,10 @@ async def import_with_mapping(
     # Run transfer detection
     detection = detect_transfers(merged)
     updated = detection["updatedTransactions"]
+
+    assert_demo_replace_count(
+        len(updated), cap=settings.demo_max_transactions, entity="transactions"
+    )
 
     # Create import session
     session_id = f"import_{int(time.time() * 1000)}_{secrets.token_hex(4)}"

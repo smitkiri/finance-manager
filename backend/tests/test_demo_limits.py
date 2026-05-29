@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import HTTPException
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -171,3 +172,78 @@ def test_refuse_in_demo_mode_raises_503_when_demo_on(demo_mode_enabled):
         limits.refuse_in_demo_mode()
     assert exc.value.status_code == 503
     assert "demo" in exc.value.detail.lower()
+
+
+# ---------------------------------------------------------------------------
+# Endpoint integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def demo_mode_with_default_user(monkeypatch):
+    """Enable demo mode and route demo_user_id to the seeded test user.
+
+    The `client` fixture in conftest seeds `default-user`. When demo mode is
+    on, `get_current_user` ignores the bearer token and loads
+    `settings.demo_user_id`. Pointing demo_user_id at the seeded user lets
+    demo-mode endpoint tests use the existing client without re-seeding.
+    """
+    monkeypatch.setattr(settings, "finance_manager_demo_mode", True)
+    monkeypatch.setattr(settings, "demo_user_id", "default-user")
+    yield
+
+
+async def test_import_csv_rejects_oversized_body_in_demo_mode(
+    client: AsyncClient, demo_mode_with_default_user
+):
+    """Demo mode: a CSV body over the byte cap is rejected with 413."""
+    over_limit = "a" * (settings.demo_max_csv_bytes + 1)
+    response = await client.post(
+        "/api/import-csv", json={"csvText": over_limit, "fileName": "big.csv"}
+    )
+    assert response.status_code == 413
+    assert "Demo limit" in response.json()["detail"]
+
+
+async def test_import_csv_accepts_normal_body_in_demo_mode(
+    client: AsyncClient, demo_mode_with_default_user
+):
+    """Demo mode: a small CSV body is accepted."""
+    csv = "Date,Description,Category,Amount\n2026-01-01,Coffee,Food,3.50"
+    response = await client.post(
+        "/api/import-csv", json={"csvText": csv, "fileName": "small.csv"}
+    )
+    assert response.status_code == 200
+
+
+async def test_import_csv_no_size_limit_outside_demo_mode(client: AsyncClient):
+    """Regression guard: oversize CSVs are accepted when demo mode is off."""
+    csv = "Date,Description,Category,Amount\n"
+    csv += "2026-01-01,Coffee,Food,3.50\n" * 50_000  # ~1.5 MB of rows
+    response = await client.post(
+        "/api/import-csv", json={"csvText": csv, "fileName": "large.csv"}
+    )
+    # Either 200 (parsed and imported) is fine — what matters is that we
+    # didn't 413.
+    assert response.status_code != 413
+
+
+async def test_import_csv_rejects_when_merged_exceeds_cap(
+    client: AsyncClient,
+    demo_mode_with_default_user,
+    monkeypatch,
+):
+    """Demo mode: importing a CSV whose merged result would exceed
+    demo_max_transactions is rejected with 403."""
+    monkeypatch.setattr(settings, "demo_max_transactions", 3)
+    rows = "\n".join(
+        f"2026-01-{i:02d},Coffee,Food,3.50"
+        for i in range(1, 5)  # 4 distinct rows
+    )
+    csv = "Date,Description,Category,Amount\n" + rows
+    response = await client.post(
+        "/api/import-csv", json={"csvText": csv, "fileName": "many.csv"}
+    )
+    assert response.status_code == 403
+    assert "Demo limit" in response.json()["detail"]
+    assert "transactions" in response.json()["detail"]
