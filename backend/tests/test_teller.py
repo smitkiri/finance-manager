@@ -544,7 +544,7 @@ async def test_get_category_mappings_with_counts(
     # Save a mapping
     db_session.add(
         Metadata(
-            key="teller_category_mappings",
+            key="teller_category_mappings:household-default",
             value={"food_and_drink": "Dining"},
         )
     )
@@ -836,3 +836,89 @@ async def test_teller_enrollments_isolated_by_household(
             settings.finance_manager_teller_private_key,
             settings.finance_manager_teller_cert,
         ) = original
+
+
+@pytest.mark.asyncio
+async def test_category_mapping_update_scoped_by_household(
+    raw_client: AsyncClient, db_session: AsyncSession
+):
+    """Updating category mappings in household A must NOT mutate transactions
+    in household B."""
+    from datetime import date
+
+    db_session.add_all(
+        [
+            Household(id="hh-cm-a", name="A"),
+            Household(id="hh-cm-b", name="B"),
+            User(
+                id="u-cm-a",
+                name="Alice",
+                email="a-cm@test.local",
+                password_hash="",
+                household_id="hh-cm-a",
+            ),
+            User(
+                id="u-cm-b",
+                name="Bob",
+                email="b-cm@test.local",
+                password_hash="",
+                household_id="hh-cm-b",
+            ),
+        ]
+    )
+    # One transaction in each household sharing the same teller category.
+    for hh in ("hh-cm-a", "hh-cm-b"):
+        db_session.add(
+            Transaction(
+                id=f"t-cm-{hh}",
+                household_id=hh,
+                date=date(2026, 5, 1),
+                description="x",
+                category="Old",
+                amount=Decimal("10"),
+                type="expense",
+                metadata_={"teller": {"details": {"category": "Groceries"}}},
+            )
+        )
+    await db_session.flush()
+
+    headers_a = {"Authorization": f"Bearer {_token_for('u-cm-a')}"}
+    response = await raw_client.put(
+        "/api/teller/category-mappings",
+        json={"mappings": [{"tellerCategory": "Groceries", "userCategory": "Food"}]},
+        headers=headers_a,
+    )
+    assert response.status_code == 200
+
+    # Household A's row is updated, household B's is NOT.
+    a = (
+        await db_session.execute(
+            select(Transaction).where(Transaction.id == "t-cm-hh-cm-a")
+        )
+    ).scalar_one()
+    b = (
+        await db_session.execute(
+            select(Transaction).where(Transaction.id == "t-cm-hh-cm-b")
+        )
+    ).scalar_one()
+    await db_session.refresh(a)
+    await db_session.refresh(b)
+    assert a.category == "Food"
+    assert b.category == "Old"
+
+    # And the mapping itself is stored under a per-household key.
+    meta = (
+        await db_session.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings:hh-cm-a")
+        )
+    ).scalar_one_or_none()
+    assert meta is not None
+    assert meta.value == {"Groceries": "Food"}
+
+    # Household B does NOT have a mapping row.
+    meta_b = (
+        await db_session.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings:hh-cm-b")
+        )
+    ).scalar_one_or_none()
+    assert meta_b is None

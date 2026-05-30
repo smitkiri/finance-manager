@@ -668,7 +668,7 @@ async def get_category_mappings(
 ):
     try:
         result = await db.execute(
-            select(Metadata).where(Metadata.key == "teller_category_mappings")
+            select(Metadata).where(Metadata.key == _category_mappings_key(household_id))
         )
         meta = result.scalar_one_or_none()
         saved_mappings: dict[str, str] = meta.value if meta else {}
@@ -679,9 +679,11 @@ async def get_category_mappings(
                 "SELECT metadata->'teller'->'details'->>'category' AS teller_category, "
                 "COUNT(*)::int AS count "
                 "FROM transactions "
-                "WHERE metadata->'teller'->'details'->>'category' IS NOT NULL "
+                "WHERE household_id = :hid "
+                "AND metadata->'teller'->'details'->>'category' IS NOT NULL "
                 "GROUP BY teller_category"
-            )
+            ),
+            {"hid": household_id},
         )
         count_map = {row.teller_category: row.count for row in count_result.all()}
 
@@ -711,10 +713,9 @@ async def update_category_mappings(
 ):
     refuse_in_demo_mode()
     try:
+        key = _category_mappings_key(household_id)
         # Load existing mappings to detect changes
-        result = await db.execute(
-            select(Metadata).where(Metadata.key == "teller_category_mappings")
-        )
+        result = await db.execute(select(Metadata).where(Metadata.key == key))
         meta = result.scalar_one_or_none()
         existing_mappings: dict[str, str] = meta.value if meta else {}
 
@@ -730,16 +731,21 @@ async def update_category_mappings(
                 await db.execute(
                     text(
                         "UPDATE transactions SET category = :cat "
-                        "WHERE metadata->'teller'->'details'->>'category' = :teller_cat"
+                        "WHERE household_id = :hid "
+                        "AND metadata->'teller'->'details'->>'category' = :teller_cat"
                     ),
-                    {"cat": user_cat, "teller_cat": teller_cat},
+                    {
+                        "cat": user_cat,
+                        "teller_cat": teller_cat,
+                        "hid": household_id,
+                    },
                 )
 
         # Persist new mappings
         if meta:
             meta.value = new_mappings
         else:
-            db.add(Metadata(key="teller_category_mappings", value=new_mappings))
+            db.add(Metadata(key=key, value=new_mappings))
 
         await db.commit()
         return {"success": True, "updated": len(new_mappings)}
@@ -960,16 +966,15 @@ async def import_transactions(
     try:
         # Save any new user-provided category mappings
         if body.userMappings:
-            result = await db.execute(
-                select(Metadata).where(Metadata.key == "teller_category_mappings")
-            )
+            cat_key = _category_mappings_key(household_id)
+            result = await db.execute(select(Metadata).where(Metadata.key == cat_key))
             meta = result.scalar_one_or_none()
             existing_mappings: dict[str, str] = meta.value if meta else {}
             merged = {**existing_mappings, **body.userMappings}
             if meta:
                 meta.value = merged
             else:
-                db.add(Metadata(key="teller_category_mappings", value=merged))
+                db.add(Metadata(key=cat_key, value=merged))
             await db.flush()
 
         preview_accounts = preview["accounts"]
