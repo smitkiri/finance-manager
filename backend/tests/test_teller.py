@@ -694,3 +694,38 @@ async def test_import_transactions_from_cache(
 
     # Cache should be cleared
     assert preview_token not in _import_preview_cache
+
+
+# --- Auth / multi-tenancy tests ---
+
+
+TELLER_AUTH_REQUIRED_ROUTES = [
+    ("get", "/api/teller/config", None),
+    ("get", "/api/teller/enrollment-token/e", None),
+    ("put", "/api/teller/enrollment/e/token", {"accessToken": "x"}),
+    ("post", "/api/teller/preview-accounts", {"accessToken": "x"}),
+    ("get", "/api/teller/enrollments/e/preview-accounts", None),
+    ("get", "/api/teller/category-mappings", None),
+    ("put", "/api/teller/category-mappings", {"mappings": []}),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method,path,body", TELLER_AUTH_REQUIRED_ROUTES)
+async def test_teller_endpoint_requires_auth(
+    raw_client: AsyncClient, method: str, path: str, body
+):
+    """All Teller routes must require a Bearer token (or fail 401).
+    Demo mode is intentionally off for these tests."""
+    from app.config import settings as live_settings
+
+    original = live_settings.finance_manager_demo_mode
+    live_settings.finance_manager_demo_mode = False
+    try:
+        kwargs = {"json": body} if body is not None else {}
+        response = await getattr(raw_client, method)(path, **kwargs)
+        assert response.status_code == 401, (
+            f"{method.upper()} {path} returned {response.status_code} without auth"
+        )
+    finally:
+        live_settings.finance_manager_demo_mode = original

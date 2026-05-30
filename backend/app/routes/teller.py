@@ -225,7 +225,10 @@ async def _resolve_user_id(
 
 
 @router.get("/config")
-async def teller_config(db: AsyncSession = Depends(get_db)):
+async def teller_config(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.is_teller_enabled:
         return {"enabled": False, "enrollments": []}
 
@@ -275,7 +278,11 @@ async def teller_config(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/enrollment-token/{enrollmentId}")
-async def get_enrollment_token(enrollmentId: str, db: AsyncSession = Depends(get_db)):
+async def get_enrollment_token(
+    enrollmentId: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.is_teller_enabled:
         return JSONResponse(
             status_code=400, content={"error": "Teller integration not enabled"}
@@ -302,6 +309,7 @@ async def get_enrollment_token(enrollmentId: str, db: AsyncSession = Depends(get
 async def update_enrollment_token(
     enrollmentId: str,
     body: UpdateTokenRequest,
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     refuse_in_demo_mode()
@@ -337,7 +345,9 @@ async def update_enrollment_token(
 
 @router.post("/preview-accounts")
 async def preview_accounts(
-    body: PreviewAccountsRequest, db: AsyncSession = Depends(get_db)
+    body: PreviewAccountsRequest,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
 ):
     if not settings.is_teller_enabled:
         return JSONResponse(
@@ -473,7 +483,9 @@ async def disconnect(
 
 @router.get("/enrollments/{enrollmentId}/preview-accounts")
 async def enrollment_preview_accounts(
-    enrollmentId: str, db: AsyncSession = Depends(get_db)
+    enrollmentId: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         enrollments = await _read_enrollments(db)
@@ -663,7 +675,10 @@ async def refresh_balances(
 
 
 @router.get("/category-mappings")
-async def get_category_mappings(db: AsyncSession = Depends(get_db)):
+async def get_category_mappings(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         result = await db.execute(
             select(Metadata).where(Metadata.key == "teller_category_mappings")
@@ -704,6 +719,7 @@ async def get_category_mappings(db: AsyncSession = Depends(get_db)):
 @router.put("/category-mappings")
 async def update_category_mappings(
     body: CategoryMappingsUpdateRequest,
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     refuse_in_demo_mode()
