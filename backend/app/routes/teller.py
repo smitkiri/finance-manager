@@ -106,49 +106,35 @@ def check_credentials_at_startup() -> None:
         )
 
 
-async def _read_enrollments(db: AsyncSession) -> list[dict]:
-    """Read enrollments from metadata, with backward-compat migration."""
-    result = await db.execute(
-        select(Metadata).where(Metadata.key == "teller_enrollments")
-    )
+def _enrollments_key(household_id: str) -> str:
+    return f"teller_enrollments:{household_id}"
+
+
+def _category_mappings_key(household_id: str) -> str:
+    return f"teller_category_mappings:{household_id}"
+
+
+async def _read_enrollments(db: AsyncSession, household_id: str) -> list[dict]:
+    """Read enrollments for one household."""
+    key = _enrollments_key(household_id)
+    result = await db.execute(select(Metadata).where(Metadata.key == key))
     meta = result.scalar_one_or_none()
     if meta:
         return meta.value if isinstance(meta.value, list) else []
-
-    # Fall back to old single-enrollment key and migrate
-    result = await db.execute(
-        select(Metadata).where(Metadata.key == "teller_enrollment")
-    )
-    old_meta = result.scalar_one_or_none()
-    if old_meta:
-        old = old_meta.value
-        migrated = [
-            {
-                "accessToken": old.get("accessToken"),
-                "userId": old.get("userId"),
-                "enrollmentId": old.get("enrollmentId"),
-                "institutionName": None,
-                "connectedAt": datetime.now(UTC).isoformat(),
-            }
-        ]
-        await _write_enrollments(db, migrated)
-        await db.execute(delete(Metadata).where(Metadata.key == "teller_enrollment"))
-        await db.flush()
-        return migrated
-
     return []
 
 
-async def _write_enrollments(db: AsyncSession, enrollments: list[dict]) -> None:
-    """Upsert enrollments JSON array into metadata."""
-    result = await db.execute(
-        select(Metadata).where(Metadata.key == "teller_enrollments")
-    )
+async def _write_enrollments(
+    db: AsyncSession, enrollments: list[dict], household_id: str
+) -> None:
+    """Upsert enrollments JSON array into metadata for one household."""
+    key = _enrollments_key(household_id)
+    result = await db.execute(select(Metadata).where(Metadata.key == key))
     meta = result.scalar_one_or_none()
     if meta:
         meta.value = enrollments
     else:
-        db.add(Metadata(key="teller_enrollments", value=enrollments))
+        db.add(Metadata(key=key, value=enrollments))
     await db.flush()
 
 
@@ -225,12 +211,15 @@ async def _resolve_user_id(
 
 
 @router.get("/config")
-async def teller_config(db: AsyncSession = Depends(get_db)):
+async def teller_config(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.is_teller_enabled:
         return {"enabled": False, "enrollments": []}
 
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
 
         # For enrollments missing userId, look it up from the accounts table
         enrollment_ids = [
@@ -246,9 +235,10 @@ async def teller_config(db: AsyncSession = Depends(get_db)):
                     "teller_enrollment_id, created_by_user_id "
                     "FROM accounts "
                     "WHERE teller_enrollment_id = ANY(:ids) "
+                    "AND household_id = :hid "
                     "AND created_by_user_id IS NOT NULL"
                 ),
-                {"ids": enrollment_ids},
+                {"ids": enrollment_ids, "hid": household_id},
             )
             for row in result.all():
                 account_user_map[row.teller_enrollment_id] = row.created_by_user_id
@@ -275,13 +265,17 @@ async def teller_config(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/enrollment-token/{enrollmentId}")
-async def get_enrollment_token(enrollmentId: str, db: AsyncSession = Depends(get_db)):
+async def get_enrollment_token(
+    enrollmentId: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.is_teller_enabled:
         return JSONResponse(
             status_code=400, content={"error": "Teller integration not enabled"}
         )
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         enrollment = next(
             (e for e in enrollments if e.get("enrollmentId") == enrollmentId),
             None,
@@ -302,6 +296,7 @@ async def get_enrollment_token(enrollmentId: str, db: AsyncSession = Depends(get
 async def update_enrollment_token(
     enrollmentId: str,
     body: UpdateTokenRequest,
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     refuse_in_demo_mode()
@@ -310,7 +305,7 @@ async def update_enrollment_token(
             status_code=400, content={"error": "Teller integration not enabled"}
         )
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         idx = next(
             (
                 i
@@ -324,7 +319,7 @@ async def update_enrollment_token(
                 status_code=404, content={"error": "Enrollment not found"}
             )
         enrollments[idx] = {**enrollments[idx], "accessToken": body.accessToken}
-        await _write_enrollments(db, enrollments)
+        await _write_enrollments(db, enrollments, household_id)
         await db.commit()
         return {"success": True}
     except Exception as exc:
@@ -337,7 +332,9 @@ async def update_enrollment_token(
 
 @router.post("/preview-accounts")
 async def preview_accounts(
-    body: PreviewAccountsRequest, db: AsyncSession = Depends(get_db)
+    body: PreviewAccountsRequest,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
 ):
     if not settings.is_teller_enabled:
         return JSONResponse(
@@ -376,7 +373,7 @@ async def enroll(
 ):
     refuse_in_demo_mode()
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
 
         entry = {
             "accessToken": body.accessToken,
@@ -398,7 +395,7 @@ async def enroll(
             enrollments[idx] = entry
         else:
             enrollments.append(entry)
-        await _write_enrollments(db, enrollments)
+        await _write_enrollments(db, enrollments, household_id)
 
         # Create account records for selected accounts
         if body.selectedAccounts:
@@ -457,9 +454,9 @@ async def disconnect(
         )
         deleted_count = len(result.all())
 
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         updated = [e for e in enrollments if e.get("enrollmentId") != body.enrollmentId]
-        await _write_enrollments(db, updated)
+        await _write_enrollments(db, updated, household_id)
         await db.commit()
 
         return {"success": True, "accountsDeleted": deleted_count}
@@ -473,10 +470,12 @@ async def disconnect(
 
 @router.get("/enrollments/{enrollmentId}/preview-accounts")
 async def enrollment_preview_accounts(
-    enrollmentId: str, db: AsyncSession = Depends(get_db)
+    enrollmentId: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
 ):
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         enrollment = next(
             (e for e in enrollments if e.get("enrollmentId") == enrollmentId), None
         )
@@ -517,7 +516,7 @@ async def manage_accounts(
 ):
     refuse_in_demo_mode()
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         enrollment = next(
             (e for e in enrollments if e.get("enrollmentId") == enrollmentId), None
         )
@@ -585,7 +584,7 @@ async def refresh_balances(
             status_code=400, content={"error": "Teller integration not enabled"}
         )
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         if not enrollments:
             return JSONResponse(
                 status_code=400, content={"error": "Not enrolled with Teller"}
@@ -663,10 +662,13 @@ async def refresh_balances(
 
 
 @router.get("/category-mappings")
-async def get_category_mappings(db: AsyncSession = Depends(get_db)):
+async def get_category_mappings(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         result = await db.execute(
-            select(Metadata).where(Metadata.key == "teller_category_mappings")
+            select(Metadata).where(Metadata.key == _category_mappings_key(household_id))
         )
         meta = result.scalar_one_or_none()
         saved_mappings: dict[str, str] = meta.value if meta else {}
@@ -677,9 +679,11 @@ async def get_category_mappings(db: AsyncSession = Depends(get_db)):
                 "SELECT metadata->'teller'->'details'->>'category' AS teller_category, "
                 "COUNT(*)::int AS count "
                 "FROM transactions "
-                "WHERE metadata->'teller'->'details'->>'category' IS NOT NULL "
+                "WHERE household_id = :hid "
+                "AND metadata->'teller'->'details'->>'category' IS NOT NULL "
                 "GROUP BY teller_category"
-            )
+            ),
+            {"hid": household_id},
         )
         count_map = {row.teller_category: row.count for row in count_result.all()}
 
@@ -704,14 +708,14 @@ async def get_category_mappings(db: AsyncSession = Depends(get_db)):
 @router.put("/category-mappings")
 async def update_category_mappings(
     body: CategoryMappingsUpdateRequest,
+    household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
     refuse_in_demo_mode()
     try:
+        key = _category_mappings_key(household_id)
         # Load existing mappings to detect changes
-        result = await db.execute(
-            select(Metadata).where(Metadata.key == "teller_category_mappings")
-        )
+        result = await db.execute(select(Metadata).where(Metadata.key == key))
         meta = result.scalar_one_or_none()
         existing_mappings: dict[str, str] = meta.value if meta else {}
 
@@ -727,16 +731,21 @@ async def update_category_mappings(
                 await db.execute(
                     text(
                         "UPDATE transactions SET category = :cat "
-                        "WHERE metadata->'teller'->'details'->>'category' = :teller_cat"
+                        "WHERE household_id = :hid "
+                        "AND metadata->'teller'->'details'->>'category' = :teller_cat"
                     ),
-                    {"cat": user_cat, "teller_cat": teller_cat},
+                    {
+                        "cat": user_cat,
+                        "teller_cat": teller_cat,
+                        "hid": household_id,
+                    },
                 )
 
         # Persist new mappings
         if meta:
             meta.value = new_mappings
         else:
-            db.add(Metadata(key="teller_category_mappings", value=new_mappings))
+            db.add(Metadata(key=key, value=new_mappings))
 
         await db.commit()
         return {"success": True, "updated": len(new_mappings)}
@@ -775,7 +784,7 @@ async def preview_import(
     _clean_expired_previews()
 
     try:
-        enrollments = await _read_enrollments(db)
+        enrollments = await _read_enrollments(db, household_id)
         teller = _get_teller_client()
 
         # Load categories, saved mappings, and recent transactions for this household
@@ -786,7 +795,7 @@ async def preview_import(
         existing_category_names.add(UNCATEGORIZED)
 
         map_result = await db.execute(
-            select(Metadata).where(Metadata.key == "teller_category_mappings")
+            select(Metadata).where(Metadata.key == _category_mappings_key(household_id))
         )
         map_meta = map_result.scalar_one_or_none()
         saved_mappings: dict[str, str] = map_meta.value if map_meta else {}
@@ -957,16 +966,15 @@ async def import_transactions(
     try:
         # Save any new user-provided category mappings
         if body.userMappings:
-            result = await db.execute(
-                select(Metadata).where(Metadata.key == "teller_category_mappings")
-            )
+            cat_key = _category_mappings_key(household_id)
+            result = await db.execute(select(Metadata).where(Metadata.key == cat_key))
             meta = result.scalar_one_or_none()
             existing_mappings: dict[str, str] = meta.value if meta else {}
             merged = {**existing_mappings, **body.userMappings}
             if meta:
                 meta.value = merged
             else:
-                db.add(Metadata(key="teller_category_mappings", value=merged))
+                db.add(Metadata(key=cat_key, value=merged))
             await db.flush()
 
         preview_accounts = preview["accounts"]

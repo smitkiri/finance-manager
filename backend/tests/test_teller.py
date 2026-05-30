@@ -8,13 +8,21 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import Settings
+from app.config import Settings, settings
 from app.models.account import Account
+from app.models.household import Household
 from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.routes.teller import _import_preview_cache, check_credentials_at_startup
+from app.utils.jwt_tokens import encode_access_token
 from app.utils.teller_client import TellerClient
+
+
+def _token_for(user_id: str) -> str:
+    settings.jwt_signing_secret = "test-secret"
+    settings.jwt_access_token_ttl_days = 30
+    return encode_access_token(user_id=user_id)
 
 
 def test_teller_disabled_by_default():
@@ -215,7 +223,9 @@ async def test_teller_config_enabled(client: AsyncClient, db_session: AsyncSessi
                 "connectedAt": "2026-01-01T00:00:00Z",
             }
         ]
-        db_session.add(Metadata(key="teller_enrollments", value=enrollments))
+        db_session.add(
+            Metadata(key="teller_enrollments:household-default", value=enrollments)
+        )
         await db_session.flush()
 
         response = await client.get("/api/teller/config")
@@ -241,7 +251,7 @@ async def test_teller_config_enabled(client: AsyncClient, db_session: AsyncSessi
 async def test_enrollment_token_not_found(
     client: AsyncClient, db_session: AsyncSession
 ):
-    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    db_session.add(Metadata(key="teller_enrollments:household-default", value=[]))
     await db_session.flush()
 
     response = await client.get("/api/teller/enrollment-token/enr_missing")
@@ -273,7 +283,7 @@ async def test_enroll_creates_accounts(client: AsyncClient, db_session: AsyncSes
     db_session.add(User(id="u1", name="Test User"))
     await db_session.flush()
 
-    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    db_session.add(Metadata(key="teller_enrollments:household-default", value=[]))
     await db_session.flush()
 
     response = await client.post(
@@ -297,7 +307,7 @@ async def test_enroll_creates_accounts(client: AsyncClient, db_session: AsyncSes
 
     # Verify enrollment was saved
     result = await db_session.execute(
-        select(Metadata).where(Metadata.key == "teller_enrollments")
+        select(Metadata).where(Metadata.key == "teller_enrollments:household-default")
     )
     meta = result.scalar_one()
     assert len(meta.value) == 1
@@ -324,7 +334,9 @@ async def test_disconnect_removes_enrollment_and_accounts(
         "institutionName": "Test Bank",
         "connectedAt": "2026-01-01T00:00:00Z",
     }
-    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    db_session.add(
+        Metadata(key="teller_enrollments:household-default", value=[enrollment])
+    )
     db_session.add(
         Account(
             id="a1",
@@ -347,7 +359,7 @@ async def test_disconnect_removes_enrollment_and_accounts(
 
     # Verify enrollment removed
     result = await db_session.execute(
-        select(Metadata).where(Metadata.key == "teller_enrollments")
+        select(Metadata).where(Metadata.key == "teller_enrollments:household-default")
     )
     meta = result.scalar_one()
     assert len(meta.value) == 0
@@ -357,7 +369,7 @@ async def test_disconnect_removes_enrollment_and_accounts(
 async def test_enrollment_preview_accounts_not_found(
     client: AsyncClient, db_session: AsyncSession
 ):
-    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    db_session.add(Metadata(key="teller_enrollments:household-default", value=[]))
     await db_session.flush()
 
     response = await client.get("/api/teller/enrollments/enr_missing/preview-accounts")
@@ -374,7 +386,9 @@ async def test_manage_accounts_add(client: AsyncClient, db_session: AsyncSession
         "institutionName": "Test Bank",
         "connectedAt": "2026-01-01T00:00:00Z",
     }
-    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    db_session.add(
+        Metadata(key="teller_enrollments:household-default", value=[enrollment])
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -401,7 +415,7 @@ async def test_manage_accounts_add(client: AsyncClient, db_session: AsyncSession
 async def test_refresh_balances_no_enrollment(
     client: AsyncClient, db_session: AsyncSession
 ):
-    db_session.add(Metadata(key="teller_enrollments", value=[]))
+    db_session.add(Metadata(key="teller_enrollments:household-default", value=[]))
     await db_session.flush()
 
     response = await client.post("/api/teller/refresh-balances")
@@ -418,7 +432,9 @@ async def test_refresh_balances_disabled(client: AsyncClient, db_session: AsyncS
         "institutionName": "Test Bank",
         "connectedAt": "2026-01-01T00:00:00Z",
     }
-    db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+    db_session.add(
+        Metadata(key="teller_enrollments:household-default", value=[enrollment])
+    )
     await db_session.flush()
 
     response = await client.post("/api/teller/refresh-balances")
@@ -455,7 +471,9 @@ async def test_refresh_balances_missing_cert_files(
             "institutionName": "Test Bank",
             "connectedAt": "2026-01-01T00:00:00Z",
         }
-        db_session.add(Metadata(key="teller_enrollments", value=[enrollment]))
+        db_session.add(
+            Metadata(key="teller_enrollments:household-default", value=[enrollment])
+        )
         await db_session.flush()
 
         response = await client.post("/api/teller/refresh-balances")
@@ -526,7 +544,7 @@ async def test_get_category_mappings_with_counts(
     # Save a mapping
     db_session.add(
         Metadata(
-            key="teller_category_mappings",
+            key="teller_category_mappings:household-default",
             value={"food_and_drink": "Dining"},
         )
     )
@@ -694,3 +712,213 @@ async def test_import_transactions_from_cache(
 
     # Cache should be cleared
     assert preview_token not in _import_preview_cache
+
+
+# --- Auth / multi-tenancy tests ---
+
+
+TELLER_AUTH_REQUIRED_ROUTES = [
+    ("get", "/api/teller/config", None),
+    ("get", "/api/teller/enrollment-token/e", None),
+    ("put", "/api/teller/enrollment/e/token", {"accessToken": "x"}),
+    ("post", "/api/teller/preview-accounts", {"accessToken": "x"}),
+    ("get", "/api/teller/enrollments/e/preview-accounts", None),
+    ("get", "/api/teller/category-mappings", None),
+    ("put", "/api/teller/category-mappings", {"mappings": []}),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method,path,body", TELLER_AUTH_REQUIRED_ROUTES)
+async def test_teller_endpoint_requires_auth(
+    raw_client: AsyncClient, method: str, path: str, body
+):
+    """All Teller routes must require a Bearer token (or fail 401).
+    Demo mode is intentionally off for these tests."""
+    from app.config import settings as live_settings
+
+    original = live_settings.finance_manager_demo_mode
+    live_settings.finance_manager_demo_mode = False
+    try:
+        kwargs = {"json": body} if body is not None else {}
+        response = await getattr(raw_client, method)(path, **kwargs)
+        assert response.status_code == 401, (
+            f"{method.upper()} {path} returned {response.status_code} without auth"
+        )
+    finally:
+        live_settings.finance_manager_demo_mode = original
+
+
+@pytest.mark.asyncio
+async def test_teller_enrollments_isolated_by_household(
+    raw_client: AsyncClient, db_session: AsyncSession
+):
+    """An enrollment made in household A must not be visible to household B."""
+    original = (
+        settings.finance_manager_teller_integration_enabled,
+        settings.finance_manager_teller_app_id,
+        settings.finance_manager_teller_private_key,
+        settings.finance_manager_teller_cert,
+    )
+    settings.finance_manager_teller_integration_enabled = True
+    settings.finance_manager_teller_app_id = "test-app"
+    settings.finance_manager_teller_private_key = "/tmp/k"
+    settings.finance_manager_teller_cert = "/tmp/c"
+
+    try:
+        db_session.add_all(
+            [
+                Household(id="hh-iso-a", name="A"),
+                Household(id="hh-iso-b", name="B"),
+                User(
+                    id="u-iso-a",
+                    name="Alice",
+                    email="a-iso@test.local",
+                    password_hash="",
+                    household_id="hh-iso-a",
+                ),
+                User(
+                    id="u-iso-b",
+                    name="Bob",
+                    email="b-iso@test.local",
+                    password_hash="",
+                    household_id="hh-iso-b",
+                ),
+            ]
+        )
+        # Enrollment owned by household-A, scoped via the new per-household key.
+        db_session.add(
+            Metadata(
+                key="teller_enrollments:hh-iso-a",
+                value=[
+                    {
+                        "accessToken": "secret-A",
+                        "userId": "u-iso-a",
+                        "enrollmentId": "enr-A",
+                        "institutionName": "Bank A",
+                        "connectedAt": "2026-05-29T00:00:00Z",
+                    }
+                ],
+            )
+        )
+        await db_session.flush()
+
+        headers_a = {"Authorization": f"Bearer {_token_for('u-iso-a')}"}
+        headers_b = {"Authorization": f"Bearer {_token_for('u-iso-b')}"}
+
+        # Household A must see its own enrollment.
+        response = await raw_client.get("/api/teller/config", headers=headers_a)
+        assert response.status_code == 200
+        assert len(response.json()["enrollments"]) == 1
+        assert response.json()["enrollments"][0]["enrollmentId"] == "enr-A"
+
+        # Household B must not see A's enrollment in /config.
+        response = await raw_client.get("/api/teller/config", headers=headers_b)
+        assert response.status_code == 200
+        assert response.json()["enrollments"] == []
+
+        # Household A can fetch its own access token.
+        response = await raw_client.get(
+            "/api/teller/enrollment-token/enr-A", headers=headers_a
+        )
+        assert response.status_code == 200
+        assert response.json()["accessToken"] == "secret-A"
+
+        # Household B must not be able to fetch A's access token by enrollmentId.
+        response = await raw_client.get(
+            "/api/teller/enrollment-token/enr-A", headers=headers_b
+        )
+        assert response.status_code == 404
+    finally:
+        (
+            settings.finance_manager_teller_integration_enabled,
+            settings.finance_manager_teller_app_id,
+            settings.finance_manager_teller_private_key,
+            settings.finance_manager_teller_cert,
+        ) = original
+
+
+@pytest.mark.asyncio
+async def test_category_mapping_update_scoped_by_household(
+    raw_client: AsyncClient, db_session: AsyncSession
+):
+    """Updating category mappings in household A must NOT mutate transactions
+    in household B."""
+    from datetime import date
+
+    db_session.add_all(
+        [
+            Household(id="hh-cm-a", name="A"),
+            Household(id="hh-cm-b", name="B"),
+            User(
+                id="u-cm-a",
+                name="Alice",
+                email="a-cm@test.local",
+                password_hash="",
+                household_id="hh-cm-a",
+            ),
+            User(
+                id="u-cm-b",
+                name="Bob",
+                email="b-cm@test.local",
+                password_hash="",
+                household_id="hh-cm-b",
+            ),
+        ]
+    )
+    # One transaction in each household sharing the same teller category.
+    for hh in ("hh-cm-a", "hh-cm-b"):
+        db_session.add(
+            Transaction(
+                id=f"t-cm-{hh}",
+                household_id=hh,
+                date=date(2026, 5, 1),
+                description="x",
+                category="Old",
+                amount=Decimal("10"),
+                type="expense",
+                metadata_={"teller": {"details": {"category": "Groceries"}}},
+            )
+        )
+    await db_session.flush()
+
+    headers_a = {"Authorization": f"Bearer {_token_for('u-cm-a')}"}
+    response = await raw_client.put(
+        "/api/teller/category-mappings",
+        json={"mappings": [{"tellerCategory": "Groceries", "userCategory": "Food"}]},
+        headers=headers_a,
+    )
+    assert response.status_code == 200
+
+    # Household A's row is updated, household B's is NOT.
+    a = (
+        await db_session.execute(
+            select(Transaction).where(Transaction.id == "t-cm-hh-cm-a")
+        )
+    ).scalar_one()
+    b = (
+        await db_session.execute(
+            select(Transaction).where(Transaction.id == "t-cm-hh-cm-b")
+        )
+    ).scalar_one()
+    await db_session.refresh(a)
+    await db_session.refresh(b)
+    assert a.category == "Food"
+    assert b.category == "Old"
+
+    # And the mapping itself is stored under a per-household key.
+    meta = (
+        await db_session.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings:hh-cm-a")
+        )
+    ).scalar_one_or_none()
+    assert meta is not None
+    assert meta.value == {"Groceries": "Food"}
+
+    # Household B does NOT have a mapping row.
+    meta_b = (
+        await db_session.execute(
+            select(Metadata).where(Metadata.key == "teller_category_mappings:hh-cm-b")
+        )
+    ).scalar_one_or_none()
+    assert meta_b is None
