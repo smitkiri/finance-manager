@@ -1,3 +1,4 @@
+import io
 import json
 from datetime import date
 from decimal import Decimal
@@ -169,3 +170,92 @@ class TestRestore:
         result = await db_session.execute(select(User).where(User.id == "user1"))
         user = result.scalar_one()
         assert user.name == "Alice"
+
+    async def test_restore_does_not_create_new_users(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Restore must not insert User rows with attacker-chosen
+        id/email/password_hash. Otherwise an authenticated user can seed
+        login-capable accounts in their household."""
+        backup = {
+            "users": [
+                {
+                    "id": "u-attacker-seeded",
+                    "email": "attacker-seeded@evil.example",
+                    "password_hash": (
+                        "$argon2id$v=19$m=65536,t=3,p=4$attackerKnowsThis"
+                    ),
+                    "name": "Backdoor",
+                }
+            ],
+            "categories": [],
+            "sources": [],
+            "reports": [],
+            "date_ranges": [],
+            "metadata": [],
+            "accounts": [],
+            "account_balances": [],
+            "transactions": [],
+        }
+        response = await client.post(
+            "/api/restore",
+            files={
+                "backupFile": (
+                    "backup.json",
+                    io.BytesIO(json.dumps(backup).encode("utf-8")),
+                    "application/json",
+                )
+            },
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(User).where(User.id == "u-attacker-seeded")
+        )
+        assert result.scalar_one_or_none() is None
+
+    async def test_restore_strips_user_attribution(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Restore must not let the uploader set created_by_user_id to an
+        arbitrary string — it should be set to the caller (or None)."""
+        backup = {
+            "users": [],
+            "categories": [],
+            "sources": [],
+            "reports": [],
+            "date_ranges": [],
+            "metadata": [],
+            "accounts": [],
+            "account_balances": [],
+            "transactions": [
+                {
+                    "id": "t-attrib",
+                    "date": "2026-05-01",
+                    "description": "x",
+                    "category": "Food",
+                    "amount": 10,
+                    "type": "expense",
+                    "created_by_user_id": "u-someone-else",
+                }
+            ],
+        }
+        response = await client.post(
+            "/api/restore",
+            files={
+                "backupFile": (
+                    "backup.json",
+                    io.BytesIO(json.dumps(backup).encode("utf-8")),
+                    "application/json",
+                )
+            },
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(Transaction).where(Transaction.id == "t-attrib")
+        )
+        txn = result.scalar_one()
+        # created_by_user_id should be either None or the authenticated user
+        # — never an arbitrary id supplied by the uploader.
+        assert txn.created_by_user_id != "u-someone-else"

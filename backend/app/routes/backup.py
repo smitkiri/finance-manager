@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.demo.limits import refuse_in_demo_mode
-from app.dependencies.auth import get_current_household_id
+from app.dependencies.auth import get_current_household_id, get_current_user
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.date_range import DateRange
@@ -131,6 +131,7 @@ async def backup(
 @router.post("/restore")
 async def restore(
     backupFile: UploadFile | None = File(None),
+    user: User = Depends(get_current_user),
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -149,24 +150,25 @@ async def restore(
     # Restore order matters for FK dependencies. Backup content is forced into
     # the caller's household — even if the file came from a different household,
     # restoring it adopts the rows into the current household.
-    for user in data.get("users", []):
-        # Pre-A2 backups have no email/password_hash; emit placeholders that
-        # the operator can later reset via the set_password CLI.
-        user_id = user["id"]
-        email = user.get("email") or f"{user_id}@placeholder.local"
-        password_hash = user.get("password_hash") or ""
-        stmt = (
-            insert(User)
-            .values(
-                id=user_id,
-                name=user.get("name", ""),
-                email=email,
-                password_hash=password_hash,
-                household_id=household_id,
-            )
-            .on_conflict_do_nothing(index_elements=["id"])
+    #
+    # User rows from the upload are intentionally ignored: accepting them would
+    # let any authenticated user seed a login-capable account with an
+    # attacker-chosen email + password_hash. Existing household members are
+    # preserved via `created_by_user_id` attribution; rows attributed to
+    # uploaded users that don't exist in this household are re-attributed to
+    # the caller.
+    valid_user_ids = {
+        row.id
+        for row in (
+            await db.execute(select(User).where(User.household_id == household_id))
         )
-        await db.execute(stmt)
+        .scalars()
+        .all()
+    }
+    valid_user_ids.add(user.id)
+
+    def _attribute(uploaded: str | None) -> str:
+        return uploaded if uploaded in valid_user_ids else user.id
 
     for cat in data.get("categories", []):
         cat_name = cat.get("name", "")
@@ -198,7 +200,7 @@ async def restore(
             txn_date = date.fromisoformat(txn_date)
         # Backups taken before the household migration use `user_id`;
         # newer backups use `created_by_user_id`.
-        created_by = txn.get("created_by_user_id") or txn.get("user_id")
+        uploaded_attr = txn.get("created_by_user_id") or txn.get("user_id")
         stmt = (
             insert(Transaction)
             .values(
@@ -209,7 +211,7 @@ async def restore(
                 amount=txn["amount"],
                 type=txn["type"],
                 household_id=household_id,
-                created_by_user_id=created_by,
+                created_by_user_id=_attribute(uploaded_attr),
                 labels=txn.get("labels", []),
                 metadata_=txn.get("metadata", {}),
                 transfer_info=txn.get("transfer_info"),
@@ -252,7 +254,18 @@ async def restore(
         )
         await db.execute(stmt)
 
+    # Metadata is a global KV store, but the only keys that should be
+    # restorable are the per-household Teller keys introduced in Phase 2.
+    # Reject everything else outright — restore must never be a vehicle for
+    # cross-tenant metadata pollution (e.g. overwriting another household's
+    # `teller_enrollments:<hid>` row).
+    allowed_metadata_keys = {
+        f"teller_enrollments:{household_id}",
+        f"teller_category_mappings:{household_id}",
+    }
     for meta in data.get("metadata", []):
+        if meta.get("key") not in allowed_metadata_keys:
+            continue
         stmt = (
             insert(Metadata)
             .values(key=meta["key"], value=meta.get("value"))
@@ -261,13 +274,13 @@ async def restore(
         await db.execute(stmt)
 
     for acct in data.get("accounts", []):
-        created_by = acct.get("created_by_user_id") or acct.get("user_id")
+        uploaded_attr = acct.get("created_by_user_id") or acct.get("user_id")
         stmt = (
             insert(Account)
             .values(
                 id=acct["id"],
                 household_id=household_id,
-                created_by_user_id=created_by,
+                created_by_user_id=_attribute(uploaded_attr),
                 name=acct.get("name", ""),
                 type=acct.get("type", "asset"),
             )
@@ -294,4 +307,11 @@ async def restore(
 
     await db.commit()
 
-    return {"success": True, "message": "Restore completed successfully."}
+    return {
+        "success": True,
+        "message": (
+            "Restore completed. Note: user rows in the upload were ignored "
+            "for security reasons; rows attributed to non-household users "
+            "were re-attributed to you."
+        ),
+    }
