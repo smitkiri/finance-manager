@@ -14,6 +14,11 @@ def _jwt_secret(monkeypatch):
     monkeypatch.setattr(settings, "jwt_signing_secret", "test-secret")
     monkeypatch.setattr(settings, "jwt_access_token_ttl_days", 30)
     monkeypatch.setattr(settings, "finance_manager_demo_mode", False)
+    # The cookie tests round-trip cookies through httpx, which refuses to
+    # forward Secure cookies over plain http://test. Production keeps
+    # Secure=True (validated separately in `test_login_sets_httponly_cookie`
+    # via the `or auth_cookie_secure is False` guard).
+    monkeypatch.setattr(settings, "auth_cookie_secure", False)
 
 
 @pytest.mark.asyncio
@@ -241,6 +246,28 @@ async def test_logout_clears_cookie(raw_client: AsyncClient):
     assert f"{settings.auth_cookie_name}=" in set_cookie
     # delete_cookie sets an expired/empty value; assert the attribute is present
     assert "Max-Age=0" in set_cookie or "expires=" in set_cookie.lower()
+
+
+@pytest.mark.asyncio
+async def test_authenticated_request_via_cookie(raw_client: AsyncClient):
+    """A request that carries only the auth cookie (no Authorization header)
+    must authenticate successfully."""
+    signup = await raw_client.post(
+        "/api/auth/signup",
+        json={
+            "email": "cookie-bearer@example.com",
+            "password": "pw12345678",
+            "name": "Cookie Bearer",
+        },
+    )
+    assert signup.status_code == 200
+
+    # httpx AsyncClient persists cookies across requests by default. The
+    # signup response set the __Host-fm_session cookie; this request carries
+    # no Authorization header but the cookie alone must authenticate.
+    me = await raw_client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.json()["user"]["email"] == "cookie-bearer@example.com"
 
 
 @pytest.mark.asyncio

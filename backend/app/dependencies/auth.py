@@ -12,7 +12,7 @@ is amortized: FastAPI's dependency cache means endpoints that also
 depend on `get_current_user` only load the user once.
 """
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,26 +22,27 @@ from app.models.user import User
 from app.utils.jwt_tokens import InvalidTokenError, decode_access_token
 
 
-def _parse_bearer(authorization: str | None) -> str:
+def _parse_bearer(authorization: str | None) -> str | None:
     if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
+        return None
     parts = authorization.split(" ", 1)
     if len(parts) != 2 or parts[0].lower() != "bearer" or not parts[1].strip():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
+        return None
     return parts[1].strip()
 
 
 async def get_current_user(
     authorization: str | None = Header(default=None),
+    fm_session: str | None = Cookie(default=None, alias="__Host-fm_session"),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Return the authenticated user, or 401."""
+    """Return the authenticated user, or 401.
+
+    Token source order: HttpOnly cookie first, then Authorization header
+    (transitional — kept for API clients that don't speak cookies, and so
+    that legacy header-bearing requests continue to work during the
+    cookie-migration rollout).
+    """
     if settings.finance_manager_demo_mode:
         result = await db.execute(select(User).where(User.id == settings.demo_user_id))
         user = result.scalar_one_or_none()
@@ -53,7 +54,12 @@ async def get_current_user(
             )
         return user
 
-    token = _parse_bearer(authorization)
+    token = fm_session or _parse_bearer(authorization)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
     try:
         claims = decode_access_token(token)
     except InvalidTokenError as exc:
