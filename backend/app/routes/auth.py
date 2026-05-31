@@ -48,8 +48,24 @@ def _invite_is_pending(invite: Invitation, now: datetime) -> bool:
     return invite.expires_at > now
 
 
+def _set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=settings.auth_cookie_name,
+        value=token,
+        max_age=settings.jwt_access_token_ttl_days * 24 * 3600,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
+        path="/",
+    )
+
+
 @router.post("/signup", response_model=AuthResponse)
-async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
+async def signup(
+    body: SignupRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     _demo_disabled()
 
     if await _email_exists(db, body.email):
@@ -112,6 +128,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(household)
 
     token = encode_access_token(user_id=user.id)
+    _set_auth_cookie(response, token)
     return AuthResponse(
         token=token,
         user=UserOut.from_orm_model(user),
@@ -120,7 +137,11 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     _demo_disabled()
 
     result = await db.execute(
@@ -142,6 +163,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         )
 
     token = encode_access_token(user_id=user.id)
+    _set_auth_cookie(response, token)
     return AuthResponse(
         token=token,
         user=UserOut.from_orm_model(user),
@@ -151,9 +173,18 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout():
-    # Stateless: client discards its token. Endpoint exists so the frontend
-    # has something to call and so a future server-side revocation has a hook.
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # Clear the HttpOnly auth cookie on the way out. Constructing the
+    # Response directly (vs taking it as a dependency) lets the 204 status
+    # code stand without FastAPI body serialization complaining.
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.delete_cookie(
+        key=settings.auth_cookie_name,
+        path="/",
+        secure=settings.auth_cookie_secure,
+        httponly=True,
+        samesite=settings.auth_cookie_samesite,
+    )
+    return response
 
 
 @router.get("/me", response_model=MeResponse)

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings
 
 
@@ -30,6 +32,12 @@ class Settings(BaseSettings):
     # main.py refuses to serve if it's unset in production-ish runs.
     jwt_signing_secret: str = ""
     jwt_access_token_ttl_days: int = 30
+
+    # Cookie-based auth. The `__Host-` prefix requires Secure + Path=/ + no
+    # Domain attribute; the cookie-setter below encodes those constraints.
+    auth_cookie_name: str = "__Host-fm_session"
+    auth_cookie_secure: bool = True  # set to False only for local HTTP dev
+    auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
     @property
     def is_teller_enabled(self) -> bool:
