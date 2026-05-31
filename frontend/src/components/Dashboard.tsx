@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
+import { ListRow } from './ui/ListRow';
 import { Chart } from './charts/Chart';
 import { Expense, User, DashboardStats } from '../types';
 import { calculateStats, formatCurrency, formatDate } from '../utils';
@@ -269,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Chart data={stats.monthlyData} type="line" title="Monthly Overview" />
 
           <Chart data={savingsMonthlyData} type="savings-bar" title="Savings" />
@@ -309,7 +310,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
                     <button
                       key={category}
                       onClick={() => handleCategoryToggle(category)}
-                      className={`flex items-center space-x-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      className={`flex items-center space-x-1 px-3 py-2 md:py-1.5 min-h-[36px] md:min-h-0 rounded-md text-sm md:text-xs font-medium transition-colors ${
                         isSelected
                           ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -328,14 +329,30 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
         </div>
 
         {/* Category Breakdown Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Expense Category Breakdown */}
           {expenseCategoryBreakdown.length > 0 && (
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Expense Breakdown
               </h3>
-              <div className="overflow-x-auto">
+              {/* Mobile: cards */}
+              <div className="md:hidden space-y-2">
+                {expenseCategoryBreakdown.map((item) => (
+                  <ListRow
+                    key={item.category}
+                    primary={<span>{item.category}</span>}
+                    amount={
+                      <span className="text-red-600 dark:text-red-400 tabular-nums">
+                        ${item.amount.toFixed(2)}
+                      </span>
+                    }
+                    meta={<span>{item.percentage}%</span>}
+                  />
+                ))}
+              </div>
+              {/* Tablet+: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">
@@ -379,7 +396,23 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Income Breakdown
               </h3>
-              <div className="overflow-x-auto">
+              {/* Mobile: cards */}
+              <div className="md:hidden space-y-2">
+                {incomeCategoryBreakdown.map((item) => (
+                  <ListRow
+                    key={item.category}
+                    primary={<span>{item.category}</span>}
+                    amount={
+                      <span className="text-green-600 dark:text-green-400 tabular-nums">
+                        ${item.amount.toFixed(2)}
+                      </span>
+                    }
+                    meta={<span>{item.percentage}%</span>}
+                  />
+                ))}
+              </div>
+              {/* Tablet+: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">

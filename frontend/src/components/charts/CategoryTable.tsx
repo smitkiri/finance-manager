@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatCurrency } from '../../utils';
+import { ListRow } from '../ui/ListRow';
 
 interface CategoryTableProps {
   categoryBreakdown: { [key: string]: number };
@@ -36,7 +37,35 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Expenses by Category
       </h3>
-      <div className="overflow-x-auto">
+      {/* Mobile: cards */}
+      <div className="md:hidden space-y-2">
+        {categories.map((category, index) => (
+          <ListRow
+            key={category.name}
+            primary={
+              <div className="flex items-center">
+                <div
+                  className="w-3 h-3 rounded-full mr-3 flex-shrink-0"
+                  style={{
+                    backgroundColor: `hsl(${(index * 137.5) % 360}, 70%, 60%)`,
+                  }}
+                />
+                <span className="truncate">{category.name}</span>
+              </div>
+            }
+            amount={<span>{formatCurrency(category.amount)}</span>}
+            meta={<span>{category.percentage.toFixed(1)}%</span>}
+          />
+        ))}
+        <div className="mt-3 pt-3 border-t-2 border-gray-200 dark:border-gray-700 flex items-center justify-between px-1">
+          <span className="font-semibold text-gray-900 dark:text-white">Total</span>
+          <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+            {formatCurrency(totalExpenses)}
+          </span>
+        </div>
+      </div>
+      {/* Tablet+: table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
