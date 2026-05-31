@@ -53,7 +53,9 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{title}</p>
-          <p className={`text-2xl font-bold ${getValueColor()} mb-1`}>{formatCurrency(value)}</p>
+          <p className={`text-3xl md:text-2xl font-bold ${getValueColor()} mb-1`}>
+            {formatCurrency(value)}
+          </p>
           {change !== undefined && (
             <p className={`text-sm ${getChangeColor()}`}>
               {change >= 0 ? '+' : ''}
