@@ -27,6 +27,7 @@ import {
 } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar, SidebarTrigger } from './components/Sidebar';
+import { OverflowMenu } from './components/ui/OverflowMenu';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
@@ -519,8 +520,7 @@ function AppContent() {
         const csvText = await getCSVTextFromFile();
 
         // Call backend API to import with source (which adds metadata and detects transfers)
-        const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)
-          ?.files?.[0];
+        const csvFile = findCsvInputWithFile()?.files?.[0];
         const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/import-with-mapping`, {
           method: 'POST',
           headers: {
@@ -603,8 +603,7 @@ function AppContent() {
   const handleImportWithSource = async (source: Source, userId: string) => {
     try {
       const csvText = await getCSVTextFromFile();
-      const csvFile = (document.querySelector('input[type="file"]') as HTMLInputElement)
-        ?.files?.[0];
+      const csvFile = findCsvInputWithFile()?.files?.[0];
       // Call backend API to import with source (which adds metadata)
       const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/import-with-mapping`, {
         method: 'POST',
@@ -726,9 +725,17 @@ function AppContent() {
     }
   };
 
+  const findCsvInputWithFile = (): HTMLInputElement | null => {
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    for (const input of Array.from(inputs)) {
+      if (input.files && input.files.length > 0) return input;
+    }
+    return null;
+  };
+
   const getCSVTextFromFile = async (): Promise<string> => {
     return new Promise((resolve) => {
-      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      const input = findCsvInputWithFile();
       if (input && input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -1030,44 +1037,103 @@ function AppContent() {
                 />
                 <Logo className="h-8 w-auto text-gray-900 dark:text-white" />
               </div>
-              <div className="flex items-center space-x-4">
-                <UserFilter
-                  users={users}
-                  selectedUserId={selectedUserId}
-                  onUserChange={setSelectedUserId}
-                />
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* UserFilter — desktop/tablet only; on mobile it's in the sidebar */}
+                <div className="hidden md:block">
+                  <UserFilter
+                    users={users}
+                    selectedUserId={selectedUserId}
+                    onUserChange={setSelectedUserId}
+                  />
+                </div>
+
+                {/* DateRangePicker — always visible (compact label on phones) */}
                 <DateRangePicker currentRange={dateRange} onDateRangeChange={setDateRange} />
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                  title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                >
-                  {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-                </button>
-                {tellerEnabled && accounts.some((a) => a.tellerAccountId) && (
+
+                {/* Tablet+: inline action buttons */}
+                <div className="hidden md:flex items-center gap-2">
                   <button
-                    onClick={() => setShowTellerImport(true)}
-                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    onClick={toggleTheme}
+                    className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
                   >
-                    <Building2 size={16} />
-                    <span>Import from Bank</span>
+                    {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                   </button>
-                )}
-                <label className="cursor-pointer">
-                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                  <div className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <Upload size={16} />
-                    <span>Import CSV</span>
-                  </div>
-                </label>
-                <button
-                  onClick={() => setIsFormOpen(true)}
-                  className="flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  title="Add Transaction"
-                >
-                  <Plus size={24} />
-                </button>
-                <UserMenu demoEnabled={demoEnabled} />
+                  {tellerEnabled && accounts.some((a) => a.tellerAccountId) && (
+                    <button
+                      onClick={() => setShowTellerImport(true)}
+                      className="hidden lg:flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      <Building2 size={16} />
+                      <span>Import from Bank</span>
+                    </button>
+                  )}
+                  <label className="cursor-pointer hidden lg:block">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="csv-upload-input"
+                    />
+                    <div className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <Upload size={16} />
+                      <span>Import CSV</span>
+                    </div>
+                  </label>
+                  <button
+                    onClick={() => setIsFormOpen(true)}
+                    className="flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    title="Add Transaction"
+                  >
+                    <Plus size={24} />
+                  </button>
+                  <UserMenu demoEnabled={demoEnabled} />
+                </div>
+
+                {/* Mobile: overflow menu collects all actions */}
+                <div className="md:hidden flex items-center gap-1">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="csv-upload-input-mobile"
+                  />
+                  <OverflowMenu
+                    triggerAriaLabel="More actions"
+                    items={[
+                      {
+                        label: 'Add transaction',
+                        icon: <Plus size={18} />,
+                        onClick: () => setIsFormOpen(true),
+                      },
+                      {
+                        label: 'Import CSV',
+                        icon: <Upload size={18} />,
+                        onClick: () => {
+                          (
+                            document.getElementById(
+                              'csv-upload-input-mobile'
+                            ) as HTMLInputElement | null
+                          )?.click();
+                        },
+                      },
+                      {
+                        label: 'Import from bank',
+                        icon: <Building2 size={18} />,
+                        onClick: () => setShowTellerImport(true),
+                        hidden: !(tellerEnabled && accounts.some((a) => a.tellerAccountId)),
+                      },
+                      {
+                        label: theme === 'light' ? 'Dark mode' : 'Light mode',
+                        icon: theme === 'light' ? <Moon size={18} /> : <Sun size={18} />,
+                        onClick: toggleTheme,
+                      },
+                    ]}
+                  />
+                  <UserMenu demoEnabled={demoEnabled} />
+                </div>
               </div>
             </div>
           </div>
