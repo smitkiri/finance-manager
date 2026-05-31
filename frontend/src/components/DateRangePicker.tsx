@@ -16,6 +16,10 @@ interface DateRange {
   end: Date;
 }
 
+function formatMD(d: Date): string {
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+}
+
 interface DateRangePickerProps {
   onDateRangeChange: (range: DateRange) => void;
   currentRange: DateRange;
@@ -174,15 +178,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return options;
   };
 
+  const activePresetName: string | undefined = undefined;
+  const compactLabel =
+    activePresetName ?? `${formatMD(currentRange.start)}–${formatMD(currentRange.end)}`;
+
   return (
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
         <Calendar size={16} className="text-gray-600 dark:text-gray-400" />
         <span className="text-gray-700 dark:text-gray-300 font-medium">
-          {formatDateRange(currentRange)}
+          <span className="hidden sm:inline">{formatDateRange(currentRange)}</span>
+          <span className="sm:hidden">{compactLabel}</span>
         </span>
         <ChevronDown size={16} className="text-gray-600 dark:text-gray-400" />
       </button>
