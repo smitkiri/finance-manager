@@ -14,8 +14,6 @@ jest.mock('../../utils/apiClient', () => {
       ...actual.ApiClient,
       signup: jest.fn(),
       getDemoConfig: jest.fn().mockResolvedValue({ enabled: false }),
-      setAuthToken: jest.fn(),
-      getAuthToken: jest.fn().mockReturnValue(null),
       lookupInvitation: jest.fn(),
     },
   };
@@ -63,7 +61,8 @@ describe('SignupPage', () => {
         password: 'password1',
       })
     );
-    expect(ApiClient.setAuthToken).toHaveBeenCalledWith('tok');
+    // The backend sets an HttpOnly cookie; the client no longer touches a
+    // token. Reaching HOME proves auth state propagated via the response.
     expect(await screen.findByText('HOME')).toBeInTheDocument();
   });
 

@@ -28,17 +28,10 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     }
     let cancelled = false;
     (async () => {
-      let isDemo = false;
-      try {
-        const cfg = await ApiClient.getDemoConfig();
-        isDemo = !!cfg?.enabled;
-      } catch {
-        // Probe failure is non-fatal; fall through to the token check.
-      }
-      if (!isDemo && !ApiClient.getAuthToken()) {
-        if (!cancelled) setStatus('unauthed');
-        return;
-      }
+      // With the JWT now living in an HttpOnly cookie there's nothing to
+      // probe client-side — we just ask the server "who am I?" and let the
+      // 200/401 split decide. The demo-config probe is gone too: in demo
+      // mode the backend returns the demo user from /me without auth.
       try {
         const me = await ApiClient.getMe();
         if (cancelled) return;
@@ -46,7 +39,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         setStatus('authed');
       } catch {
         if (cancelled) return;
-        ApiClient.setAuthToken(null);
         setStatus('unauthed');
       }
     })();

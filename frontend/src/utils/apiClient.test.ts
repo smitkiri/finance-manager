@@ -15,34 +15,30 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
       search: '?search=foo',
     };
     resetAuthNavigatorForTests();
-    ApiClient.setAuthToken('test-token');
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
     (window as any).location = originalLocation;
-    ApiClient.setAuthToken(null);
   });
 
-  it('clears the token and navigates to /login on 401 from a non-auth endpoint', async () => {
+  it('navigates to /login on 401 from a non-auth endpoint', async () => {
     const navigate = jest.fn();
     setAuthNavigator(navigate);
     global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 401 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
-    expect(ApiClient.getAuthToken()).toBeNull();
     expect(navigate).toHaveBeenCalledWith('/login?next=%2Ftransactions%3Fsearch%3Dfoo');
   });
 
-  it('does NOT clear or navigate on 401 from /api/auth/* endpoints', async () => {
+  it('does NOT navigate on 401 from /api/auth/* endpoints', async () => {
     const navigate = jest.fn();
     setAuthNavigator(navigate);
     global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 401 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/auth/me');
 
-    expect(ApiClient.getAuthToken()).toBe('test-token');
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -53,7 +49,6 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
 
     await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
-    expect(ApiClient.getAuthToken()).toBe('test-token');
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -65,6 +60,30 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
 
     expect(res.status).toBe(401);
   });
+
+  it("sends credentials: 'include' so the __Host-fm_session cookie ships with every request", async () => {
+    setAuthNavigator(jest.fn());
+    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 200 }));
+
+    await ApiClient.apiFetch('http://localhost:3002/api/expenses');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.credentials).toBe('include');
+  });
+
+  it('does NOT inject an Authorization header (cookie carries auth now)', async () => {
+    setAuthNavigator(jest.fn());
+    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 200 }));
+
+    await ApiClient.apiFetch('http://localhost:3002/api/expenses');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    // headers are either undefined (no caller-provided headers) or a plain
+    // object with no Authorization key.
+    const headers = (init.headers ?? {}) as Record<string, string>;
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers.authorization).toBeUndefined();
+  });
 });
 
 describe('ApiClient invitation methods', () => {
@@ -72,15 +91,13 @@ describe('ApiClient invitation methods', () => {
 
   beforeEach(() => {
     originalFetch = global.fetch;
-    ApiClient.setAuthToken('test-token');
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    ApiClient.setAuthToken(null);
   });
 
-  it('createInvitation POSTs to /api/invitations with bearer + returns body', async () => {
+  it('createInvitation POSTs to /api/invitations with credentials + returns body', async () => {
     const payload = {
       id: 'i1',
       email: 'a@b.com',
@@ -98,11 +115,12 @@ describe('ApiClient invitation methods', () => {
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toMatch('/api/invitations');
     expect(init.method).toBe('POST');
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+    expect(init.credentials).toBe('include');
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
     expect(JSON.parse(init.body)).toEqual({ email: 'a@b.com' });
   });
 
-  it('lookupInvitation does NOT send Authorization header', async () => {
+  it("lookupInvitation sends credentials: 'include' but no Authorization header", async () => {
     const payload = {
       householdName: 'X',
       inviterName: 'Y',
@@ -115,8 +133,8 @@ describe('ApiClient invitation methods', () => {
       .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
     await ApiClient.lookupInvitation('some-token');
     const [, init] = (global.fetch as jest.Mock).mock.calls[0];
-    // fetch was called WITHOUT an options argument, so init is undefined
-    expect(init).toBeUndefined();
+    expect(init.credentials).toBe('include');
+    expect((init.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
   });
 
   it('lookupInvitation surfaces status + body on non-200', async () => {
@@ -188,5 +206,6 @@ describe('ApiClient invitation methods', () => {
       name: 'B',
       invite_token: 't1',
     });
+    expect(init.credentials).toBe('include');
   });
 });
