@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
+import { ListRow } from './ui/ListRow';
 import { Chart } from './charts/Chart';
 import { Expense, User, DashboardStats } from '../types';
 import { calculateStats, formatCurrency, formatDate } from '../utils';
@@ -335,7 +336,23 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Expense Breakdown
               </h3>
-              <div className="overflow-x-auto">
+              {/* Mobile: cards */}
+              <div className="md:hidden space-y-2">
+                {expenseCategoryBreakdown.map((item) => (
+                  <ListRow
+                    key={item.category}
+                    primary={<span>{item.category}</span>}
+                    amount={
+                      <span className="text-red-600 dark:text-red-400 tabular-nums">
+                        ${item.amount.toFixed(2)}
+                      </span>
+                    }
+                    meta={<span>{item.percentage}%</span>}
+                  />
+                ))}
+              </div>
+              {/* Tablet+: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">
@@ -379,7 +396,23 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Income Breakdown
               </h3>
-              <div className="overflow-x-auto">
+              {/* Mobile: cards */}
+              <div className="md:hidden space-y-2">
+                {incomeCategoryBreakdown.map((item) => (
+                  <ListRow
+                    key={item.category}
+                    primary={<span>{item.category}</span>}
+                    amount={
+                      <span className="text-green-600 dark:text-green-400 tabular-nums">
+                        ${item.amount.toFixed(2)}
+                      </span>
+                    }
+                    meta={<span>{item.percentage}%</span>}
+                  />
+                ))}
+              </div>
+              {/* Tablet+: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">
