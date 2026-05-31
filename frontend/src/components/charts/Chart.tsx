@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { formatCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ChartProps {
   data: any[];
@@ -43,8 +44,14 @@ export const Chart: React.FC<ChartProps> = ({
   categoryMode = false,
 }) => {
   const { theme } = useTheme();
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
   const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb'; // gray-700 : gray-200
   const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280'; // gray-400 : gray-500
+  const chartMargin = isMobile
+    ? { top: 5, right: 5, bottom: 5, left: 0 }
+    : { top: 5, right: 30, bottom: 5, left: 20 };
+  const axisFontSize = isMobile ? 10 : 12;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -71,10 +78,15 @@ export const Chart: React.FC<ChartProps> = ({
     switch (type) {
       case 'line':
         return (
-          <LineChart data={data}>
+          <LineChart data={data} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis dataKey="month" stroke={axisStroke} fontSize={12} />
-            <YAxis stroke={axisStroke} fontSize={12} tickFormatter={(value) => `$${value}`} />
+            <XAxis dataKey="month" stroke={axisStroke} fontSize={axisFontSize} />
+            <YAxis
+              stroke={axisStroke}
+              fontSize={axisFontSize}
+              tickFormatter={(value) => `$${value}`}
+              width={isMobile ? 40 : 60}
+            />
             <Tooltip content={<CustomTooltip />} />
             {categoryMode ? (
               // Dynamic category lines
@@ -115,13 +127,14 @@ export const Chart: React.FC<ChartProps> = ({
 
       case 'savings-bar':
         return (
-          <BarChart data={data}>
+          <BarChart data={data} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis dataKey="month" stroke={axisStroke} fontSize={12} />
+            <XAxis dataKey="month" stroke={axisStroke} fontSize={axisFontSize} />
             <YAxis
               stroke={axisStroke}
-              fontSize={12}
+              fontSize={axisFontSize}
               tickFormatter={(value) => `$${value}`}
+              width={isMobile ? 40 : 60}
               domain={[
                 (dataMin: number) => Math.min(0, dataMin),
                 (dataMax: number) => Math.max(0, dataMax),
@@ -144,9 +157,13 @@ export const Chart: React.FC<ChartProps> = ({
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              outerRadius={80}
-              innerRadius={40}
+              label={({ name, percent }) =>
+                isMobile
+                  ? `${(percent * 100).toFixed(0)}%`
+                  : `${name} ${(percent * 100).toFixed(0)}%`
+              }
+              outerRadius={isMobile ? 60 : 80}
+              innerRadius={isMobile ? 30 : 40}
               fill="#8884d8"
               dataKey="value"
             >
