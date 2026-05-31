@@ -26,7 +26,7 @@ import {
   TransactionFilters as FilterType,
 } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, SidebarTrigger } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/transactions/Transactions';
 import { Reports } from './components/reports/Reports';
@@ -1010,7 +1010,9 @@ function AppContent() {
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        topOffset={demoEnabled}
+        users={users}
+        selectedUserId={selectedUserId}
+        onUserChange={setSelectedUserId}
       />
 
       {/* Sticky top group: demo banner sits above the header so both stay
@@ -1021,7 +1023,11 @@ function AppContent() {
         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger
+                  isOpen={isSidebarOpen}
+                  onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+                />
                 <Logo className="h-8 w-auto text-gray-900 dark:text-white" />
               </div>
               <div className="flex items-center space-x-4">
