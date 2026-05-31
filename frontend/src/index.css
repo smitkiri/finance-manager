@@ -42,3 +42,36 @@
     @apply bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-5;
   }
 }
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  button,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+  /* Prevent iOS Safari from zooming when focusing inputs.
+     Base font-size 16px on phones; tighten from md: up. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  @media (min-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: inherit;
+    }
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+}
