@@ -248,6 +248,73 @@ async def test_logout_clears_cookie(raw_client: AsyncClient):
     assert "Max-Age=0" in set_cookie or "expires=" in set_cookie.lower()
 
 
+def test_cookie_name_uses_host_prefix_when_secure(monkeypatch):
+    """Prod (HTTPS) must use the __Host- prefix for defense-in-depth."""
+    monkeypatch.setattr(settings, "auth_cookie_secure", True)
+    assert settings.auth_cookie_name == "__Host-fm_session"
+
+
+def test_cookie_name_drops_host_prefix_when_not_secure(monkeypatch):
+    """HTTP-only deployments (e.g. tally.local on a LAN) must NOT carry the
+    __Host- prefix — browsers reject __Host- cookies received over HTTP,
+    which silently breaks login."""
+    monkeypatch.setattr(settings, "auth_cookie_secure", False)
+    assert settings.auth_cookie_name == "fm_session"
+
+
+@pytest.mark.asyncio
+async def test_login_uses_plain_cookie_name_when_not_secure(
+    raw_client: AsyncClient, db_session: AsyncSession
+):
+    """When auth_cookie_secure is False (HTTP deployments), the Set-Cookie
+    header must use the plain `fm_session` name with no __Host- prefix."""
+    db_session.add(Household(id="hh-plain", name="HH"))
+    await db_session.flush()
+    db_session.add(
+        User(
+            id="u-plain",
+            name="P",
+            email="plain@b.com",
+            password_hash=hash_password("right-pass-12"),
+            household_id="hh-plain",
+        )
+    )
+    await db_session.commit()
+
+    res = await raw_client.post(
+        "/api/auth/login",
+        json={"email": "plain@b.com", "password": "right-pass-12"},
+    )
+    assert res.status_code == 200
+    set_cookie = res.headers.get("set-cookie", "")
+    assert "fm_session=" in set_cookie
+    assert "__Host-" not in set_cookie
+
+
+@pytest.mark.asyncio
+async def test_authenticated_request_via_plain_cookie(raw_client: AsyncClient):
+    """When the deployment is HTTP, the auth cookie is the plain `fm_session`
+    (no __Host- prefix). A request that carries only that cookie must
+    authenticate, proving the dependency reads both names."""
+    signup = await raw_client.post(
+        "/api/auth/signup",
+        json={
+            "email": "plain-cookie-bearer@example.com",
+            "password": "pw12345678",
+            "name": "Plain Bearer",
+        },
+    )
+    assert signup.status_code == 200
+    # Sanity: the cookie that was set is the plain name (the autouse fixture
+    # flips auth_cookie_secure to False, so __Host- prefix is dropped).
+    assert "fm_session=" in signup.headers.get("set-cookie", "")
+    assert "__Host-" not in signup.headers.get("set-cookie", "")
+
+    me = await raw_client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.json()["user"]["email"] == "plain-cookie-bearer@example.com"
+
+
 @pytest.mark.asyncio
 async def test_authenticated_request_via_cookie(raw_client: AsyncClient):
     """A request that carries only the auth cookie (no Authorization header)

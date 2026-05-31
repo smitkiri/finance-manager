@@ -210,15 +210,16 @@ PostgreSQL is **not** in this compose file — it is provisioned as a separate C
 2.  **Create a Docker Compose application** in Coolify pointing at this repo with `docker-compose.prod.yml` as the compose file.
 3.  **Set the following environment variables** in Coolify's app config:
 
-    | Variable                                     | Description                                                                   |
-    | -------------------------------------------- | ----------------------------------------------------------------------------- |
-    | `DB_HOST`                                    | Coolify Postgres internal hostname                                            |
-    | `DB_PORT`                                    | `5432` (default if unset)                                                     |
-    | `DB_USER` / `DB_PASSWORD` / `DB_NAME`        | Postgres credentials                                                          |
-    | `JWT_SIGNING_SECRET`                         | HS256 signing secret for issued JWTs. Generate via `openssl rand -base64 48`. |
-    | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | `true` or `false`                                                             |
-    | `FINANCE_MANAGER_TELLER_APP_ID`              | (only if Teller enabled)                                                      |
-    | `TELLER_SECRETS_PATH`                        | Absolute host path to the folder holding the Teller PEM files                 |
+    | Variable                                     | Description                                                                                                                                                                                                              |
+    | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+    | `DB_HOST`                                    | Coolify Postgres internal hostname                                                                                                                                                                                       |
+    | `DB_PORT`                                    | `5432` (default if unset)                                                                                                                                                                                                |
+    | `DB_USER` / `DB_PASSWORD` / `DB_NAME`        | Postgres credentials                                                                                                                                                                                                     |
+    | `JWT_SIGNING_SECRET`                         | HS256 signing secret for issued JWTs. Generate via `openssl rand -base64 48`.                                                                                                                                            |
+    | `FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED` | `true` or `false`                                                                                                                                                                                                        |
+    | `FINANCE_MANAGER_TELLER_APP_ID`              | (only if Teller enabled)                                                                                                                                                                                                 |
+    | `TELLER_SECRETS_PATH`                        | Absolute host path to the folder holding the Teller PEM files                                                                                                                                                            |
+    | `AUTH_COOKIE_SECURE`                         | `true` for HTTPS (the default). Set to `false` only for HTTP-only deployments (e.g. a LAN box reached over `http://`). When `false`, the auth cookie drops the `__Host-` prefix so the browser will accept it over HTTP. |
 
 4.  **Place the Teller secrets on the Coolify host.** SSH into the server, create a folder (e.g., `/opt/finance-manager/teller/`), and copy `private_key.pem` and `certificate.pem` into it. Set `TELLER_SECRETS_PATH` to that absolute path — compose bind-mounts it read-only at `/secrets/teller/`. (Skip this step if Teller integration is disabled; the default `./teller_secrets` relative path will be used and the backend will simply not find the files.)
 5.  **Attach a domain** to the `nginx` service. Coolify auto-issues SSL via Traefik / Let's Encrypt.

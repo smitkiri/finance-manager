@@ -33,11 +33,18 @@ class Settings(BaseSettings):
     jwt_signing_secret: str = ""
     jwt_access_token_ttl_days: int = 30
 
-    # Cookie-based auth. The `__Host-` prefix requires Secure + Path=/ + no
-    # Domain attribute; the cookie-setter below encodes those constraints.
-    auth_cookie_name: str = "__Host-fm_session"
-    auth_cookie_secure: bool = True  # set to False only for local HTTP dev
+    # Cookie-based auth. Prod runs over HTTPS and uses the `__Host-` prefix
+    # for defense-in-depth (browsers enforce Secure + Path=/ + no Domain).
+    # HTTP-only deployments (e.g. a LAN box at http://tally.local) MUST drop
+    # the prefix — browsers reject any `__Host-` cookie received over HTTP,
+    # which silently 401s every authenticated request. The cookie name is
+    # derived from `auth_cookie_secure` so the two can never drift apart.
+    auth_cookie_secure: bool = True  # set to False only for HTTP deployments
     auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
+    @property
+    def auth_cookie_name(self) -> str:
+        return "__Host-fm_session" if self.auth_cookie_secure else "fm_session"
 
     # CORS. When empty (the default), the API responds with the legacy
     # `Access-Control-Allow-Origin: *` (no credentials) — prod is same-origin

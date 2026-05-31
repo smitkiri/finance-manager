@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Self-hosted so CSP doesn't need to allowlist fonts.googleapis.com. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/InterVariable.woff2') format('woff2');
+}
+
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
