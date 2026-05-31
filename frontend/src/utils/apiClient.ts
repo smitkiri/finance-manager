@@ -32,7 +32,6 @@ interface StorageMetadata {
 }
 
 const SOURCES_STORAGE_KEY = 'sources';
-const AUTH_TOKEN_KEY = 'tally_auth_token';
 
 export interface AuthUser {
   id: string;
@@ -56,6 +55,9 @@ export interface AuthResponse {
 
 // A1 introduced household_<id>_ key prefixes; A2 drops them since household
 // is implicit in the session. One-shot cleanup runs the first time A2 loads.
+// Also clear the legacy `tally_auth_token` key from when the JWT lived in
+// localStorage — Phase 4 of the security remediation moved it into an
+// HttpOnly cookie.
 if (typeof window !== 'undefined') {
   for (let i = window.localStorage.length - 1; i >= 0; i--) {
     const key = window.localStorage.key(i);
@@ -63,45 +65,31 @@ if (typeof window !== 'undefined') {
       window.localStorage.removeItem(key);
     }
   }
+  window.localStorage.removeItem('tally_auth_token');
 }
 
 export class ApiClient {
   private static API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
-  private static authToken: string | null =
-    typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_TOKEN_KEY) : null;
-
-  static setAuthToken(token: string | null): void {
-    ApiClient.authToken = token;
-    if (typeof window !== 'undefined') {
-      if (token) {
-        window.localStorage.setItem(AUTH_TOKEN_KEY, token);
-      } else {
-        window.localStorage.removeItem(AUTH_TOKEN_KEY);
-      }
-    }
-  }
-
-  static getAuthToken(): string | null {
-    return ApiClient.authToken;
-  }
 
   static getApiBase(): string {
     return ApiClient.API_BASE;
   }
 
   static async apiFetch(url: string, options?: RequestInit): Promise<Response> {
-    const headers: Record<string, string> = {
-      ...(ApiClient.authToken ? { Authorization: `Bearer ${ApiClient.authToken}` } : {}),
-      ...((options?.headers as Record<string, string>) || {}),
-    };
-    const response = await fetch(url, options ? { ...options, headers } : { headers });
+    // `credentials: 'include'` is what carries the __Host-fm_session cookie
+    // cross-origin in dev (where the SPA lives on :3000 and the API on :3002
+    // via nginx). In prod nginx serves both from the same origin and the
+    // cookie would flow either way.
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers: options?.headers,
+    });
 
     // Centralized 401 handling: any non-auth endpoint returning 401 means
-    // our token is no longer valid. Clear it and redirect to /login,
-    // preserving the current path so the user lands back where they were.
+    // our session is no longer valid. Redirect to /login, preserving the
+    // current path so the user lands back where they were.
     if (response.status === 401 && !url.includes('/api/auth/')) {
-      ApiClient.setAuthToken(null);
-      // Lazy import to avoid a circular type dependency at module load.
       const { navigateToLogin } = await import('./authNavigation');
       navigateToLogin(window.location.pathname + window.location.search);
     }
@@ -122,6 +110,7 @@ export class ApiClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      credentials: 'include',
     });
     if (!res.ok) {
       const err = new Error(await res.text()) as Error & { status?: number };
@@ -136,17 +125,16 @@ export class ApiClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
+      credentials: 'include',
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
 
   static async logout(): Promise<void> {
-    try {
-      await ApiClient.apiFetch(`${ApiClient.API_BASE}/auth/logout`, { method: 'POST' });
-    } finally {
-      ApiClient.setAuthToken(null);
-    }
+    // The backend clears the __Host-fm_session cookie; no client-side token
+    // state to scrub anymore.
+    await ApiClient.apiFetch(`${ApiClient.API_BASE}/auth/logout`, { method: 'POST' });
   }
 
   static async getMe(): Promise<{ user: AuthUser; household: AuthHousehold }> {
@@ -1536,9 +1524,12 @@ export class ApiClient {
   }
 
   static async lookupInvitation(token: string): Promise<InvitationLookup> {
-    // Public endpoint: no Authorization header, no 401 interceptor.
+    // Public endpoint: bypasses apiFetch's 401 interceptor. Still sends the
+    // session cookie when present so a signed-in user gets the same cache
+    // behavior as anonymous callers.
     const res = await fetch(
-      `${ApiClient.API_BASE}/invitations/lookup?token=${encodeURIComponent(token)}`
+      `${ApiClient.API_BASE}/invitations/lookup?token=${encodeURIComponent(token)}`,
+      { credentials: 'include' }
     );
     if (!res.ok) {
       let body: unknown = undefined;

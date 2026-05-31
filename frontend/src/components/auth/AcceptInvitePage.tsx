@@ -147,7 +147,6 @@ export const AcceptInvitePage: React.FC = () => {
   if (currentUser.email.toLowerCase() !== data.email.toLowerCase()) {
     const onSignOut = async () => {
       ApiClient.logout().catch(() => {});
-      ApiClient.setAuthToken(null);
       setAuth(null, null);
       navigate(`/login?next=${encodeURIComponent(`/accept-invite?token=${token}`)}`, {
         replace: true,

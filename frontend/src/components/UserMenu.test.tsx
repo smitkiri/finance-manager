@@ -13,7 +13,6 @@ jest.mock('../utils/apiClient', () => {
     ApiClient: {
       ...actual.ApiClient,
       logout: jest.fn().mockResolvedValue(undefined),
-      setAuthToken: jest.fn(),
     },
   };
 });
@@ -65,12 +64,13 @@ describe('UserMenu', () => {
     expect(await screen.findByText('SETTINGS_PAGE')).toBeInTheDocument();
   });
 
-  it('Sign out clears token + auth state and navigates to /login', async () => {
+  it('Sign out calls logout and navigates to /login', async () => {
     renderMenu();
     await userEvent.click(await screen.findByRole('button', { name: /alice example/i }));
     await userEvent.click(screen.getByRole('button', { name: /sign out/i }));
-    await waitFor(() => expect(ApiClient.setAuthToken).toHaveBeenCalledWith(null));
-    expect(ApiClient.logout).toHaveBeenCalled();
+    // Backend clears the HttpOnly cookie; client just calls logout and
+    // resets in-memory auth state. Navigation to /login is the observable.
+    await waitFor(() => expect(ApiClient.logout).toHaveBeenCalled());
     expect(await screen.findByText('LOGIN_PAGE')).toBeInTheDocument();
   });
 

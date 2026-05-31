@@ -24,7 +24,6 @@ export const HouseholdSection: React.FC<HouseholdSectionProps> = ({ demoMode = f
         currentUserId={currentUser.id}
         onLeftHousehold={() => {
           ApiClient.logout().catch(() => {});
-          ApiClient.setAuthToken(null);
           setAuth(null, null);
         }}
         disabled={demoMode}

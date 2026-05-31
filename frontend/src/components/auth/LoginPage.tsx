@@ -43,8 +43,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     setSubmitting(true);
     try {
-      const { token, user, household } = await ApiClient.login({ email, password });
-      ApiClient.setAuthToken(token);
+      const { user, household } = await ApiClient.login({ email, password });
       setAuth(user, household);
       navigate(next, { replace: true });
     } catch (err) {

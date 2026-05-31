@@ -21,8 +21,6 @@ jest.mock('../../utils/apiClient', () => {
       createInvitation: jest.fn(),
       revokeInvitation: jest.fn(),
       logout: jest.fn().mockResolvedValue(undefined),
-      setAuthToken: jest.fn(),
-      getAuthToken: jest.fn().mockReturnValue(null),
     },
   };
 });

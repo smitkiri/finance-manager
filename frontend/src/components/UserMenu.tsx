@@ -26,9 +26,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ demoEnabled }) => {
 
   const handleSignOut = async () => {
     setOpen(false);
-    // Best-effort: failure is non-blocking, the local token clear is what matters.
+    // Best-effort: the backend clears the HttpOnly cookie on /auth/logout.
+    // Failure is non-blocking — the UI state reset below is what matters
+    // to the in-page experience.
     ApiClient.logout().catch(() => {});
-    ApiClient.setAuthToken(null);
     setAuth(null, null);
     navigate('/login', { replace: true });
   };

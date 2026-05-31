@@ -17,8 +17,6 @@ jest.mock('../../utils/apiClient', () => {
       acceptInvitation: jest.fn(),
       getHouseholdSummary: jest.fn(),
       logout: jest.fn().mockResolvedValue(undefined),
-      setAuthToken: jest.fn(),
-      getAuthToken: jest.fn().mockReturnValue(null),
     },
   };
 });

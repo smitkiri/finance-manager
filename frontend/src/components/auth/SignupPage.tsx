@@ -74,13 +74,12 @@ export const SignupPage: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      const { token, user, household } = await ApiClient.signup({
+      const { user, household } = await ApiClient.signup({
         name,
         email,
         password,
         inviteToken: inviteToken ?? undefined,
       });
-      ApiClient.setAuthToken(token);
       setAuth(user, household);
       navigate(next, { replace: true });
     } catch (err) {

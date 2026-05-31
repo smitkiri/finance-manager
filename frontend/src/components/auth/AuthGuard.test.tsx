@@ -12,9 +12,6 @@ jest.mock('../../utils/apiClient', () => {
     ApiClient: {
       ...actual.ApiClient,
       getMe: jest.fn(),
-      getDemoConfig: jest.fn(),
-      getAuthToken: jest.fn(),
-      setAuthToken: jest.fn(),
     },
   };
 });
@@ -47,9 +44,7 @@ function renderAt(path: string) {
 describe('AuthGuard', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('shows loading while resolving', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValue({ enabled: false });
-    (ApiClient.getAuthToken as jest.Mock).mockReturnValue('tok');
+  it('shows loading while /auth/me is in flight', async () => {
     (ApiClient.getMe as jest.Mock).mockImplementation(
       () => new Promise(() => {}) // never resolves
     );
@@ -58,8 +53,6 @@ describe('AuthGuard', () => {
   });
 
   it('renders children with currentUser when /auth/me succeeds', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValue({ enabled: false });
-    (ApiClient.getAuthToken as jest.Mock).mockReturnValue('tok');
     (ApiClient.getMe as jest.Mock).mockResolvedValue({
       user: { id: 'u1', name: 'Alice', email: 'a@b.c', householdId: 'h1' },
       household: { id: 'h1', name: 'Alice Household' },
@@ -68,25 +61,13 @@ describe('AuthGuard', () => {
     expect(await screen.findByText('INNER user=Alice')).toBeInTheDocument();
   });
 
-  it('redirects to /login?next=<path> when no token', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValue({ enabled: false });
-    (ApiClient.getAuthToken as jest.Mock).mockReturnValue(null);
-    renderAt('/transactions');
-    expect(await screen.findByText('LOGIN_PAGE')).toBeInTheDocument();
-  });
-
-  it('clears token and redirects on /auth/me 401', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValue({ enabled: false });
-    (ApiClient.getAuthToken as jest.Mock).mockReturnValue('tok');
+  it('redirects to /login?next=<path> when /auth/me rejects (no cookie)', async () => {
     (ApiClient.getMe as jest.Mock).mockRejectedValue(new Error('401'));
     renderAt('/transactions');
     expect(await screen.findByText('LOGIN_PAGE')).toBeInTheDocument();
-    expect(ApiClient.setAuthToken).toHaveBeenCalledWith(null);
   });
 
-  it('skips token check in demo mode and renders children', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValue({ enabled: true });
-    (ApiClient.getAuthToken as jest.Mock).mockReturnValue(null);
+  it('returns the demo user in demo mode (backend short-circuits /me without auth)', async () => {
     (ApiClient.getMe as jest.Mock).mockResolvedValue({
       user: {
         id: 'demo-user',
