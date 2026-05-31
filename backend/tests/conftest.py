@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from urllib.parse import urlparse
@@ -8,10 +9,16 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
-from alembic import command
-from app.config import Settings, settings
-from app.database import get_db
-from app.main import app
+# Configure credentialed CORS for tests BEFORE importing `app.main`, which
+# registers the CORS middleware at module load. Mirrors the local-dev setup
+# (frontend on :3000 → API on :3002) so test_cors.py exercises the real
+# middleware. Prod default is empty (legacy wildcard); see app/config.py.
+os.environ.setdefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+
+from alembic import command  # noqa: E402
+from app.config import Settings, settings  # noqa: E402
+from app.database import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 # Module-level container (started once, reused across tests)
 _container = None
