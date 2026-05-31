@@ -247,12 +247,12 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
                         {expense.description}
                       </p>
                       <div
-                        className={`font-semibold text-sm ${
+                        className={`flex-shrink-0 font-semibold text-sm ${
                           expense.type === 'expense'
                             ? 'text-red-600 dark:text-red-400'
                             : 'text-green-600 dark:text-green-400'
@@ -273,7 +273,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                             e.stopPropagation();
                             toggleDropdown(expense.id);
                           }}
-                          className={`text-xs border rounded px-2 py-1 transition-colors flex items-center space-x-1 ${categoryClasses}`}
+                          className={`text-xs border rounded px-3 md:px-2 py-1.5 md:py-1 min-h-[32px] md:min-h-0 transition-colors flex items-center space-x-1 ${categoryClasses}`}
                         >
                           <span>{expense.category || 'Uncategorized'}</span>
                           {openDropdowns.has(expense.id) ? (
@@ -292,7 +292,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                                   e.stopPropagation();
                                   handleCategorySelect(expense.id, category);
                                 }}
-                                className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
+                                className={`w-full text-left px-3 py-2.5 md:py-2 min-h-[40px] md:min-h-0 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors ${
                                   expense.category === category
                                     ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                                     : 'text-gray-700 dark:text-gray-300'
@@ -333,7 +333,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-1 ml-2">
+              <div className="flex flex-shrink-0 items-center space-x-1 ml-2">
                 {/* Add Label Button */}
                 {(expense.labels?.length || 0) < 3 && (
                   <button
@@ -341,7 +341,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                       e.stopPropagation();
                       handleAddLabelClick(expense.id, e);
                     }}
-                    className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
+                    className="min-w-[36px] min-h-[36px] md:min-w-0 md:min-h-0 flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
                     title="Add label"
                   >
                     <div className="relative">
@@ -355,7 +355,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                     e.stopPropagation();
                     onEdit(expense);
                   }}
-                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                  className="min-w-[36px] min-h-[36px] md:min-w-0 md:min-h-0 flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                   title="Edit transaction"
                 >
                   <Edit size={14} />
@@ -365,7 +365,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                     e.stopPropagation();
                     onDelete(expense.id);
                   }}
-                  className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                  className="min-w-[36px] min-h-[36px] md:min-w-0 md:min-h-0 flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                   title="Delete transaction"
                 >
                   <Trash2 size={14} />
