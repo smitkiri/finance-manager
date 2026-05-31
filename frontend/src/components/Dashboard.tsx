@@ -118,6 +118,16 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
       return prepareCategoryLineData(filteredExpenses, categoriesToShow);
     }, [statsFromApi?.monthlyCategoryData, filteredExpenses, categoriesToShow]);
 
+    const avgIncomePerMonth = useMemo(() => {
+      const monthsWithIncome = stats.monthlyData.filter((m) => m.income > 0).length;
+      return monthsWithIncome > 0 ? stats.totalIncome / monthsWithIncome : 0;
+    }, [stats.monthlyData, stats.totalIncome]);
+
+    const avgExpensePerMonth = useMemo(() => {
+      const monthsWithExpenses = stats.monthlyData.filter((m) => m.expenses > 0).length;
+      return monthsWithExpenses > 0 ? stats.totalExpenses / monthsWithExpenses : 0;
+    }, [stats.monthlyData, stats.totalExpenses]);
+
     const savingsMonthlyData = useMemo(
       () =>
         stats.monthlyData.map((month) => ({
@@ -250,6 +260,12 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
           <StatsCard title="Total Expenses" value={stats.totalExpenses} type="expense" />
           <StatsCard title="Total Income" value={stats.totalIncome} type="income" />
           <StatsCard title="Savings" value={stats.netAmount} type="net" />
+        </div>
+
+        {/* Monthly Average Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <StatsCard title="Avg. Income / Month" value={avgIncomePerMonth} type="income" />
+          <StatsCard title="Avg. Expense / Month" value={avgExpensePerMonth} type="expense" />
         </div>
 
         {/* Charts */}

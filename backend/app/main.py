@@ -38,12 +38,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Finance Manager API", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_origins = [
+    o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()
+]
+if _cors_origins:
+    # Credentialed CORS for cross-origin dev setups (see config.py).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    # Default: wildcard, no credentials. Prod is same-origin so this is inert;
+    # preserved for backwards-compat with any pre-Phase-4 external API client.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 app.include_router(auth_router)

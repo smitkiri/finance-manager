@@ -39,6 +39,16 @@ class Settings(BaseSettings):
     auth_cookie_secure: bool = True  # set to False only for local HTTP dev
     auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
+    # CORS. When empty (the default), the API responds with the legacy
+    # `Access-Control-Allow-Origin: *` (no credentials) — prod is same-origin
+    # so it never engages browser CORS regardless.
+    # Local dev runs the SPA on :3000 and the API behind nginx on :3002, which
+    # IS cross-origin, and Phase 4's credentialed cookie auth needs an explicit
+    # origin (wildcard + credentials is invalid). Set
+    # `CORS_ALLOWED_ORIGINS=http://localhost:3000` in `backend/.env` to enable
+    # credentialed CORS for that case. Comma-separated for multiple origins.
+    cors_allowed_origins: str = ""
+
     @property
     def is_teller_enabled(self) -> bool:
         return (
