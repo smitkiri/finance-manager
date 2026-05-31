@@ -33,7 +33,12 @@ def _parse_bearer(authorization: str | None) -> str | None:
 
 async def get_current_user(
     authorization: str | None = Header(default=None),
-    fm_session: str | None = Cookie(default=None, alias="__Host-fm_session"),
+    # Accept both names: HTTPS deployments set `__Host-fm_session`, HTTP-only
+    # deployments set `fm_session` (the `__Host-` prefix is browser-rejected
+    # over HTTP). FastAPI's Cookie alias is fixed at definition time, so we
+    # declare both rather than threading settings into the signature.
+    fm_session_secure: str | None = Cookie(default=None, alias="__Host-fm_session"),
+    fm_session_plain: str | None = Cookie(default=None, alias="fm_session"),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """Return the authenticated user, or 401.
@@ -54,7 +59,7 @@ async def get_current_user(
             )
         return user
 
-    token = fm_session or _parse_bearer(authorization)
+    token = fm_session_secure or fm_session_plain or _parse_bearer(authorization)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
