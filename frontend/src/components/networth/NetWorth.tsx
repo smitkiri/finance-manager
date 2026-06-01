@@ -1,29 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import {
-  Trash2,
-  X,
-  ChevronDown,
-  ChevronUp,
-  History,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../../contexts/ThemeContext';
+import { RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
+import { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
+import { Sheet } from '../ui/Sheet';
+import { NetWorthKpis } from './NetWorthKpis';
+import { AccountList, UserGroup } from './AccountList';
+import { BalanceChart } from './BalanceChart';
 
 interface NetWorthProps {
   selectedUserId: string | null;
@@ -96,76 +79,70 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Update Balance — {account.name}
-          </h2>
+    <Sheet
+      isOpen
+      onClose={onClose}
+      title={`Update Balance — ${account.name}`}
+      footer={
+        <div className="flex gap-3">
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="flex-1 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            <X size={20} />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="balance-form"
+            disabled={!displayBalance || isNaN(numericBalance) || !date}
+            className="flex-1 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Save
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Balance ($)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={displayBalance}
-              onChange={handleBalanceChange}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Note (optional)
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Monthly snapshot"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!displayBalance || isNaN(numericBalance) || !date}
-              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      }
+    >
+      <form id="balance-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Balance ($)
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={displayBalance}
+            onChange={handleBalanceChange}
+            placeholder="0.00"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Date
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Note (optional)
+          </label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Monthly snapshot"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </form>
+    </Sheet>
   );
 };
 
@@ -244,283 +221,85 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
         value={balances[account.id] ?? ''}
         onChange={(e) => handleBalanceChange(account.id, e.target.value)}
         placeholder="skip"
-        className="w-36 px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-32 sm:w-36 px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-            Update All Balances
-          </h2>
+    <Sheet
+      isOpen
+      onClose={onClose}
+      title="Update All Balances"
+      footer={
+        <div className="flex gap-3">
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="flex-1 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            <X size={18} />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="bulk-balance-form"
+            disabled={entries.length === 0 || anyInvalid || !date}
+            className="flex-1 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {entries.length > 0
+              ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}`
+              : 'Save'}
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          {/* Date + Note */}
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex gap-3">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
-                Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
-                Note
-              </label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="optional"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Account rows, scrollable */}
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            {showUserHeaders
-              ? userGroups.map(({ user, accounts: groupAccounts }) => (
-                  <div key={user.id} className="mb-4 last:mb-0">
-                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">
-                      {user.name}
-                    </p>
-                    {groupAccounts.map(renderAccountRow)}
-                  </div>
-                ))
-              : accounts.map(renderAccountRow)}
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={entries.length === 0 || anyInvalid || !date}
-              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {entries.length > 0
-                ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}`
-                : 'Save'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-interface BalanceDeltaProps {
-  previousBalance?: number;
-  currentBalance?: number;
-  accountType: 'asset' | 'liability';
-}
-
-const BalanceDelta: React.FC<BalanceDeltaProps> = ({
-  previousBalance,
-  currentBalance,
-  accountType,
-}) => {
-  const neutralClass = 'text-gray-400 dark:text-gray-500';
-
-  if (previousBalance === undefined || currentBalance === undefined) {
-    return <span className={`text-xs font-medium mt-0.5 ${neutralClass}`}>—</span>;
-  }
-
-  const delta = currentBalance - previousBalance;
-
-  if (delta === 0) {
-    return (
-      <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${neutralClass}`}>
-        <Minus size={12} />
-        {formatCurrency(0)}
-      </span>
-    );
-  }
-
-  const isAsset = accountType === 'asset';
-  const isGood = (delta > 0 && isAsset) || (delta < 0 && !isAsset);
-  const colorClass = isGood
-    ? 'text-green-600 dark:text-green-400'
-    : 'text-red-600 dark:text-red-400';
-  const Icon = delta > 0 ? TrendingUp : TrendingDown;
-
-  return (
-    <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${colorClass}`}>
-      <Icon size={12} />
-      {formatCurrency(Math.abs(delta))}
-    </span>
-  );
-};
-
-// Account row with expand for history
-interface AccountRowProps {
-  account: Account;
-  onUpdateBalance: (account: Account) => void;
-}
-
-const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [history, setHistory] = useState<AccountBalance[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const loadHistory = useCallback(async () => {
-    setLoadingHistory(true);
-    const balances = await ApiClient.loadAccountBalances(account.id);
-    setHistory(balances);
-    setLoadingHistory(false);
-  }, [account.id]);
-
-  const handleExpand = () => {
-    if (!expanded) loadHistory();
-    setExpanded((e) => !e);
-  };
-
-  const handleDeleteBalance = async (balanceId: string) => {
-    try {
-      await ApiClient.deleteAccountBalance(account.id, balanceId);
-      setHistory((prev) => prev.filter((b) => b.id !== balanceId));
-    } catch {
-      toast.error('Failed to delete balance entry', { position: 'bottom-right', autoClose: 3000 });
-    }
-  };
-
-  const isAsset = account.type === 'asset';
-  const balanceColor = isAsset
-    ? 'text-green-600 dark:text-green-400'
-    : 'text-red-600 dark:text-red-400';
-
-  return (
-    <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900">
-        <div className="flex-1 min-w-0">
-          <span className="font-medium text-gray-900 dark:text-white truncate block">
-            {account.name}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 ml-4">
-          <div className="flex flex-col items-end">
-            <span className={`text-base font-semibold ${balanceColor}`}>
-              {account.currentBalance !== undefined ? formatCurrency(account.currentBalance) : '—'}
-            </span>
-            <BalanceDelta
-              previousBalance={account.previousBalance}
-              currentBalance={account.currentBalance}
-              accountType={account.type}
+      }
+    >
+      <form id="bulk-balance-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* Date + Note */}
+        <div className="flex flex-col sm:flex-row gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <button
-            onClick={() => onUpdateBalance(account)}
-            className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            Update
-          </button>
-          <button
-            onClick={handleExpand}
-            title="View history"
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          >
-            <History size={16} />
-          </button>
-          <button
-            onClick={handleExpand}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          >
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
+              Note
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="optional"
+              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
-      </div>
-      {expanded && (
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 px-4 py-3">
-          {loadingHistory ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading history...</p>
-          ) : history.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No balance entries yet.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 dark:text-gray-400">
-                  <th className="text-left font-medium pb-2">Date</th>
-                  <th className="text-right font-medium pb-2">Balance</th>
-                  <th className="text-left font-medium pb-2 pl-4">Note</th>
-                  <th className="text-right font-medium pb-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {history.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="py-1.5 text-gray-700 dark:text-gray-300">
-                      {formatDate(entry.date as string)}
-                    </td>
-                    <td className={`py-1.5 text-right font-medium ${balanceColor}`}>
-                      {formatCurrency(entry.balance)}
-                    </td>
-                    <td className="py-1.5 pl-4 text-gray-500 dark:text-gray-400">
-                      {entry.note || '—'}
-                    </td>
-                    <td className="py-1.5 text-right">
-                      <button
-                        onClick={() => handleDeleteBalance(entry.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete entry"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
-// Custom tooltip for the chart
-const ChartTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  const data = payload[0]?.payload;
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 shadow-lg text-sm">
-      <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">{formatDate(label)}</p>
-      <p
-        className={`font-semibold ${(data?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}
-      >
-        Net Worth: {formatCurrency(data?.netWorth ?? 0)}
-      </p>
-    </div>
+        {/* Account rows */}
+        <div>
+          {showUserHeaders
+            ? userGroups.map(({ user, accounts: groupAccounts }) => (
+                <div key={user.id} className="mb-4 last:mb-0">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">
+                    {user.name}
+                  </p>
+                  {groupAccounts.map(renderAccountRow)}
+                </div>
+              ))
+            : accounts.map(renderAccountRow)}
+        </div>
+      </form>
+    </Sheet>
   );
 };
 
 export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => {
-  const navigate = useNavigate();
-  const { theme } = useTheme();
-  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb'; // gray-700 : gray-200
-  const tickFill = theme === 'dark' ? '#9ca3af' : '#6b7280'; // gray-400 : gray-500
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [summary, setSummary] = useState<NetWorthSummary | null>(null);
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
@@ -643,11 +422,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
 
   const manualAccounts = accounts.filter((a) => !a.tellerAccountId);
 
-  const netWorthColor =
-    (summary?.netWorth ?? 0) >= 0
-      ? 'text-blue-600 dark:text-blue-400'
-      : 'text-red-600 dark:text-red-400';
-
   // Find the history entry closest to 1 month ago
   const oneMonthAgoNetWorth = (() => {
     if (history.length === 0) return null;
@@ -667,33 +441,9 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const netWorthChange =
     oneMonthAgoNetWorth !== null ? (summary?.netWorth ?? 0) - oneMonthAgoNetWorth : null;
 
-  // Format chart dates for x-axis
-  const chartData = history.map((h) => ({
-    ...h,
-    dateLabel: new Date(h.date).toLocaleDateString('en-US', {
-      month: 'short',
-      year: '2-digit',
-      timeZone: 'UTC',
-    }),
-  }));
-
-  // Only show one tick per unique month/year to avoid duplicate X axis labels
-  const chartTicks = chartData.reduce<string[]>((acc, d) => {
-    const lastLabel =
-      acc.length > 0
-        ? new Date(acc[acc.length - 1]).toLocaleDateString('en-US', {
-            month: 'short',
-            year: '2-digit',
-            timeZone: 'UTC',
-          })
-        : null;
-    if (d.dateLabel !== lastLabel) acc.push(d.date);
-    return acc;
-  }, []);
-
   // When a single user is selected, show flat assets/liabilities lists.
   // When "All Users" is selected, group accounts per user.
-  const userGroups: { user: User | null; assets: Account[]; liabilities: Account[] }[] =
+  const userGroups: UserGroup[] =
     selectedUserId !== null
       ? [
           {
@@ -715,28 +465,30 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Net Worth</h2>
-        <div className="flex items-center gap-2">
-          {tellerEnabled && tellerConnected && (
-            <button
-              onClick={handleRefreshBalances}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-              Refresh Balances
-            </button>
-          )}
-          {manualAccounts.length >= 2 && (
-            <button
-              onClick={() => setShowBulkModal(true)}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
-            >
-              Update All
-            </button>
-          )}
-        </div>
+        {(tellerEnabled && tellerConnected) || manualAccounts.length >= 2 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {tellerEnabled && tellerConnected && (
+              <button
+                onClick={handleRefreshBalances}
+                disabled={refreshing}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+                Refresh Balances
+              </button>
+            )}
+            {manualAccounts.length >= 2 && (
+              <button
+                onClick={() => setShowBulkModal(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+              >
+                Update All
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {loading ? (
@@ -746,186 +498,25 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Net Worth</p>
-              <p className={`text-2xl font-bold ${netWorthColor}`}>
-                {formatCurrency(summary?.netWorth ?? 0)}
-              </p>
-              {netWorthChange !== null && (
-                <p
-                  className={`text-sm mt-1 font-medium ${netWorthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {netWorthChange >= 0 ? '+' : ''}
-                  {formatCurrency(netWorthChange)} vs 1mo ago
-                </p>
-              )}
-            </div>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Assets</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(summary?.totalAssets ?? 0)}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Liabilities</p>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {formatCurrency(summary?.totalLiabilities ?? 0)}
-              </p>
-            </div>
-          </div>
+          <NetWorthKpis
+            summary={summary}
+            netWorthChange={netWorthChange}
+            formatCurrency={formatCurrency}
+          />
 
           {/* Net worth history chart */}
-          {chartData.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-                Net Worth Over Time
-              </h3>
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                  <XAxis
-                    dataKey="date"
-                    ticks={chartTicks}
-                    tickFormatter={(v) =>
-                      new Date(v).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: '2-digit',
-                        timeZone: 'UTC',
-                      })
-                    }
-                    tick={{ fontSize: 12, fill: tickFill }}
-                    stroke={gridStroke}
-                  />
-                  <YAxis
-                    tickFormatter={(v) =>
-                      `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
-                    }
-                    tick={{ fontSize: 12, fill: tickFill }}
-                    stroke={gridStroke}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="netWorth"
-                    name="Net Worth"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <BalanceChart history={history} formatCurrency={formatCurrency} formatDate={formatDate} />
 
           {/* Accounts sections — flat when one user selected, grouped per user otherwise */}
-          {accounts.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-              No accounts yet.{' '}
-              <button
-                onClick={() => navigate('/settings?section=accounts')}
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Add one in Settings.
-              </button>
-            </p>
-          ) : (
-            <div className="space-y-8">
-              {userGroups.map(({ user, assets, liabilities }) => {
-                const groupAssetTotal = assets.reduce((s, a) => s + (a.currentBalance ?? 0), 0);
-                const groupLiabilityTotal = liabilities.reduce(
-                  (s, a) => s + (a.currentBalance ?? 0),
-                  0
-                );
-                const groupNetWorth = groupAssetTotal - groupLiabilityTotal;
-                const groupNetWorthColor =
-                  groupNetWorth >= 0
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-red-600 dark:text-red-400';
-
-                return (
-                  <div key={user?.id ?? 'single'} className="space-y-5">
-                    {/* Per-user header — only shown in "All Users" mode with multiple users */}
-                    {showUserHeaders && user && (
-                      <div className="flex items-center gap-3 pb-2 border-b border-gray-200 dark:border-gray-800">
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                          {user.name}
-                        </h3>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Assets {formatCurrency(groupAssetTotal)}
-                          {' · '}
-                          Liabilities {formatCurrency(groupLiabilityTotal)}
-                          {' · '}
-                          <span className={groupNetWorthColor}>
-                            Net {formatCurrency(groupNetWorth)}
-                          </span>
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Assets */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          Assets
-                        </h4>
-                        <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                          {formatCurrency(
-                            showUserHeaders ? groupAssetTotal : (summary?.totalAssets ?? 0)
-                          )}
-                        </span>
-                      </div>
-                      {assets.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500 py-3 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
-                          No asset accounts.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {assets.map((account) => (
-                            <AccountRow
-                              key={account.id}
-                              account={account}
-                              onUpdateBalance={setBalanceAccount}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Liabilities */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          Liabilities
-                        </h4>
-                        <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                          {formatCurrency(
-                            showUserHeaders ? groupLiabilityTotal : (summary?.totalLiabilities ?? 0)
-                          )}
-                        </span>
-                      </div>
-                      {liabilities.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500 py-3 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
-                          No liability accounts.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {liabilities.map((account) => (
-                            <AccountRow
-                              key={account.id}
-                              account={account}
-                              onUpdateBalance={setBalanceAccount}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <AccountList
+            accounts={accounts}
+            userGroups={userGroups}
+            showUserHeaders={showUserHeaders}
+            summary={summary}
+            onUpdateBalance={setBalanceAccount}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+          />
         </>
       )}
 
