@@ -63,32 +63,33 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex items-center space-x-3 min-w-0">
           <button
             onClick={onCancel}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
+            aria-label="Back"
+            className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create Report</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Define filters to create a custom transaction report
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 md:space-x-3 md:gap-0">
           <button
             onClick={clearFilters}
-            className="px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            className="w-full md:w-auto px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
           >
             Clear Filters
           </button>
           <button
             onClick={handleCreateReport}
             disabled={!name.trim()}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full md:w-auto flex items-center justify-center space-x-2 px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Save size={16} />
             <span>Create Report</span>
@@ -100,7 +101,7 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
         {/* Left Column: Report Details + Preview */}
         <div className="lg:col-span-1 space-y-6">
           {/* Report Details */}
-          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 md:p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Report Details
             </h3>
@@ -114,7 +115,7 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter report name"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -133,9 +134,9 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
           </div>
 
           {/* Preview Panel */}
-          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 sticky top-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 md:p-6 lg:sticky lg:top-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Preview</h3>
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-4 lg:space-y-0">
               <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                   {previewCount}
@@ -166,11 +167,11 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
       </div>
 
       {/* Bottom Create Report Button */}
-      <div className="flex justify-end mt-8">
+      <div className="flex justify-stretch md:justify-end mt-8">
         <button
           onClick={handleCreateReport}
           disabled={!name.trim()}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full md:w-auto flex items-center justify-center space-x-2 px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Save size={16} />
           <span>Create Report</span>
