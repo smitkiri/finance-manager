@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { ApiClient, AuthHousehold } from '../../utils/apiClient';
 import type { Invitation, InvitationCreated, User as ApiUser } from '../../types';
 
@@ -53,13 +54,15 @@ const RenameBlock: React.FC<RenameBlockProps> = ({ household, onSaved, disabled 
     return (
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Household name</h3>
-        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <span className="text-gray-900 dark:text-white">{household.name}</span>
+        <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <span className="text-gray-900 dark:text-white break-words min-w-0">
+            {household.name}
+          </span>
           <button
             type="button"
             onClick={() => setEditing(true)}
             disabled={disabled}
-            className="px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-3 py-2 sm:py-1 text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             Edit
           </button>
@@ -149,6 +152,8 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
   disabled,
 }) => {
   const navigate = useNavigate();
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
   const [members, setMembers] = useState<ApiUser[] | null>(null);
   const [pending, setPending] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -219,65 +224,122 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Members</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-gray-600 dark:text-gray-400">
-            <th className="py-2">Name</th>
-            <th className="py-2">Email</th>
-            <th className="py-2 text-right" />
-          </tr>
-        </thead>
-        <tbody>
+      {isMobile ? (
+        <ul className="space-y-2">
           {members.map((m) => {
             const isEditing = editingId === m.id;
+            const isSelf = m.id === currentUserId;
             return (
-              <tr key={m.id} className="border-t border-gray-200 dark:border-gray-800">
-                <td className="py-2 text-gray-900 dark:text-white">
-                  {isEditing ? (
-                    <input
-                      aria-label={`Edit name for ${m.name}`}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void saveEdit();
-                        else if (e.key === 'Escape') cancelEdit();
-                      }}
-                      onBlur={() => void saveEdit()}
-                      autoFocus
-                      className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
-                    />
-                  ) : (
-                    m.name
-                  )}
-                </td>
-                <td className="py-2 text-gray-700 dark:text-gray-300">{m.email}</td>
-                <td className="py-2 text-right">
-                  <div className="flex justify-end gap-3">
-                    {!isEditing ? (
+              <li
+                key={m.id}
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3"
+              >
+                {isEditing ? (
+                  <input
+                    aria-label={`Edit name for ${m.name}`}
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void saveEdit();
+                      else if (e.key === 'Escape') cancelEdit();
+                    }}
+                    onBlur={() => void saveEdit()}
+                    autoFocus
+                    className="w-full px-3 py-2 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+                  />
+                ) : (
+                  <>
+                    <div className="font-medium text-gray-900 dark:text-white break-words">
+                      {m.name}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                      {m.email}
+                    </div>
+                    <div className="mt-3 flex gap-2">
                       <button
                         type="button"
                         disabled={disabled}
                         onClick={() => startEdit(m)}
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 min-h-[44px] px-3 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Rename
                       </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      disabled={disabled || isEditing}
-                      onClick={() => setPending({ id: m.id, name: m.name })}
-                      className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {m.id === currentUserId ? 'Leave household' : 'Remove'}
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => setPending({ id: m.id, name: m.name })}
+                        className="flex-1 min-h-[44px] px-3 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isSelf ? 'Leave household' : 'Remove'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
             );
           })}
-        </tbody>
-      </table>
+        </ul>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-600 dark:text-gray-400">
+              <th className="py-2">Name</th>
+              <th className="py-2">Email</th>
+              <th className="py-2 text-right" />
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((m) => {
+              const isEditing = editingId === m.id;
+              return (
+                <tr key={m.id} className="border-t border-gray-200 dark:border-gray-800">
+                  <td className="py-2 text-gray-900 dark:text-white">
+                    {isEditing ? (
+                      <input
+                        aria-label={`Edit name for ${m.name}`}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void saveEdit();
+                          else if (e.key === 'Escape') cancelEdit();
+                        }}
+                        onBlur={() => void saveEdit()}
+                        autoFocus
+                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+                      />
+                    ) : (
+                      m.name
+                    )}
+                  </td>
+                  <td className="py-2 text-gray-700 dark:text-gray-300">{m.email}</td>
+                  <td className="py-2 text-right">
+                    <div className="flex justify-end gap-3">
+                      {!isEditing ? (
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => startEdit(m)}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Rename
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={disabled || isEditing}
+                        onClick={() => setPending({ id: m.id, name: m.name })}
+                        className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {m.id === currentUserId ? 'Leave household' : 'Remove'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
 
       {pending ? (
         <div
@@ -323,6 +385,8 @@ interface InvitationsBlockProps {
 }
 
 const InvitationsBlock: React.FC<InvitationsBlockProps> = ({ disabled }) => {
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
   const [invites, setInvites] = useState<Invitation[] | null>(null);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -372,6 +436,38 @@ const InvitationsBlock: React.FC<InvitationsBlockProps> = ({ disabled }) => {
 
       {invites === null ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+      ) : isMobile ? (
+        invites.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No pending invitations.</p>
+        ) : (
+          <ul className="space-y-2 mb-4">
+            {invites.map((inv) => (
+              <li
+                key={inv.id}
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3"
+              >
+                <div className="font-medium text-gray-900 dark:text-white break-words">
+                  {inv.email}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Invited by {inv.invitedBy?.name ?? '—'} · Created{' '}
+                  {new Date(inv.createdAt).toLocaleDateString()} · Expires{' '}
+                  {new Date(inv.expiresAt).toLocaleDateString()}
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => onRevoke(inv.id)}
+                    disabled={disabled}
+                    className="w-full min-h-[44px] px-3 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
       ) : (
         <table className="w-full text-sm mb-4">
           <thead>
@@ -431,13 +527,13 @@ const InvitationsBlock: React.FC<InvitationsBlockProps> = ({ disabled }) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email to invite"
             disabled={disabled}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-3 sm:py-2 min-h-[48px] sm:min-h-0 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </label>
         <button
           type="submit"
           disabled={creating || disabled}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+          className="w-full sm:w-auto px-4 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
         >
           {creating ? 'Sending…' : 'Send invite'}
         </button>
