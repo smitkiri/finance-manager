@@ -57,7 +57,7 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, s
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-2 text-xs">
+    <div className="flex flex-wrap items-center justify-center gap-x-3 md:gap-x-5 gap-y-1 pt-2 text-[11px] md:text-xs max-h-[120px] md:max-h-none overflow-y-auto md:overflow-visible">
       {seriesList.map((series) => (
         <div key={series.label} className="flex items-center gap-1.5">
           <span

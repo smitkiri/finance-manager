@@ -14,6 +14,7 @@ import {
 import { PanelMonthData } from '../../types';
 import { formatCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface PanelChartProps {
   data: PanelMonthData[];
@@ -49,8 +50,15 @@ export const PanelChart: React.FC<PanelChartProps> = ({
   height = 220,
 }) => {
   const { theme } = useTheme();
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
   const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb';
   const axisStroke = theme === 'dark' ? '#9ca3af' : '#6b7280';
+  const chartMargin = isMobile
+    ? { top: 5, right: 5, bottom: 5, left: 0 }
+    : { top: 5, right: 20, bottom: 5, left: 0 };
+  const axisFontSize = isMobile ? 10 : 11;
+  const yAxisWidth = isMobile ? 40 : 60;
 
   if (loading) {
     return (
@@ -77,10 +85,15 @@ export const PanelChart: React.FC<PanelChartProps> = ({
   const renderChart = () => {
     if (chartType === 'line') {
       return (
-        <LineChart data={data}>
+        <LineChart data={data} margin={chartMargin}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-          <XAxis dataKey="month" stroke={axisStroke} fontSize={11} />
-          <YAxis stroke={axisStroke} fontSize={11} tickFormatter={yFormatter} />
+          <XAxis dataKey="month" stroke={axisStroke} fontSize={axisFontSize} />
+          <YAxis
+            stroke={axisStroke}
+            fontSize={axisFontSize}
+            tickFormatter={yFormatter}
+            width={yAxisWidth}
+          />
           <Tooltip content={<CustomTooltip />} />
           {isNet ? (
             <Line
@@ -116,13 +129,14 @@ export const PanelChart: React.FC<PanelChartProps> = ({
     }
 
     return (
-      <BarChart data={data}>
+      <BarChart data={data} margin={chartMargin}>
         <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-        <XAxis dataKey="month" stroke={axisStroke} fontSize={11} />
+        <XAxis dataKey="month" stroke={axisStroke} fontSize={axisFontSize} />
         <YAxis
           stroke={axisStroke}
-          fontSize={11}
+          fontSize={axisFontSize}
           tickFormatter={yFormatter}
+          width={yAxisWidth}
           reversed={netOrientation === 'expense_positive'}
           domain={[
             (dataMin: number) => Math.min(0, dataMin),
