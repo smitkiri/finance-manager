@@ -129,74 +129,76 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Dashboard selector header */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        {/* Dropdown */}
-        <select
-          value={selectedId || ''}
-          onChange={(e) => setSelectedId(e.target.value)}
-          className="text-sm font-medium bg-transparent text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {dashboards.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 px-4 md:px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+          {/* Dropdown */}
+          <select
+            value={selectedId || ''}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="text-sm font-medium bg-transparent text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-3 min-h-[44px] md:min-h-0 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {dashboards.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
 
-        {/* Inline rename */}
-        {selectedDashboard &&
-          (renamingId === selectedDashboard.id ? (
-            <input
-              ref={renameInputRef}
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onBlur={() => handleRenameSubmit(selectedDashboard.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRenameSubmit(selectedDashboard.id);
-                if (e.key === 'Escape') setRenamingId(null);
-              }}
-              className="text-sm border border-blue-400 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
-            />
-          ) : (
+          {/* Inline rename */}
+          {selectedDashboard &&
+            (renamingId === selectedDashboard.id ? (
+              <input
+                ref={renameInputRef}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => handleRenameSubmit(selectedDashboard.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameSubmit(selectedDashboard.id);
+                  if (e.key === 'Escape') setRenamingId(null);
+                }}
+                className="text-sm border border-blue-400 rounded px-2 min-h-[44px] md:min-h-0 md:py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
+              />
+            ) : (
+              <button
+                onClick={() => handleStartRename(selectedDashboard)}
+                className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+                title="Rename dashboard"
+              >
+                <Pencil size={14} />
+              </button>
+            ))}
+
+          {/* Set default */}
+          {selectedDashboard && (
             <button
-              onClick={() => handleStartRename(selectedDashboard)}
-              className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
-              title="Rename dashboard"
+              onClick={() => handleSetDefault(selectedDashboard.id)}
+              className={`min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center rounded transition-colors ${
+                selectedDashboard.isDefault
+                  ? 'text-yellow-500'
+                  : 'text-gray-400 hover:text-yellow-500'
+              }`}
+              title={selectedDashboard.isDefault ? 'Default dashboard' : 'Set as default'}
             >
-              <Pencil size={14} />
+              <Star size={14} fill={selectedDashboard.isDefault ? 'currentColor' : 'none'} />
             </button>
-          ))}
+          )}
 
-        {/* Set default */}
-        {selectedDashboard && (
-          <button
-            onClick={() => handleSetDefault(selectedDashboard.id)}
-            className={`p-1.5 rounded transition-colors ${
-              selectedDashboard.isDefault
-                ? 'text-yellow-500'
-                : 'text-gray-400 hover:text-yellow-500'
-            }`}
-            title={selectedDashboard.isDefault ? 'Default dashboard' : 'Set as default'}
-          >
-            <Star size={14} fill={selectedDashboard.isDefault ? 'currentColor' : 'none'} />
-          </button>
-        )}
+          {/* Delete */}
+          {selectedDashboard && (
+            <button
+              onClick={() => handleDelete(selectedDashboard.id)}
+              className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-red-500 rounded transition-colors"
+              title="Delete dashboard"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
 
-        {/* Delete */}
-        {selectedDashboard && (
-          <button
-            onClick={() => handleDelete(selectedDashboard.id)}
-            className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors"
-            title="Delete dashboard"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
-
-        <div className="ml-auto">
+        <div className="md:ml-auto">
           <button
             onClick={handleCreateDashboard}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
+            className="w-full md:w-auto flex items-center justify-center gap-1.5 px-3 min-h-[44px] md:min-h-0 md:py-1.5 text-sm md:text-xs font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
           >
             <Plus size={13} />
             New Dashboard
