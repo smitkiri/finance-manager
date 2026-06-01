@@ -148,7 +148,7 @@ export const Reports: React.FC<ReportsProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -157,7 +157,7 @@ export const Reports: React.FC<ReportsProps> = ({
         </div>
         <button
           onClick={() => setIsCreatingReport(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="w-full md:w-auto flex items-center justify-center space-x-2 px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={16} />
           <span>Create Report</span>
@@ -174,7 +174,7 @@ export const Reports: React.FC<ReportsProps> = ({
           </p>
           <button
             onClick={() => setIsCreatingReport(true)}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full md:w-auto md:inline-flex flex items-center justify-center space-x-2 px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus size={16} />
             <span>Create Report</span>
@@ -185,14 +185,17 @@ export const Reports: React.FC<ReportsProps> = ({
           {reports.map((report) => (
             <div
               key={report.id}
-              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 md:p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedReport(report)}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-3 mb-2">
-                    <FileText size={20} className="text-blue-600 dark:text-blue-400" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <FileText
+                      size={20}
+                      className="text-blue-600 dark:text-blue-400 flex-shrink-0"
+                    />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                       {report.name}
                     </h3>
                   </div>
@@ -201,7 +204,7 @@ export const Reports: React.FC<ReportsProps> = ({
                     <p className="text-gray-600 dark:text-gray-400 mb-3">{report.description}</p>
                   )}
 
-                  <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-6 text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center space-x-1">
                       <Calendar size={14} />
                       <span>{formatDate(report.createdAt)}</span>
@@ -217,8 +220,8 @@ export const Reports: React.FC<ReportsProps> = ({
                   </div>
 
                   <div className="mt-3 flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
-                    <Filter size={12} />
-                    <span>{getFilterSummary(report)}</span>
+                    <Filter size={12} className="flex-shrink-0" />
+                    <span className="truncate">{getFilterSummary(report)}</span>
                   </div>
                 </div>
 
@@ -227,10 +230,16 @@ export const Reports: React.FC<ReportsProps> = ({
                     e.stopPropagation();
                     handleDeleteReport(report.id);
                   }}
-                  className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                  className="flex-shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors p-1"
                   title="Delete report"
+                  aria-label="Delete report"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5 md:w-4 md:h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
