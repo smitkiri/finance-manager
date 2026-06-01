@@ -116,32 +116,35 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex items-center space-x-3 min-w-0">
           <button
             onClick={onBack}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
+            aria-label="Back"
+            className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{report.name}</h1>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
+              {report.name}
+            </h1>
             {report.description && (
               <p className="text-gray-600 dark:text-gray-400 mt-1">{report.description}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 md:space-x-3 md:gap-0">
           <button
             onClick={handleExportReport}
-            className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="w-full md:w-auto flex items-center justify-center space-x-2 px-4 md:px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             <Download size={16} />
             <span>Export CSV</span>
           </button>
           <button
             onClick={onDelete}
-            className="flex items-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="w-full md:w-auto flex items-center justify-center space-x-2 px-4 md:px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             <Trash2 size={16} />
             <span>Delete</span>
@@ -150,8 +153,8 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
       </div>
 
       {/* Report Summary */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 md:p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <FileText size={20} className="text-blue-600 dark:text-blue-400" />
@@ -204,15 +207,15 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
         </div>
 
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
               <div className="flex items-center space-x-1">
-                <Calendar size={14} />
+                <Calendar size={14} className="flex-shrink-0" />
                 <span>Created: {formatDate(report.createdAt)}</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <Tag size={14} />
-                <span>Filters: {getFilterSummary()}</span>
+              <div className="flex items-center space-x-1 min-w-0">
+                <Tag size={14} className="flex-shrink-0" />
+                <span className="truncate">Filters: {getFilterSummary()}</span>
               </div>
             </div>
           </div>
@@ -221,7 +224,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
       {/* Charts */}
       {reportData && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Chart data={reportData.monthlyData} type="line" title="Monthly Overview" />
         </div>
       )}
@@ -236,7 +239,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
       {/* Transactions List */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+        <div className="p-4 md:p-6 border-b border-gray-200 dark:border-gray-800">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Transactions ({reportData.transactions.length})
           </h3>
