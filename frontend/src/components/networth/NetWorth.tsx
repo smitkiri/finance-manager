@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
+import { Sheet } from '../ui/Sheet';
 import { NetWorthKpis } from './NetWorthKpis';
 import { AccountList, UserGroup } from './AccountList';
 import { BalanceChart } from './BalanceChart';
@@ -78,76 +79,70 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Update Balance — {account.name}
-          </h2>
+    <Sheet
+      isOpen
+      onClose={onClose}
+      title={`Update Balance — ${account.name}`}
+      footer={
+        <div className="flex gap-3">
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="flex-1 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            <X size={20} />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="balance-form"
+            disabled={!displayBalance || isNaN(numericBalance) || !date}
+            className="flex-1 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Save
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Balance ($)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={displayBalance}
-              onChange={handleBalanceChange}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Note (optional)
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Monthly snapshot"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!displayBalance || isNaN(numericBalance) || !date}
-              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      }
+    >
+      <form id="balance-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Balance ($)
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={displayBalance}
+            onChange={handleBalanceChange}
+            placeholder="0.00"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Date
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Note (optional)
+          </label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Monthly snapshot"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </form>
+    </Sheet>
   );
 };
 
@@ -226,91 +221,81 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
         value={balances[account.id] ?? ''}
         onChange={(e) => handleBalanceChange(account.id, e.target.value)}
         placeholder="skip"
-        className="w-36 px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-32 sm:w-36 px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-            Update All Balances
-          </h2>
+    <Sheet
+      isOpen
+      onClose={onClose}
+      title="Update All Balances"
+      footer={
+        <div className="flex gap-3">
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="flex-1 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            <X size={18} />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="bulk-balance-form"
+            disabled={entries.length === 0 || anyInvalid || !date}
+            className="flex-1 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {entries.length > 0
+              ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}`
+              : 'Save'}
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          {/* Date + Note */}
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex gap-3">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
-                Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
-                Note
-              </label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="optional"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+      }
+    >
+      <form id="bulk-balance-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* Date + Note */}
+        <div className="flex flex-col sm:flex-row gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-
-          {/* Account rows, scrollable */}
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            {showUserHeaders
-              ? userGroups.map(({ user, accounts: groupAccounts }) => (
-                  <div key={user.id} className="mb-4 last:mb-0">
-                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">
-                      {user.name}
-                    </p>
-                    {groupAccounts.map(renderAccountRow)}
-                  </div>
-                ))
-              : accounts.map(renderAccountRow)}
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
+              Note
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="optional"
+              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
+        </div>
 
-          {/* Footer */}
-          <div className="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={entries.length === 0 || anyInvalid || !date}
-              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {entries.length > 0
-                ? `Save ${entries.length} balance${entries.length !== 1 ? 's' : ''}`
-                : 'Save'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {/* Account rows */}
+        <div>
+          {showUserHeaders
+            ? userGroups.map(({ user, accounts: groupAccounts }) => (
+                <div key={user.id} className="mb-4 last:mb-0">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2 pb-1">
+                    {user.name}
+                  </p>
+                  {groupAccounts.map(renderAccountRow)}
+                </div>
+              ))
+            : accounts.map(renderAccountRow)}
+        </div>
+      </form>
+    </Sheet>
   );
 };
 
