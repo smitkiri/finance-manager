@@ -25,6 +25,7 @@ import {
 import { ApiClient } from '../../utils/apiClient';
 import { BackupManager } from './BackupManager';
 import { HouseholdSection } from '../settings/HouseholdSection';
+import { ListRow } from '../ui/ListRow';
 
 type SettingsSection = 'categories' | 'general' | 'sources' | 'household' | 'accounts' | 'imports';
 
@@ -721,19 +722,19 @@ export const Settings: React.FC<SettingsProps> = ({
                   </h3>
                   {/* Add New Category */}
                   <div className="mb-4">
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col gap-2 md:flex-row md:space-x-2 md:gap-0">
                       <input
                         type="text"
                         value={newCategory}
                         onChange={(e) => setNewCategory(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Enter new category name"
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        className="flex-1 px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                       />
                       <button
                         onClick={handleAddCategory}
                         disabled={!newCategory.trim() || categories.includes(newCategory.trim())}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 text-sm"
+                        className="px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1 text-sm"
                       >
                         <Plus size={14} />
                         <span>Add</span>
@@ -743,8 +744,92 @@ export const Settings: React.FC<SettingsProps> = ({
                       <p className="text-red-500 text-xs mt-1">Category already exists</p>
                     )}
                   </div>
-                  {/* Categories List */}
-                  <div className="space-y-1">
+                  {/* Mobile cards */}
+                  <div className="md:hidden space-y-2">
+                    {categories.map((category) => {
+                      const txCount = expenses.filter(
+                        (e: { category?: string }) => e.category === category
+                      ).length;
+                      if (editingCategory === category) {
+                        return (
+                          <div
+                            key={category}
+                            className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2"
+                          >
+                            <input
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                              onBlur={handleSaveEdit}
+                              autoFocus
+                              className="flex-1 px-3 py-2 min-h-[48px] border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                            <button
+                              onClick={handleSaveEdit}
+                              aria-label="Save"
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                            >
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              aria-label="Cancel"
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <ListRow
+                          key={category}
+                          primary={<span>{category}</span>}
+                          amount={null}
+                          meta={
+                            <span>
+                              {txCount} {txCount === 1 ? 'transaction' : 'transactions'}
+                            </span>
+                          }
+                          trailing={
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleStartEdit(category)}
+                                aria-label={`Edit ${category}`}
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              {category !== 'Uncategorized' && (
+                                <button
+                                  onClick={() => handleDeleteCategory(category)}
+                                  aria-label={`Delete ${category}`}
+                                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                  {/* Desktop list */}
+                  <div className="hidden md:block space-y-1">
                     {categories.map((category) => (
                       <div
                         key={category}
