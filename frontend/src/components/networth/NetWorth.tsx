@@ -24,6 +24,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
+import { NetWorthKpis } from './NetWorthKpis';
 
 interface NetWorthProps {
   selectedUserId: string | null;
@@ -643,11 +644,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
 
   const manualAccounts = accounts.filter((a) => !a.tellerAccountId);
 
-  const netWorthColor =
-    (summary?.netWorth ?? 0) >= 0
-      ? 'text-blue-600 dark:text-blue-400'
-      : 'text-red-600 dark:text-red-400';
-
   // Find the history entry closest to 1 month ago
   const oneMonthAgoNetWorth = (() => {
     if (history.length === 0) return null;
@@ -746,34 +742,11 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Net Worth</p>
-              <p className={`text-2xl font-bold ${netWorthColor}`}>
-                {formatCurrency(summary?.netWorth ?? 0)}
-              </p>
-              {netWorthChange !== null && (
-                <p
-                  className={`text-sm mt-1 font-medium ${netWorthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {netWorthChange >= 0 ? '+' : ''}
-                  {formatCurrency(netWorthChange)} vs 1mo ago
-                </p>
-              )}
-            </div>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Assets</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(summary?.totalAssets ?? 0)}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Liabilities</p>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {formatCurrency(summary?.totalLiabilities ?? 0)}
-              </p>
-            </div>
-          </div>
+          <NetWorthKpis
+            summary={summary}
+            netWorthChange={netWorthChange}
+            formatCurrency={formatCurrency}
+          />
 
           {/* Net worth history chart */}
           {chartData.length > 0 && (
