@@ -465,28 +465,30 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Net Worth</h2>
-        <div className="flex items-center gap-2">
-          {tellerEnabled && tellerConnected && (
-            <button
-              onClick={handleRefreshBalances}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-              Refresh Balances
-            </button>
-          )}
-          {manualAccounts.length >= 2 && (
-            <button
-              onClick={() => setShowBulkModal(true)}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
-            >
-              Update All
-            </button>
-          )}
-        </div>
+        {(tellerEnabled && tellerConnected) || manualAccounts.length >= 2 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {tellerEnabled && tellerConnected && (
+              <button
+                onClick={handleRefreshBalances}
+                disabled={refreshing}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+                Refresh Balances
+              </button>
+            )}
+            {manualAccounts.length >= 2 && (
+              <button
+                onClick={() => setShowBulkModal(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+              >
+                Update All
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {loading ? (
