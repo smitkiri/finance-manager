@@ -114,3 +114,28 @@ When making changes that affect prod, remember:
 - Dark mode via Tailwind `dark:` prefix with system preference detection
 - Commit messages follow Conventional Commits: `feat:`, `fix:`, `chore:`, etc.
 - Python backend uses async/await throughout, Pydantic v2 schemas with camelCase field aliases
+
+## Mobile-friendly frontend
+
+The frontend is fully responsive — phones (≥360px), tablets, and desktop. New UI work must hold the line. Test new screens/components at iPhone SE (375px) and iPad mini (768px) in addition to desktop, in both light and dark mode.
+
+**Tailwind responsive prefixes are mobile-first:** unprefixed = phone, `md:` = tablet, `lg:` = desktop. Write mobile styles first, then layer on `md:` / `lg:` overrides — never the reverse. Don't change desktop layout to "fix" mobile; that's a regression.
+
+**Breakpoint hook:** `useBreakpoint()` (in `frontend/src/hooks/`) returns `'mobile' | 'tablet' | 'desktop'`. Use it only when CSS-only solutions can't express the behavior fork (e.g., changing a prop, swapping a component). CSS-driven responsiveness is always preferred.
+
+**Primitives to reuse, not reinvent:**
+
+- **Modals → Sheets on mobile.** New full-screen overlays should use `frontend/src/components/ui/Sheet.tsx` (slides up from the bottom on phones, behaves like a centered dialog at `md:+`). Don't roll a new `fixed inset-0` overlay.
+- **Sticky-positioned headers** must use the existing `Header`/`Sidebar` patterns — the layout already accounts for them.
+
+**Touch targets:** icon-only buttons must be at least 44×44 px on phones. Pattern: `min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center`. Skip the bump only when wrapped in `hidden md:flex`/`hidden md:block` (desktop-only).
+
+**Inputs:** form `<input>`/`<textarea>`/`<select>` use `py-3 min-h-[48px]` on phones. The base 16px font-size rule in `index.css` prevents iOS zoom — don't override it with `text-sm` on form controls.
+
+**Font sizes:** primary content (transaction amounts, balances, account names) reads as `text-sm md:text-xs` or larger. `text-xs` is reserved for badges, chips, and ancillary metadata next to a larger primary value. Don't drop primary financial figures to `text-xs`.
+
+**Safe areas + viewport:** the viewport meta (`viewport-fit=cover`) and `safe-bottom`/`safe-top` utilities in `index.css` handle iOS notch and home-indicator. Sheet footers must use `safe-bottom`. Never add `user-scalable=no` or `maximum-scale=1` to the viewport meta — pinch-zoom must stay enabled.
+
+**Toasts:** `<ToastContainer>` in `App.tsx` already switches to `top-center` on mobile so toasts don't sit under the iOS keyboard. New toast calls should not override `position` unless there's a strong reason.
+
+**Don't disable mobile.** It's tempting to ship a desktop-only flow and add "TODO: mobile later." Don't. Either make it responsive now or hide the entry point on phones with `hidden md:block` and file a follow-up.
