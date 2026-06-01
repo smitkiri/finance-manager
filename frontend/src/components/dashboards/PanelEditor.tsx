@@ -14,6 +14,7 @@ import { ChartLegend } from './ChartLegend';
 import { TransactionPreview } from './TransactionPreview';
 import { FilterBuilder } from './FilterBuilder';
 import { generateId } from '../../utils';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface PanelEditorProps {
   dashboard: Dashboard;
@@ -37,6 +38,8 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   onCancel,
 }) => {
   const isEdit = !!panel;
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
 
   const [title, setTitle] = useState(panel?.title || '');
   const [chartType, setChartType] = useState<'bar' | 'line'>(panel?.chartType || 'bar');
@@ -189,11 +192,11 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   return (
     <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0 px-4 md:px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex items-center gap-1 text-sm"
+            className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
           >
             <ArrowLeft size={16} /> Back
           </button>
@@ -202,20 +205,20 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Untitled Panel"
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            className="flex-1 md:flex-none px-3 min-h-[44px] md:min-h-0 md:py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 md:w-64"
           />
         </div>
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="flex-1 md:flex-none px-4 min-h-[44px] md:min-h-0 md:py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={!canSave}
-            className="px-4 py-1.5 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 md:flex-none px-4 min-h-[44px] md:min-h-0 md:py-1.5 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Saving...' : 'Save Panel'}
           </button>
@@ -223,7 +226,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       </div>
 
       {/* Chart settings toolbar */}
-      <div className="flex items-center gap-4 px-5 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-3 md:gap-4 px-4 md:px-5 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Chart</span>
           <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
@@ -242,7 +245,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             ))}
           </div>
         </div>
-        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+        <div className="hidden md:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Series</span>
           <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
@@ -268,7 +271,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         </div>
         {seriesMode === 'net_amount' && (
           <>
-            <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+            <div className="hidden md:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500 uppercase tracking-wide">Orientation</span>
               <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
@@ -294,7 +297,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             </div>
           </>
         )}
-        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+        <div className="hidden md:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Legend</span>
           <button
@@ -329,8 +332,8 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
       {/* Chart area */}
       <div
-        className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
-        style={{ height: legendOptions.show ? 310 : 280 }}
+        className="px-4 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+        style={{ height: isMobile ? 220 : legendOptions.show ? 310 : 280 }}
       >
         <PanelChart
           data={chartData}
@@ -345,9 +348,9 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       </div>
 
       {/* Bottom section: Filters + Preview */}
-      <div className="flex flex-1 min-h-0 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 border-t border-gray-200 dark:border-gray-700 overflow-y-auto md:overflow-hidden">
         {/* Filter builder (left) */}
-        <div className="w-3/5 overflow-y-auto p-5 border-r border-gray-200 dark:border-gray-700">
+        <div className="w-full md:w-3/5 md:overflow-y-auto p-4 md:p-5 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700">
           <FilterBuilder
             filterGroups={filterGroups}
             onChange={setFilterGroups}
@@ -357,7 +360,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         </div>
 
         {/* Transaction preview (right) */}
-        <div className="w-2/5 overflow-y-auto p-5">
+        <div className="w-full md:w-2/5 md:overflow-y-auto p-4 md:p-5">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
             Matching Transactions
           </div>
