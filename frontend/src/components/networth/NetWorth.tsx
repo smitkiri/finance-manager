@@ -8,23 +8,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import {
-  Trash2,
-  X,
-  ChevronDown,
-  ChevronUp,
-  History,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { X, RefreshCw } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
-import { Account, AccountBalance, NetWorthSummary, NetWorthHistory, User } from '../../types';
+import { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { NetWorthKpis } from './NetWorthKpis';
+import { AccountList, UserGroup } from './AccountList';
 
 interface NetWorthProps {
   selectedUserId: string | null;
@@ -333,174 +323,6 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
   );
 };
 
-interface BalanceDeltaProps {
-  previousBalance?: number;
-  currentBalance?: number;
-  accountType: 'asset' | 'liability';
-}
-
-const BalanceDelta: React.FC<BalanceDeltaProps> = ({
-  previousBalance,
-  currentBalance,
-  accountType,
-}) => {
-  const neutralClass = 'text-gray-400 dark:text-gray-500';
-
-  if (previousBalance === undefined || currentBalance === undefined) {
-    return <span className={`text-xs font-medium mt-0.5 ${neutralClass}`}>—</span>;
-  }
-
-  const delta = currentBalance - previousBalance;
-
-  if (delta === 0) {
-    return (
-      <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${neutralClass}`}>
-        <Minus size={12} />
-        {formatCurrency(0)}
-      </span>
-    );
-  }
-
-  const isAsset = accountType === 'asset';
-  const isGood = (delta > 0 && isAsset) || (delta < 0 && !isAsset);
-  const colorClass = isGood
-    ? 'text-green-600 dark:text-green-400'
-    : 'text-red-600 dark:text-red-400';
-  const Icon = delta > 0 ? TrendingUp : TrendingDown;
-
-  return (
-    <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${colorClass}`}>
-      <Icon size={12} />
-      {formatCurrency(Math.abs(delta))}
-    </span>
-  );
-};
-
-// Account row with expand for history
-interface AccountRowProps {
-  account: Account;
-  onUpdateBalance: (account: Account) => void;
-}
-
-const AccountRow: React.FC<AccountRowProps> = ({ account, onUpdateBalance }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [history, setHistory] = useState<AccountBalance[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const loadHistory = useCallback(async () => {
-    setLoadingHistory(true);
-    const balances = await ApiClient.loadAccountBalances(account.id);
-    setHistory(balances);
-    setLoadingHistory(false);
-  }, [account.id]);
-
-  const handleExpand = () => {
-    if (!expanded) loadHistory();
-    setExpanded((e) => !e);
-  };
-
-  const handleDeleteBalance = async (balanceId: string) => {
-    try {
-      await ApiClient.deleteAccountBalance(account.id, balanceId);
-      setHistory((prev) => prev.filter((b) => b.id !== balanceId));
-    } catch {
-      toast.error('Failed to delete balance entry', { position: 'bottom-right', autoClose: 3000 });
-    }
-  };
-
-  const isAsset = account.type === 'asset';
-  const balanceColor = isAsset
-    ? 'text-green-600 dark:text-green-400'
-    : 'text-red-600 dark:text-red-400';
-
-  return (
-    <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900">
-        <div className="flex-1 min-w-0">
-          <span className="font-medium text-gray-900 dark:text-white truncate block">
-            {account.name}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 ml-4">
-          <div className="flex flex-col items-end">
-            <span className={`text-base font-semibold ${balanceColor}`}>
-              {account.currentBalance !== undefined ? formatCurrency(account.currentBalance) : '—'}
-            </span>
-            <BalanceDelta
-              previousBalance={account.previousBalance}
-              currentBalance={account.currentBalance}
-              accountType={account.type}
-            />
-          </div>
-          <button
-            onClick={() => onUpdateBalance(account)}
-            className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            Update
-          </button>
-          <button
-            onClick={handleExpand}
-            title="View history"
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          >
-            <History size={16} />
-          </button>
-          <button
-            onClick={handleExpand}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          >
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-        </div>
-      </div>
-      {expanded && (
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 px-4 py-3">
-          {loadingHistory ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading history...</p>
-          ) : history.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No balance entries yet.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 dark:text-gray-400">
-                  <th className="text-left font-medium pb-2">Date</th>
-                  <th className="text-right font-medium pb-2">Balance</th>
-                  <th className="text-left font-medium pb-2 pl-4">Note</th>
-                  <th className="text-right font-medium pb-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {history.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="py-1.5 text-gray-700 dark:text-gray-300">
-                      {formatDate(entry.date as string)}
-                    </td>
-                    <td className={`py-1.5 text-right font-medium ${balanceColor}`}>
-                      {formatCurrency(entry.balance)}
-                    </td>
-                    <td className="py-1.5 pl-4 text-gray-500 dark:text-gray-400">
-                      {entry.note || '—'}
-                    </td>
-                    <td className="py-1.5 text-right">
-                      <button
-                        onClick={() => handleDeleteBalance(entry.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete entry"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Custom tooltip for the chart
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -518,7 +340,6 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => {
-  const navigate = useNavigate();
   const { theme } = useTheme();
   const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb'; // gray-700 : gray-200
   const tickFill = theme === 'dark' ? '#9ca3af' : '#6b7280'; // gray-400 : gray-500
@@ -689,7 +510,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
 
   // When a single user is selected, show flat assets/liabilities lists.
   // When "All Users" is selected, group accounts per user.
-  const userGroups: { user: User | null; assets: Account[]; liabilities: Account[] }[] =
+  const userGroups: UserGroup[] =
     selectedUserId !== null
       ? [
           {
@@ -793,112 +614,15 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
           )}
 
           {/* Accounts sections — flat when one user selected, grouped per user otherwise */}
-          {accounts.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-              No accounts yet.{' '}
-              <button
-                onClick={() => navigate('/settings?section=accounts')}
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Add one in Settings.
-              </button>
-            </p>
-          ) : (
-            <div className="space-y-8">
-              {userGroups.map(({ user, assets, liabilities }) => {
-                const groupAssetTotal = assets.reduce((s, a) => s + (a.currentBalance ?? 0), 0);
-                const groupLiabilityTotal = liabilities.reduce(
-                  (s, a) => s + (a.currentBalance ?? 0),
-                  0
-                );
-                const groupNetWorth = groupAssetTotal - groupLiabilityTotal;
-                const groupNetWorthColor =
-                  groupNetWorth >= 0
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-red-600 dark:text-red-400';
-
-                return (
-                  <div key={user?.id ?? 'single'} className="space-y-5">
-                    {/* Per-user header — only shown in "All Users" mode with multiple users */}
-                    {showUserHeaders && user && (
-                      <div className="flex items-center gap-3 pb-2 border-b border-gray-200 dark:border-gray-800">
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                          {user.name}
-                        </h3>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Assets {formatCurrency(groupAssetTotal)}
-                          {' · '}
-                          Liabilities {formatCurrency(groupLiabilityTotal)}
-                          {' · '}
-                          <span className={groupNetWorthColor}>
-                            Net {formatCurrency(groupNetWorth)}
-                          </span>
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Assets */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          Assets
-                        </h4>
-                        <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                          {formatCurrency(
-                            showUserHeaders ? groupAssetTotal : (summary?.totalAssets ?? 0)
-                          )}
-                        </span>
-                      </div>
-                      {assets.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500 py-3 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
-                          No asset accounts.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {assets.map((account) => (
-                            <AccountRow
-                              key={account.id}
-                              account={account}
-                              onUpdateBalance={setBalanceAccount}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Liabilities */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          Liabilities
-                        </h4>
-                        <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                          {formatCurrency(
-                            showUserHeaders ? groupLiabilityTotal : (summary?.totalLiabilities ?? 0)
-                          )}
-                        </span>
-                      </div>
-                      {liabilities.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500 py-3 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
-                          No liability accounts.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {liabilities.map((account) => (
-                            <AccountRow
-                              key={account.id}
-                              account={account}
-                              onUpdateBalance={setBalanceAccount}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <AccountList
+            accounts={accounts}
+            userGroups={userGroups}
+            showUserHeaders={showUserHeaders}
+            summary={summary}
+            onUpdateBalance={setBalanceAccount}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+          />
         </>
       )}
 
