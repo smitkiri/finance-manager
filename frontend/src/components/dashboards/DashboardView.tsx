@@ -171,9 +171,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const panelLimitReached = panels.length >= 15;
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 md:p-6">
       {/* Toolbar */}
-      <div className="flex items-center justify-end mb-6">
+      <div className="flex items-center justify-end mb-4 md:mb-6">
         <button
           onClick={() => {
             setEditingPanel(null);
@@ -181,7 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           }}
           disabled={panelLimitReached}
           title={panelLimitReached ? 'Maximum of 15 panels reached' : 'Add panel'}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full md:w-auto flex items-center justify-center gap-2 px-4 min-h-[44px] md:min-h-0 md:py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Plus size={16} />
           Add Panel
@@ -205,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={panels.map((p) => p.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {panels.map((panel) => (
                 <SortablePanel
                   key={panel.id}
