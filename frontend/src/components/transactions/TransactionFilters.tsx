@@ -383,12 +383,12 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   return (
     <div className="space-y-6">
       {/* Category Filter */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 md:p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Tag size={20} className="text-blue-600 dark:text-blue-400" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Categories</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {categories.map((category) => (
             <label key={category} className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -478,12 +478,12 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
       )}
 
       {/* Amount Range Filter */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 md:p-6">
         <div className="flex items-center space-x-2 mb-4">
           <DollarSign size={20} className="text-blue-600 dark:text-blue-400" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Amount Range</h3>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Minimum Amount
@@ -495,7 +495,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               placeholder="0.00"
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -509,7 +509,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               placeholder="0.00"
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
         </div>
