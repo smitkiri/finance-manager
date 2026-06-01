@@ -290,14 +290,7 @@ describe('CSVPreviewEditor', () => {
     const onClose = jest.fn();
     render(<CSVPreviewEditor {...defaultProps()} onClose={onClose} />);
 
-    // The X button is the one in the header with no text content
-    // It's rendered with an X icon from lucide-react
-    const headerButtons = screen
-      .getByText('Edit CSV Data')
-      .closest('div')!
-      .parentElement!.querySelectorAll('button');
-    // The last button in the header row is the X close button
-    const closeButton = headerButtons[headerButtons.length - 1];
+    const closeButton = screen.getByRole('button', { name: 'Close' });
     fireEvent.click(closeButton);
 
     expect(onClose).toHaveBeenCalledTimes(1);
