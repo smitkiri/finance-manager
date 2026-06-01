@@ -80,7 +80,7 @@ export const LoginPage: React.FC = () => {
               clearError();
             }}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
           />
         </div>
         <div className="mb-4">
@@ -100,7 +100,7 @@ export const LoginPage: React.FC = () => {
               clearError();
             }}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
           />
         </div>
         {error && (
@@ -111,7 +111,7 @@ export const LoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+          className="w-full px-4 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
         >
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>

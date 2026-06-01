@@ -43,6 +43,7 @@ import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
 import { DemoBanner } from './components/DemoBanner';
 import { Logo } from './components/Logo';
 import { ITEMS_PER_PAGE } from './constants';
+import { useBreakpoint } from './hooks/useBreakpoint';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
@@ -1343,6 +1344,7 @@ function AppContent() {
 }
 
 function App() {
+  const bp = useBreakpoint();
   return (
     <BrowserRouter>
       <ThemeProvider>
@@ -1361,7 +1363,15 @@ function App() {
                 }
               />
             </Routes>
-            <ToastContainer />
+            <ToastContainer
+              position={bp === 'mobile' ? 'top-center' : 'bottom-right'}
+              {...(bp === 'mobile'
+                ? {
+                    toastClassName: () =>
+                      'relative flex p-3 min-h-[56px] rounded-lg justify-between overflow-hidden cursor-pointer mt-16 mx-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-lg',
+                  }
+                : {})}
+            />
           </div>
         </AuthProvider>
       </ThemeProvider>

@@ -125,7 +125,7 @@ export const AcceptInvitePage: React.FC = () => {
           <Link to={signupHref}>
             <button
               type="button"
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full px-4 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Create account
             </button>
@@ -133,7 +133,7 @@ export const AcceptInvitePage: React.FC = () => {
           <Link to={loginHref}>
             <button
               type="button"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="w-full px-4 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Sign in
             </button>
@@ -161,7 +161,7 @@ export const AcceptInvitePage: React.FC = () => {
         <button
           type="button"
           onClick={onSignOut}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Sign out
         </button>
@@ -206,14 +206,14 @@ export const AcceptInvitePage: React.FC = () => {
           type="button"
           onClick={onConfirm}
           disabled={accepting || summary === null}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+          className="w-full px-4 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
         >
           {accepting ? 'Joining…' : 'Join household'}
         </button>
         <Link to="/">
           <button
             type="button"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="w-full px-4 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Cancel
           </button>
