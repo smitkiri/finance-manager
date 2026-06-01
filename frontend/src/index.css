@@ -65,6 +65,14 @@
       font-size: inherit;
     }
   }
+  /* Keep focused form controls clear of the sticky header when mobile
+     browsers auto-scroll them into view. */
+  input,
+  select,
+  textarea,
+  button {
+    scroll-margin-top: 5rem;
+  }
 }
 
 @layer utilities {
