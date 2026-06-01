@@ -157,7 +157,7 @@ export const SignupPage: React.FC = () => {
               clearError();
             }}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
           />
         </div>
         <div className="mb-4">
@@ -178,7 +178,7 @@ export const SignupPage: React.FC = () => {
             }}
             required
             disabled={!!prefillEmail}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
           />
         </div>
         <div className="mb-4">
@@ -198,7 +198,7 @@ export const SignupPage: React.FC = () => {
               clearError();
             }}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
           />
           <p
             className={`mt-1 text-xs ${
@@ -220,7 +220,7 @@ export const SignupPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+          className="w-full px-4 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
         >
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
