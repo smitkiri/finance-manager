@@ -1232,11 +1232,16 @@ function AppContent() {
                       }))
                     }
                     selectedUserId={selectedUserId}
+                    filters={transactionFilters}
+                    onFiltersChange={setTransactionFilters}
+                    onClearFilters={() => setTransactionFilters({})}
+                    sources={sources}
+                    allLabels={allLabels}
                   />
                 </div>
 
-                {/* Filters Sidebar */}
-                <div className="lg:col-span-1">
+                {/* Filters Sidebar (desktop only) */}
+                <div className="hidden lg:block lg:col-span-1">
                   <div className="sticky top-6">
                     <TransactionFiltersComponent
                       filters={transactionFilters}
