@@ -31,14 +31,16 @@ const BalanceDelta: React.FC<BalanceDeltaProps> = ({
   const neutralClass = 'text-gray-400 dark:text-gray-500';
 
   if (previousBalance === undefined || currentBalance === undefined) {
-    return <span className={`text-xs font-medium mt-0.5 ${neutralClass}`}>—</span>;
+    return <span className={`text-sm md:text-xs font-medium mt-0.5 ${neutralClass}`}>—</span>;
   }
 
   const delta = currentBalance - previousBalance;
 
   if (delta === 0) {
     return (
-      <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${neutralClass}`}>
+      <span
+        className={`text-sm md:text-xs font-medium flex items-center gap-1 mt-0.5 ${neutralClass}`}
+      >
         <Minus size={12} />
         {formatCurrency(0)}
       </span>
@@ -53,7 +55,7 @@ const BalanceDelta: React.FC<BalanceDeltaProps> = ({
   const Icon = delta > 0 ? TrendingUp : TrendingDown;
 
   return (
-    <span className={`text-xs font-medium flex items-center gap-1 mt-0.5 ${colorClass}`}>
+    <span className={`text-sm md:text-xs font-medium flex items-center gap-1 mt-0.5 ${colorClass}`}>
       <Icon size={12} />
       {formatCurrency(Math.abs(delta))}
     </span>
@@ -256,7 +258,7 @@ export const AccountList: React.FC<AccountListProps> = ({
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                   {user.name}
                 </h3>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-sm md:text-xs text-gray-500 dark:text-gray-400">
                   Assets {formatCurrency(groupAssetTotal)}
                   {' · '}
                   Liabilities {formatCurrency(groupLiabilityTotal)}
