@@ -1,20 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 import { X, RefreshCw } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { NetWorthKpis } from './NetWorthKpis';
 import { AccountList, UserGroup } from './AccountList';
+import { BalanceChart } from './BalanceChart';
 
 interface NetWorthProps {
   selectedUserId: string | null;
@@ -323,26 +314,7 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
   );
 };
 
-// Custom tooltip for the chart
-const ChartTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  const data = payload[0]?.payload;
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 shadow-lg text-sm">
-      <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">{formatDate(label)}</p>
-      <p
-        className={`font-semibold ${(data?.netWorth ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}
-      >
-        Net Worth: {formatCurrency(data?.netWorth ?? 0)}
-      </p>
-    </div>
-  );
-};
-
 export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => {
-  const { theme } = useTheme();
-  const gridStroke = theme === 'dark' ? '#374151' : '#e5e7eb'; // gray-700 : gray-200
-  const tickFill = theme === 'dark' ? '#9ca3af' : '#6b7280'; // gray-400 : gray-500
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [summary, setSummary] = useState<NetWorthSummary | null>(null);
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
@@ -484,30 +456,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const netWorthChange =
     oneMonthAgoNetWorth !== null ? (summary?.netWorth ?? 0) - oneMonthAgoNetWorth : null;
 
-  // Format chart dates for x-axis
-  const chartData = history.map((h) => ({
-    ...h,
-    dateLabel: new Date(h.date).toLocaleDateString('en-US', {
-      month: 'short',
-      year: '2-digit',
-      timeZone: 'UTC',
-    }),
-  }));
-
-  // Only show one tick per unique month/year to avoid duplicate X axis labels
-  const chartTicks = chartData.reduce<string[]>((acc, d) => {
-    const lastLabel =
-      acc.length > 0
-        ? new Date(acc[acc.length - 1]).toLocaleDateString('en-US', {
-            month: 'short',
-            year: '2-digit',
-            timeZone: 'UTC',
-          })
-        : null;
-    if (d.dateLabel !== lastLabel) acc.push(d.date);
-    return acc;
-  }, []);
-
   // When a single user is selected, show flat assets/liabilities lists.
   // When "All Users" is selected, group accounts per user.
   const userGroups: UserGroup[] =
@@ -570,48 +518,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
           />
 
           {/* Net worth history chart */}
-          {chartData.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-                Net Worth Over Time
-              </h3>
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                  <XAxis
-                    dataKey="date"
-                    ticks={chartTicks}
-                    tickFormatter={(v) =>
-                      new Date(v).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: '2-digit',
-                        timeZone: 'UTC',
-                      })
-                    }
-                    tick={{ fontSize: 12, fill: tickFill }}
-                    stroke={gridStroke}
-                  />
-                  <YAxis
-                    tickFormatter={(v) =>
-                      `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
-                    }
-                    tick={{ fontSize: 12, fill: tickFill }}
-                    stroke={gridStroke}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="netWorth"
-                    name="Net Worth"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <BalanceChart history={history} formatCurrency={formatCurrency} formatDate={formatDate} />
 
           {/* Accounts sections — flat when one user selected, grouped per user otherwise */}
           <AccountList
