@@ -1577,7 +1577,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   <div className="space-y-4">
                     <button
                       onClick={onExportCSV}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
                       <Download size={16} />
                       <span>Export CSV</span>
@@ -1591,15 +1591,15 @@ export const Settings: React.FC<SettingsProps> = ({
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                     Delete Data
                   </h3>
-                  <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <button
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      className="w-full sm:w-auto px-4 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                       onClick={() => setShowDeleteAllConfirm(true)}
                     >
                       Delete All Data
                     </button>
                     <button
-                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium ml-4"
+                      className="w-full sm:w-auto px-4 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium"
                       onClick={() => setShowSelectDelete(true)}
                     >
                       Select data to delete
