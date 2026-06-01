@@ -941,7 +941,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 type="text"
                                 value={editSourceName}
                                 onChange={(e) => setEditSourceName(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className="w-full px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 placeholder="Enter source name"
                               />
                             </div>
@@ -955,14 +955,17 @@ export const Settings: React.FC<SettingsProps> = ({
                                 {editSourceMappings.map((mapping, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                                    className="flex flex-col gap-2 md:flex-row md:items-center md:space-x-3 md:gap-0 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                                   >
-                                    <div className="flex-1">
-                                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-white break-words">
                                         {mapping.csvColumn}
                                       </span>
                                     </div>
-                                    <ArrowRight size={16} className="text-gray-400" />
+                                    <ArrowRight
+                                      size={16}
+                                      className="text-gray-400 hidden md:block flex-shrink-0"
+                                    />
                                     <select
                                       value={mapping.standardColumn}
                                       onChange={(e) =>
@@ -971,7 +974,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                           e.target.value as StandardizedColumn | 'Ignore'
                                         )
                                       }
-                                      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
+                                      className="w-full md:w-auto px-3 py-2 md:py-1 min-h-[44px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
                                     >
                                       <option value="Ignore">Ignore</option>
                                       {getAvailableStandardColumns(mapping).map((col) => (
@@ -998,20 +1001,24 @@ export const Settings: React.FC<SettingsProps> = ({
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Import Options
                               </label>
-                              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                <input
-                                  type="checkbox"
-                                  id={`flipIncomeExpense-${source.id}`}
-                                  checked={editSourceFlipIncomeExpense}
-                                  onChange={(e) => setEditSourceFlipIncomeExpense(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                />
-                                <label
-                                  htmlFor={`flipIncomeExpense-${source.id}`}
-                                  className="text-sm font-medium text-gray-900 dark:text-white"
-                                >
-                                  Flip Income/Expense Signs
-                                </label>
+                              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 md:space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    id={`flipIncomeExpense-${source.id}`}
+                                    checked={editSourceFlipIncomeExpense}
+                                    onChange={(e) =>
+                                      setEditSourceFlipIncomeExpense(e.target.checked)
+                                    }
+                                    className="w-5 h-5 md:w-4 md:h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                  />
+                                  <label
+                                    htmlFor={`flipIncomeExpense-${source.id}`}
+                                    className="text-sm font-medium text-gray-900 dark:text-white"
+                                  >
+                                    Flip Income/Expense Signs
+                                  </label>
+                                </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400">
                                   Positive values as expenses, negative as income
                                 </div>
@@ -1019,18 +1026,18 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex space-x-2">
+                            <div className="flex flex-col gap-2 md:flex-row md:space-x-2 md:gap-0">
                               <button
                                 onClick={handleSaveEditSource}
                                 disabled={!editSourceName.trim()}
-                                className="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                className="w-full md:w-auto flex items-center justify-center space-x-1 px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                               >
                                 <Save size={14} />
                                 <span>Save Changes</span>
                               </button>
                               <button
                                 onClick={handleCancelEditSource}
-                                className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                                className="w-full md:w-auto px-3 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
                               >
                                 Cancel
                               </button>
@@ -1038,9 +1045,9 @@ export const Settings: React.FC<SettingsProps> = ({
                           </div>
                         ) : (
                           <div className="p-4 bg-gray-50 dark:bg-gray-700">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <span className="font-medium text-gray-900 dark:text-white text-sm">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium text-gray-900 dark:text-white text-sm break-words">
                                   {source.name}
                                 </span>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1067,13 +1074,14 @@ export const Settings: React.FC<SettingsProps> = ({
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-1">
+                              <div className="flex items-center">
                                 <button
                                   onClick={() => handleStartEditSource(source)}
-                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  aria-label={`Edit ${source.name}`}
+                                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                   title="Edit source"
                                 >
-                                  <Edit size={12} />
+                                  <Edit className="w-4 h-4 md:w-3 md:h-3" />
                                 </button>
                               </div>
                             </div>
