@@ -690,7 +690,7 @@ export const Settings: React.FC<SettingsProps> = ({
             {asPage ? (
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-2 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 title="Go back"
               >
                 <ArrowLeft size={20} />
@@ -702,7 +702,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {!asPage && (
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-2 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <X size={20} />
             </button>
@@ -1390,7 +1390,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <div className="flex gap-1">
                                   <button
                                     onClick={handleSaveEditAccount}
-                                    className="p-1 text-green-600 hover:text-green-700 transition-colors"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-green-600 hover:text-green-700 transition-colors"
                                     title="Save"
                                   >
                                     <svg
@@ -1409,7 +1409,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                   </button>
                                   <button
                                     onClick={handleCancelEditAccount}
-                                    className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                                     title="Cancel"
                                   >
                                     <X size={16} />
@@ -1446,14 +1446,14 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <div className="flex items-center gap-1 ml-2">
                                   <button
                                     onClick={() => handleStartEditAccount(account)}
-                                    className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                     title="Edit account"
                                   >
                                     <Edit size={12} />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteAccount(account)}
-                                    className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                     title="Delete account"
                                   >
                                     <Trash2 size={12} />
@@ -1904,7 +1904,7 @@ export const Settings: React.FC<SettingsProps> = ({
           <button
             onClick={closeTellerModal}
             disabled={tellerEnrolling}
-            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-40"
+            className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-40"
           >
             <X size={18} />
           </button>
