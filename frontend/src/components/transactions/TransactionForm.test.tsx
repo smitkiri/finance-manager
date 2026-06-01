@@ -130,7 +130,7 @@ describe('TransactionForm', () => {
       const userSelect = getSelectByLabel(container, 'User');
       fireEvent.change(userSelect, { target: { value: 'user-1' } });
 
-      fireEvent.click(screen.getByText('Add'));
+      fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
       expect(props.onSubmit).not.toHaveBeenCalled();
     });
 
@@ -142,7 +142,7 @@ describe('TransactionForm', () => {
       const userSelect = getSelectByLabel(container, 'User');
       fireEvent.change(userSelect, { target: { value: 'user-1' } });
 
-      fireEvent.click(screen.getByText('Add'));
+      fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
       expect(props.onSubmit).not.toHaveBeenCalled();
     });
 
@@ -156,7 +156,7 @@ describe('TransactionForm', () => {
       fireEvent.change(userSelect, { target: { value: 'user-1' } });
 
       // Category defaults to first option which is empty string
-      fireEvent.click(screen.getByText('Add'));
+      fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
       expect(props.onSubmit).not.toHaveBeenCalled();
     });
 
@@ -169,7 +169,7 @@ describe('TransactionForm', () => {
       // Category will default to first option ('Food') - that's fine
       // Do not select a user (default is empty string "Select user")
 
-      fireEvent.click(screen.getByText('Add'));
+      fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
       expect(props.onSubmit).not.toHaveBeenCalled();
     });
   });
@@ -195,7 +195,7 @@ describe('TransactionForm', () => {
     // Select user
     fireEvent.change(getSelectByLabel('User'), { target: { value: 'user-1' } });
 
-    fireEvent.click(screen.getByText('Add'));
+    fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
 
     expect(props.onSubmit).toHaveBeenCalledTimes(1);
     const submittedData = (props.onSubmit as jest.Mock).mock.calls[0][0];
@@ -229,7 +229,7 @@ describe('TransactionForm', () => {
     fireEvent.change(getSelectByLabel('Category'), { target: { value: 'Food' } });
     fireEvent.change(getSelectByLabel('User'), { target: { value: 'user-1' } });
 
-    fireEvent.click(screen.getByText('Add'));
+    fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
 
     // After submit the form fields should be reset
     expect(descriptionInput.value).toBe('');
