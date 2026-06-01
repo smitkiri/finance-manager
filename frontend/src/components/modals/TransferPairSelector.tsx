@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Search, ArrowRightLeft, Loader2 } from 'lucide-react';
+import { Search, ArrowRightLeft, Loader2 } from 'lucide-react';
 import { Expense } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
 import { ApiClient } from '../../utils/apiClient';
+import { Sheet } from '../ui/Sheet';
+import { ListRow } from '../ui/ListRow';
 
 interface TransferPairSelectorProps {
   isOpen: boolean;
@@ -21,7 +23,6 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
   const [allTransactions, setAllTransactions] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch all transactions when the selector opens
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
@@ -41,24 +42,16 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
     };
   }, [isOpen]);
 
-  // Reset search when opening
   useEffect(() => {
     if (isOpen) setSearchText('');
   }, [isOpen]);
 
-  // Filter and sort transactions that can be paired
   const availableTransactions = useMemo(() => {
     const filtered = allTransactions.filter((t) => {
-      // Exclude the current transaction
       if (t.id === currentTransaction.id) return false;
-
-      // Exclude transactions that are already part of a transfer
       if (t.transferInfo?.isTransfer) return false;
-
-      // Must be opposite type (income vs expense)
       if (t.type === currentTransaction.type) return false;
 
-      // Apply search filter
       if (searchText) {
         const searchLower = searchText.toLowerCase();
         return (
@@ -72,17 +65,14 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
       return true;
     });
 
-    // Sort by match likelihood
     return filtered.sort((a, b) => {
       const currentAmount = currentTransaction.amount;
 
-      // Same user first
       const sameUserA = a.user === currentTransaction.user;
       const sameUserB = b.user === currentTransaction.user;
       if (sameUserA && !sameUserB) return -1;
       if (!sameUserA && sameUserB) return 1;
 
-      // Exact amount matches first
       const diffA = Math.abs(a.amount - currentAmount);
       const diffB = Math.abs(b.amount - currentAmount);
 
@@ -92,12 +82,10 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       }
 
-      // Then sort by amount difference (smallest difference first)
       if (diffA !== diffB) {
         return diffA - diffB;
       }
 
-      // If same difference, sort by date (most recent first)
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
   }, [allTransactions, currentTransaction, searchText]);
@@ -107,50 +95,49 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
     onClose();
   };
 
-  if (!isOpen) return null;
+  const title = (
+    <div className="flex items-center space-x-3">
+      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/30 flex-shrink-0">
+        <ArrowRightLeft size={18} className="text-purple-600 dark:text-purple-400" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-base font-semibold text-gray-900 dark:text-white truncate">
+          Select Transfer Pair
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+          Choose the transaction to pair with this one
+        </p>
+      </div>
+    </div>
+  );
+
+  const footer = (
+    <button
+      onClick={onClose}
+      className="w-full py-3 min-h-[48px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+    >
+      Cancel
+    </button>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/30">
-              <ArrowRightLeft size={20} className="text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Select Transfer Pair
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Choose the transaction to pair with this one
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Current Transaction Info */}
-        <div className="p-6 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-700">
+    <Sheet isOpen={isOpen} onClose={onClose} title={title} footer={footer}>
+      <div className="space-y-4">
+        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
           <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
             Current Transaction:
           </p>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 dark:text-white truncate">
                 {currentTransaction.description}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                 {formatDate(currentTransaction.date)} • {currentTransaction.category}
               </p>
             </div>
             <div
-              className={`text-lg font-bold ${
+              className={`text-lg font-bold flex-shrink-0 ${
                 currentTransaction.type === 'expense'
                   ? 'text-red-600 dark:text-red-400'
                   : 'text-green-600 dark:text-green-400'
@@ -162,112 +149,79 @@ export const TransferPairSelector: React.FC<TransferPairSelectorProps> = ({
           </div>
         </div>
 
-        {/* Search */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search transactions..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
-            />
+        <div className="relative">
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            size={20}
+          />
+          <input
+            type="text"
+            placeholder="Search transactions..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 min-h-[48px] text-base md:text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
+          />
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 size={24} className="animate-spin text-purple-500 mr-2" />
+            <span className="text-gray-500 dark:text-gray-400">Loading transactions...</span>
           </div>
-        </div>
-
-        {/* Transaction List */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-400px)]">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 size={24} className="animate-spin text-purple-500 mr-2" />
-              <span className="text-gray-500 dark:text-gray-400">Loading transactions...</span>
-            </div>
-          ) : availableTransactions.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">
-                {searchText
-                  ? 'No matching transactions found'
-                  : 'No available transactions to pair with. The transaction must be the opposite type (income/expense).'}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {availableTransactions.map((transaction) => {
-                const isExactMatch = transaction.amount === currentTransaction.amount;
-                const isSameUser = transaction.user === currentTransaction.user;
-                return (
-                  <button
-                    key={transaction.id}
-                    onClick={() => handleSelect(transaction.id)}
-                    className={`w-full text-left p-4 rounded-lg border transition-all cursor-pointer ${
-                      isExactMatch
-                        ? 'border-purple-400 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30 hover:border-purple-500 dark:hover:border-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40'
-                        : 'border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-gray-900 dark:text-white truncate">
-                            {transaction.description}
-                          </p>
-                          {isExactMatch && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
-                              Exact Match
-                            </span>
-                          )}
-                          {!isSameUser && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
-                              Different User
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDate(transaction.date)}
-                          </span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">•</span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {transaction.category}
-                          </span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">•</span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {transaction.user}
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        className={`text-lg font-bold ml-4 ${
-                          transaction.type === 'expense'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-green-600 dark:text-green-400'
-                        }`}
-                      >
-                        {transaction.type === 'expense' ? '-' : '+'}
-                        {formatCurrency(transaction.amount)}
-                      </div>
+        ) : availableTransactions.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchText
+                ? 'No matching transactions found'
+                : 'No available transactions to pair with. The transaction must be the opposite type (income/expense).'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {availableTransactions.map((transaction) => {
+              const isExactMatch = transaction.amount === currentTransaction.amount;
+              const isSameUser = transaction.user === currentTransaction.user;
+              const amountColor =
+                transaction.type === 'expense'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-green-600 dark:text-green-400';
+              return (
+                <ListRow
+                  key={transaction.id}
+                  onClick={() => handleSelect(transaction.id)}
+                  ariaLabel={`Select ${transaction.description}`}
+                  primary={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="truncate">{transaction.description}</span>
+                      {isExactMatch && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
+                          Exact Match
+                        </span>
+                      )}
+                      {!isSameUser && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
+                          Different User
+                        </span>
+                      )}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-800">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
+                  }
+                  amount={
+                    <span className={amountColor}>
+                      {transaction.type === 'expense' ? '-' : '+'}
+                      {formatCurrency(transaction.amount)}
+                    </span>
+                  }
+                  meta={
+                    <span>
+                      {formatDate(transaction.date)} • {transaction.category} • {transaction.user}
+                    </span>
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </Sheet>
   );
 };

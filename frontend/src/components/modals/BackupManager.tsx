@@ -180,7 +180,7 @@ export const BackupManager: React.FC = () => {
             <div className="relative mb-4">
               <button
                 onClick={() => setShowDatePicker(!showDatePicker)}
-                className="flex items-center justify-between w-full md:w-auto px-3 py-2 text-sm text-left text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="flex items-center justify-between w-full md:w-auto px-3 py-3 min-h-[48px] text-sm text-left text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <Calendar className="w-4 h-4 mr-2" />
                 {dateRange?.from && dateRange?.to
@@ -188,7 +188,7 @@ export const BackupManager: React.FC = () => {
                   : 'Select Date Range'}
               </button>
               {showDatePicker && (
-                <div className="absolute z-10 top-full mt-2 bg-white dark:bg-gray-900 border rounded-lg shadow-lg">
+                <div className="absolute z-10 top-full mt-2 bg-white dark:bg-gray-900 border rounded-lg shadow-lg max-w-[calc(100vw-2rem)] overflow-x-auto">
                   <DayPicker
                     mode="range"
                     selected={dateRange}
@@ -209,7 +209,7 @@ export const BackupManager: React.FC = () => {
             disabled={
               isLoading || (backupOption === 'range' && (!dateRange?.from || !dateRange?.to))
             }
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading && backupOption === 'all' ? (
               <Loader size={16} className="animate-spin" />
@@ -226,7 +226,7 @@ export const BackupManager: React.FC = () => {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Restore data from a JSON backup file.
           </p>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <input
               type="file"
               ref={fileInputRef}
@@ -238,7 +238,7 @@ export const BackupManager: React.FC = () => {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 min-h-[48px] bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? <Loader size={16} className="animate-spin" /> : <Upload size={16} />}
               <span>{isLoading ? 'Restoring...' : 'Choose Backup File'}</span>
