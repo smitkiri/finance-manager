@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { Calendar, Tag, DollarSign, Clock, Database, ArrowRightLeft } from 'lucide-react';
-import { Expense } from '../../types';
+import React, { useEffect, useState } from 'react';
+import { Calendar, Tag, DollarSign, Clock, Database, ArrowRightLeft, Repeat } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+import { Expense, Subscription } from '../../types';
+import { ApiClient } from '../../utils/apiClient';
 import { formatCurrency, formatDate } from '../../utils';
 import { getTransferPair } from '../../utils/transferDetection';
 import { TransferPairSelector } from './TransferPairSelector';
@@ -28,6 +31,17 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   selectedUserId,
 }) => {
   const [isPairSelectorOpen, setIsPairSelectorOpen] = useState(false);
+  const [subPicker, setSubPicker] = useState(false);
+  const [subs, setSubs] = useState<Subscription[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!subPicker || !transaction) return;
+    void ApiClient.listSubscriptions({
+      type: transaction.type,
+      status: ['active', 'manual', 'possibly_cancelled'],
+    }).then((res) => setSubs(res.subscriptions));
+  }, [subPicker, transaction]);
 
   if (!isOpen || !transaction) return null;
 
@@ -103,6 +117,16 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         >
           <ArrowRightLeft size={16} />
           <span>Mark as Transfer/Refund</span>
+        </button>
+      )}
+      {!isTransfer && (
+        <button
+          type="button"
+          onClick={() => setSubPicker((v) => !v)}
+          className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          <Repeat size={16} />
+          Add to subscription
         </button>
       )}
       <button
@@ -302,6 +326,46 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               {transaction.description}
             </p>
           </div>
+
+          {subPicker && (
+            <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-800 max-h-48 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setSubPicker(false);
+                  onClose();
+                  navigate('/subscriptions');
+                }}
+                className="w-full text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm text-blue-600"
+              >
+                + New subscription…
+              </button>
+              {subs.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await ApiClient.addSubscriptionMembers(s.id, [transaction.id]);
+                      setSubPicker(false);
+                      toast.success(`Added to "${s.name}"`);
+                    } catch {
+                      toast.error('Failed to add to subscription');
+                    }
+                  }}
+                  className="w-full text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm flex justify-between"
+                >
+                  <span>{s.name}</span>
+                  <span className="text-xs text-gray-500 capitalize">{s.cadence}</span>
+                </button>
+              ))}
+              {subs.length === 0 && (
+                <div className="text-xs text-gray-500 py-2 px-2">
+                  No matching subscriptions yet.
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">

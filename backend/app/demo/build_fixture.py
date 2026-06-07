@@ -20,15 +20,24 @@ from pathlib import Path
 random.seed(20260517)
 
 ANCHOR = date(2026, 5, 17)
-FIXTURE_START = ANCHOR - timedelta(days=730)
+FIXTURE_START = ANCHOR - timedelta(days=1095)
 
 OUTPUT_PATH = Path(__file__).parent / "fixture.json"
 
 
 # ---------- IDs (stable across rebuilds so transfer pairs survive) ----------
 
+HOUSEHOLD_DEMO = "household-demo"
+
+USER_DEMO = "demo-user"
 USER_ALICE = "user-alice"
 USER_BEN = "user-ben"
+
+# Shared argon2 hash so demo users log in with the same password.
+DEMO_PASSWORD_HASH = (
+    "$argon2id$v=19$m=65536,t=3,p=4$"
+    "esabfbTKNdXoPf3L35IbHQ$Fqd1ZaErhocYmf5G9LtX9Jh4kd66DGtUjEEzIr0/nAk"
+)
 
 ACCT_ALICE_CHECKING = "acct-alice-checking"
 ACCT_ALICE_SAVINGS = "acct-alice-savings"
@@ -61,9 +70,31 @@ CATEGORIES = [
 
 # ---------- Users / accounts / sources ----------
 
+HOUSEHOLDS = [
+    {"id": HOUSEHOLD_DEMO, "name": "Demo Household"},
+]
+
+INVITATIONS: list[dict] = []
+
 USERS = [
-    {"id": USER_ALICE, "name": "Alice Chen"},
-    {"id": USER_BEN, "name": "Ben Reyes"},
+    {
+        "id": USER_DEMO,
+        "name": "Demo",
+        "email": "demo@tally.local",
+        "password_hash": DEMO_PASSWORD_HASH,
+    },
+    {
+        "id": USER_ALICE,
+        "name": "Alice Chen",
+        "email": "alice@demo.tally.local",
+        "password_hash": DEMO_PASSWORD_HASH,
+    },
+    {
+        "id": USER_BEN,
+        "name": "Ben Reyes",
+        "email": "ben@demo.tally.local",
+        "password_hash": DEMO_PASSWORD_HASH,
+    },
 ]
 
 ACCOUNTS = [
@@ -217,6 +248,52 @@ def add_monthly(
         )
 
 
+def add_annual(
+    desc, amount, category, type_, user_id, month, day, source_id, account_id
+):
+    """Add one charge per year on the given month/day, within FIXTURE_START..ANCHOR."""
+    for year in range(FIXTURE_START.year, ANCHOR.year + 1):
+        d = first_or_clamp(year, month, day)
+        if d > ANCHOR or d < FIXTURE_START:
+            continue
+        txns.append(
+            Txn(
+                id=next_id("txn"),
+                date=d,
+                description=desc,
+                category=category,
+                amount=Decimal(str(amount)),
+                type=type_,
+                user_id=user_id,
+                labels=[],
+                metadata={"sourceId": source_id, "accountId": account_id},
+            )
+        )
+
+
+def add_quarterly(
+    desc, amount, category, type_, user_id, start: date, source_id, account_id
+):
+    """Add a charge every ~91 days starting from `start`, within range."""
+    d = start
+    while d <= ANCHOR:
+        if d >= FIXTURE_START:
+            txns.append(
+                Txn(
+                    id=next_id("txn"),
+                    date=d,
+                    description=desc,
+                    category=category,
+                    amount=Decimal(str(amount)),
+                    type=type_,
+                    user_id=user_id,
+                    labels=[],
+                    metadata={"sourceId": source_id, "accountId": account_id},
+                )
+            )
+        d += timedelta(days=91)
+
+
 def add_monthly_jittered(
     desc,
     low,
@@ -315,6 +392,52 @@ add_monthly_jittered(
     SRC_CHASE,
     ACCT_ALICE_CHECKING,
 )
+
+# Annual: Costco membership renewal
+add_annual(
+    "Costco membership",
+    65.00,
+    "Shopping",
+    "expense",
+    USER_ALICE,
+    month=4,
+    day=12,
+    source_id=SRC_AMEX,
+    account_id=ACCT_JOINT_CARD,
+)
+
+# Quarterly: tax-prep service
+add_quarterly(
+    "Quarterly tax prep",
+    120.00,
+    "Professional services",
+    "expense",
+    USER_ALICE,
+    start=FIXTURE_START + timedelta(days=20),
+    source_id=SRC_CHASE,
+    account_id=ACCT_ALICE_CHECKING,
+)
+
+# A subscription the user appears to have cancelled — 4 monthly charges,
+# then a 60+ day gap so detection flips it to possibly_cancelled.
+HBO_LAST = ANCHOR - timedelta(days=60)
+for i in range(4):
+    d = HBO_LAST - timedelta(days=30 * (3 - i))
+    if d < FIXTURE_START:
+        continue
+    txns.append(
+        Txn(
+            id=next_id("txn"),
+            date=d,
+            description="HBO Max",
+            category="Subscriptions",
+            amount=Decimal("15.99"),
+            type="expense",
+            user_id=USER_BEN,
+            labels=[],
+            metadata={"sourceId": SRC_AMEX, "accountId": ACCT_JOINT_CARD},
+        )
+    )
 
 
 # Biweekly salaries (opposite cycles)
@@ -1082,6 +1205,8 @@ date_ranges = [
 def main():
     categories = [{"name": c} for c in CATEGORIES]
     fixture = {
+        "households": HOUSEHOLDS,
+        "invitations": INVITATIONS,
         "users": USERS,
         "categories": categories,
         "sources": SOURCES,

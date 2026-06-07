@@ -9,6 +9,7 @@ from app.models.invitation import Invitation
 from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
+from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.models.user import User
 
@@ -26,6 +27,7 @@ __all__ = [
     "Metadata",
     "Report",
     "Source",
+    "Subscription",
     "Transaction",
     "User",
 ]

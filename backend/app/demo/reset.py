@@ -33,8 +33,10 @@ from app.models.invitation import Invitation
 from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
+from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.utils.subscription_utils import run_detection
 
 logger = logging.getLogger("demo.reset")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -50,6 +52,7 @@ _WIPE_ORDER = [
     AccountBalance,
     Account,
     Transaction,
+    Subscription,
     ImportSession,
     Report,
     DateRange,
@@ -282,6 +285,16 @@ async def reset_demo() -> None:
 
     async with async_session_factory() as db, db.begin():
         await _run_reset(db)
+
+    # Re-detect subscriptions on a fresh session so the /subscriptions page is
+    # populated the moment the demo opens.
+    fixture = _load_fixture()
+    household_ids = {h["id"] for h in fixture.get("households", [])}
+    if not household_ids:
+        household_ids = {"household-demo"}
+    async with async_session_factory() as db:
+        for hid in household_ids:
+            await run_detection(db, household_id=hid)
 
 
 if __name__ == "__main__":

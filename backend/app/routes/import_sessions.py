@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.transaction import Transaction
 from app.schemas.import_session import ImportSessionOut
+from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_utils import run_detection
 
 router = APIRouter(prefix="/api", tags=["import_sessions"])
@@ -41,6 +42,7 @@ async def get_import_sessions(
 @router.delete("/import-sessions/{session_id}")
 async def delete_import_session(
     session_id: str,
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -82,5 +84,6 @@ async def delete_import_session(
     # Re-run transfer detection on remaining transactions in this household
     await db.flush()
     await run_detection(db, strip_existing=True, household_id=household_id)
+    bg.add_task(run_detection_bg, household_id)
 
     return {"success": True, "removed": removed}

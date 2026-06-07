@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from app.models.import_session import ImportSession
 from app.models.source import Source
 from app.models.transaction import Transaction
 from app.schemas.data import DeleteSelectedRequest, UndoImportRequest
+from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_utils import run_detection
 
 router = APIRouter(prefix="/api", tags=["data"])
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api", tags=["data"])
 
 @router.delete("/delete-all")
 async def delete_all(
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -25,12 +27,14 @@ async def delete_all(
     )
     await db.execute(delete(Source).where(Source.household_id == household_id))
     await db.commit()
+    bg.add_task(run_detection_bg, household_id)
     return {"success": True}
 
 
 @router.post("/delete-selected")
 async def delete_selected(
     body: DeleteSelectedRequest,
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -47,12 +51,14 @@ async def delete_selected(
         )
 
     await db.commit()
+    bg.add_task(run_detection_bg, household_id)
     return {"success": True}
 
 
 @router.post("/undo-import")
 async def undo_import(
     body: UndoImportRequest,
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -84,5 +90,7 @@ async def undo_import(
     # Re-run transfer detection on remaining transactions in this household
     await db.flush()
     await run_detection(db, strip_existing=True, household_id=household_id)
+
+    bg.add_task(run_detection_bg, household_id)
 
     return {"success": True, "removed": removed}

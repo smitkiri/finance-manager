@@ -40,6 +40,7 @@ import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
 import { UserMenu } from './components/UserMenu';
 import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
+import { SubscriptionsPage } from './pages/SubscriptionsPage';
 import { DemoBanner } from './components/DemoBanner';
 import { Logo } from './components/Logo';
 import { ITEMS_PER_PAGE } from './constants';
@@ -1158,6 +1159,7 @@ function AppContent() {
             path="/net-worth"
             element={<NetWorth selectedUserId={selectedUserId} users={users} />}
           />
+          <Route path="/subscriptions" element={<SubscriptionsPage />} />
           <Route
             path="/settings"
             element={
