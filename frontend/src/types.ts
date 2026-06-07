@@ -339,6 +339,14 @@ export interface SubscriptionOverrides {
   lockCadence: boolean;
 }
 
+export interface PriceChangeInfo {
+  previous_amount: number;
+  current_amount: number;
+  delta_amount: number;
+  percent_change: number;
+  period_label: string;
+}
+
 export interface Subscription {
   id: string;
   name: string;
@@ -351,6 +359,7 @@ export interface Subscription {
   user_overrides: SubscriptionOverrides;
   member_count: number;
   monthly_normalized_amount: number;
+  price_change: PriceChangeInfo | null;
 }
 
 export interface SubscriptionMember {
