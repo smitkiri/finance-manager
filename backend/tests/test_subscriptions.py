@@ -298,3 +298,71 @@ async def test_rerun_detection_returns_202(client, monkeypatch) -> None:
     res = await client.post("/api/subscriptions/rerun-detection")
     assert res.status_code == 202
     assert "Detection queued" in res.json()["message"]
+
+
+async def test_price_change_null_when_amounts_flat(client, hh_with_sub) -> None:
+    """Three $15.99 charges in the fixture — no increase, price_change is null."""
+    res = await client.get("/api/subscriptions")
+    assert res.status_code == 200
+    sub = res.json()["subscriptions"][0]
+    assert sub["price_change"] is None
+
+
+async def test_price_change_populated_on_list_endpoint(
+    client, hh_with_sub, db_session
+) -> None:
+    """Adding a higher-amount charge to the existing sub flips price_change on."""
+    db_session.add(
+        Transaction(
+            id="t_hike",
+            date=date(2026, 4, 5),
+            description="Netflix",
+            category="Entertainment",
+            amount=Decimal("17.99"),
+            type="expense",
+            household_id=hh_with_sub["household_id"],
+            labels=[],
+            metadata_={},
+            excluded_from_calculations=False,
+            subscription_id=hh_with_sub["sub_id"],
+        )
+    )
+    await db_session.commit()
+
+    res = await client.get("/api/subscriptions")
+    assert res.status_code == 200
+    sub = res.json()["subscriptions"][0]
+    pc = sub["price_change"]
+    assert pc is not None
+    assert pc["previous_amount"] == 15.99
+    assert pc["current_amount"] == 17.99
+    assert pc["delta_amount"] == 2.0
+    assert pc["period_label"] == "last month"
+
+
+async def test_price_change_populated_on_detail_endpoint(
+    client, hh_with_sub, db_session
+) -> None:
+    db_session.add(
+        Transaction(
+            id="t_hike2",
+            date=date(2026, 4, 5),
+            description="Netflix",
+            category="Entertainment",
+            amount=Decimal("17.99"),
+            type="expense",
+            household_id=hh_with_sub["household_id"],
+            labels=[],
+            metadata_={},
+            excluded_from_calculations=False,
+            subscription_id=hh_with_sub["sub_id"],
+        )
+    )
+    await db_session.commit()
+
+    res = await client.get(f"/api/subscriptions/{hh_with_sub['sub_id']}")
+    assert res.status_code == 200
+    body = res.json()
+    pc = body["price_change"]
+    assert pc is not None
+    assert pc["current_amount"] == 17.99
