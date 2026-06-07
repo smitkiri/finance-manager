@@ -115,6 +115,59 @@ def test_amount_outlier_dropped_below_threshold() -> None:
     assert result["subscriptions"] == []
 
 
+def test_price_hike_tail_kept_as_single_subscription() -> None:
+    # Four $15.99 charges followed by two $17.99 charges — the hike is a
+    # consistent step at the end, not noise, so all six should belong to the
+    # same subscription and last_seen should be the most recent ($17.99) date.
+    txns = [
+        _txn("t1", amount=15.99, d=date(2025, 11, 5)),
+        _txn("t2", amount=15.99, d=date(2025, 12, 5)),
+        _txn("t3", amount=15.99, d=date(2026, 1, 5)),
+        _txn("t4", amount=15.99, d=date(2026, 2, 5)),
+        _txn("t5", amount=17.99, d=date(2026, 3, 5)),
+        _txn("t6", amount=17.99, d=date(2026, 4, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sorted(sub["member_txn_ids"]) == ["t1", "t2", "t3", "t4", "t5", "t6"]
+    assert sub["last_seen"] == date(2026, 4, 5)
+
+
+def test_isolated_high_charge_in_middle_still_pruned() -> None:
+    # A single high charge in the middle is still treated as noise, not a
+    # price step, because it is not a contiguous tail of consistent outliers.
+    # The two $15.99 charges on either side of it still form a monthly cadence
+    # via the surrounding charges, so a subscription is detected without t4.
+    txns = [
+        _txn("t1", amount=15.99, d=date(2025, 10, 5)),
+        _txn("t2", amount=15.99, d=date(2025, 11, 5)),
+        _txn("t3", amount=15.99, d=date(2025, 12, 5)),
+        _txn("t4", amount=100.00, d=date(2026, 1, 5)),
+        _txn("t5", amount=15.99, d=date(2026, 2, 5)),
+        _txn("t6", amount=15.99, d=date(2026, 3, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 1
+    member_ids = result["subscriptions"][0]["member_txn_ids"]
+    assert "t4" not in member_ids
+
+
+def test_single_tail_outlier_pruned() -> None:
+    # One trailing outlier is not enough to constitute a price step —
+    # could just be a one-off larger charge. Keep the established price.
+    txns = [
+        _txn("t1", amount=15.99, d=date(2025, 11, 5)),
+        _txn("t2", amount=15.99, d=date(2025, 12, 5)),
+        _txn("t3", amount=15.99, d=date(2026, 1, 5)),
+        _txn("t4", amount=100.00, d=date(2026, 2, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 1
+    member_ids = result["subscriptions"][0]["member_txn_ids"]
+    assert "t4" not in member_ids
+
+
 def test_biweekly_cadence_detected() -> None:
     txns = [
         _txn("g1", description="Gym Membership", amount=40, d=date(2026, 1, 2)),
