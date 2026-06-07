@@ -6,6 +6,7 @@ import { SubscriptionsHeader } from '../components/subscriptions/SubscriptionsHe
 import { SubscriptionsFilters } from '../components/subscriptions/SubscriptionsFilters';
 import { SubscriptionList } from '../components/subscriptions/SubscriptionList';
 import { SubscriptionDetailSheet } from '../components/subscriptions/SubscriptionDetailSheet';
+import { AddSubscriptionSheet } from '../components/subscriptions/AddSubscriptionSheet';
 
 const DEFAULT_STATUS: SubscriptionStatus[] = ['active', 'possibly_cancelled'];
 
@@ -73,7 +74,16 @@ export const SubscriptionsPage: React.FC = () => {
           onChanged={() => void load()}
         />
       )}
-      {showAdd && <div className="hidden">add</div>}
+      {showAdd && (
+        <AddSubscriptionSheet
+          onClose={() => setShowAdd(false)}
+          onCreated={(id) => {
+            setShowAdd(false);
+            setSelectedId(id);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 };
