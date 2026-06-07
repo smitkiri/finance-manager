@@ -186,3 +186,179 @@ def test_irregular_intervals_below_70_percent_rejected() -> None:
     ]
     result = detect_subscriptions(txns, existing_subscriptions=[])
     assert result["subscriptions"] == []
+
+
+def _existing(
+    id_: str,
+    *,
+    signature: str | None = "netflix",
+    name: str = "Netflix",
+    cadence: str = "monthly",
+    expected_amount: float = 15.99,
+    type_: str = "expense",
+    status: str = "active",
+    first_seen: date | None = date(2026, 1, 5),
+    last_seen: date | None = date(2026, 3, 5),
+    overrides: dict | None = None,
+) -> dict:
+    return {
+        "id": id_,
+        "name": name,
+        "cadence": cadence,
+        "expected_amount": expected_amount,
+        "type": type_,
+        "status": status,
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+        "detection_signature": signature,
+        "user_overrides": overrides
+        or {
+            "excludedTxnIds": [],
+            "includedTxnIds": [],
+            "lockName": False,
+            "lockAmount": False,
+            "lockCadence": False,
+        },
+    }
+
+
+def test_existing_sub_updated_keeps_id() -> None:
+    existing = _existing("sub_existing")
+    txns = [
+        _txn("t1", d=date(2026, 1, 5)),
+        _txn("t2", d=date(2026, 2, 5)),
+        _txn("t3", d=date(2026, 3, 5)),
+        _txn("t4", d=date(2026, 4, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sub["id"] == "sub_existing"
+    assert sub["last_seen"] == date(2026, 4, 5)
+
+
+def test_excluded_txn_id_not_added_to_sub() -> None:
+    existing = _existing(
+        "sub_existing",
+        overrides={
+            "excludedTxnIds": ["t2"],
+            "includedTxnIds": [],
+            "lockName": False,
+            "lockAmount": False,
+            "lockCadence": False,
+        },
+    )
+    txns = [
+        _txn("t1", d=date(2026, 1, 5)),
+        _txn("t2", d=date(2026, 2, 5)),
+        _txn("t3", d=date(2026, 3, 5)),
+        _txn("t4", d=date(2026, 4, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    sub = result["subscriptions"][0]
+    assert "t2" not in sub["member_txn_ids"]
+    assert result["transaction_assignments"]["t2"] is None
+
+
+def test_included_txn_id_force_added() -> None:
+    # 'odd_one' has a different description (different signature) but the
+    # user explicitly added it to the sub via includedTxnIds.
+    existing = _existing(
+        "sub_existing",
+        overrides={
+            "excludedTxnIds": [],
+            "includedTxnIds": ["odd_one"],
+            "lockName": False,
+            "lockAmount": False,
+            "lockCadence": False,
+        },
+    )
+    txns = [
+        _txn("t1", d=date(2026, 1, 5)),
+        _txn("t2", d=date(2026, 2, 5)),
+        _txn("t3", d=date(2026, 3, 5)),
+        _txn(
+            "odd_one", description="Random merchant", amount=15.99, d=date(2026, 4, 1)
+        ),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    sub = result["subscriptions"][0]
+    assert "odd_one" in sub["member_txn_ids"]
+    assert result["transaction_assignments"]["odd_one"] == "sub_existing"
+
+
+def test_locked_fields_not_overwritten() -> None:
+    existing = _existing(
+        "sub_existing",
+        name="My Custom Name",
+        expected_amount=99.99,
+        cadence="quarterly",  # wrong on purpose
+        overrides={
+            "excludedTxnIds": [],
+            "includedTxnIds": [],
+            "lockName": True,
+            "lockAmount": True,
+            "lockCadence": True,
+        },
+    )
+    txns = [
+        _txn("t1", amount=15.99, d=date(2026, 1, 5)),
+        _txn("t2", amount=15.99, d=date(2026, 2, 5)),
+        _txn("t3", amount=15.99, d=date(2026, 3, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    sub = result["subscriptions"][0]
+    assert sub["name"] == "My Custom Name"
+    assert float(sub["expected_amount"]) == 99.99
+    assert sub["cadence"] == "quarterly"
+
+
+def test_stale_sub_marked_possibly_cancelled(monkeypatch) -> None:
+    today = date(2026, 6, 1)
+    monkeypatch.setattr("app.utils.subscription_detection._today", lambda: today)
+    existing = _existing(
+        "sub_existing",
+        last_seen=date(2026, 4, 1),  # 61 days ago
+    )
+    txns: list[dict] = []
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    assert len(result["subscriptions"]) == 1
+    assert result["subscriptions"][0]["status"] == "possibly_cancelled"
+
+
+def test_cancelled_sub_does_not_auto_match(monkeypatch) -> None:
+    today = date(2026, 6, 1)
+    monkeypatch.setattr("app.utils.subscription_detection._today", lambda: today)
+    existing = _existing("sub_cancelled", status="cancelled")
+    txns = [
+        _txn("t1", d=date(2026, 3, 5)),
+        _txn("t2", d=date(2026, 4, 5)),
+        _txn("t3", d=date(2026, 5, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    assert len(result["subscriptions"]) == 2
+    cancelled = next(s for s in result["subscriptions"] if s["id"] == "sub_cancelled")
+    new_sub = next(s for s in result["subscriptions"] if s["id"] != "sub_cancelled")
+    assert cancelled["status"] == "cancelled"
+    assert new_sub["status"] == "active"
+    assert new_sub["member_txn_ids"] == ["t1", "t2", "t3"]
+
+
+def test_manual_sub_not_auto_grown() -> None:
+    manual = _existing(
+        "sub_manual",
+        signature=None,
+        status="manual",
+        first_seen=None,
+        last_seen=None,
+    )
+    txns = [
+        _txn("t1", d=date(2026, 1, 5)),
+        _txn("t2", d=date(2026, 2, 5)),
+        _txn("t3", d=date(2026, 3, 5)),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[manual])
+    assert len(result["subscriptions"]) == 2
+    manual_out = next(s for s in result["subscriptions"] if s["id"] == "sub_manual")
+    assert manual_out["status"] == "manual"
+    assert manual_out["detection_signature"] is None

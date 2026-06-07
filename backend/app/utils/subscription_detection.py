@@ -10,9 +10,16 @@ from __future__ import annotations
 import math
 import secrets
 import time
+from datetime import date as date_type
 from typing import Any, TypedDict
 
 from app.utils.subscription_signature import normalize_signature
+
+
+def _today() -> date_type:
+    """Wrapped for test override."""
+    return date_type.today()
+
 
 CADENCE_DAYS: dict[str, int] = {
     "weekly": 7,
@@ -56,8 +63,19 @@ def detect_subscriptions(
     eligible = _filter_eligible(transactions, existing_subscriptions)
     groups = _group_by_signature(eligible)
 
-    detected: list[dict[str, Any]] = []
+    txn_by_id = {t["id"]: t for t in transactions}
+
+    existing_active_by_sig: dict[tuple[str, str], dict] = {}
+    for sub in existing_subscriptions:
+        if sub["status"] in {"cancelled", "manual"}:
+            continue
+        sig = sub.get("detection_signature")
+        if sig:
+            existing_active_by_sig[(sig, sub["type"])] = sub
+
+    out_subs: list[dict[str, Any]] = []
     assignments: dict[str, str | None] = {t["id"]: None for t in transactions}
+    handled_ids: set[str] = set()
 
     for (signature, type_), members in groups.items():
         if len(members) < MIN_OCCURRENCES:
@@ -70,12 +88,132 @@ def detect_subscriptions(
         if cadence is None:
             continue
 
-        sub = _build_subscription(signature, type_, cadence, pruned)
-        detected.append(sub)
-        for m in pruned:
-            assignments[m["id"]] = sub["id"]
+        existing = existing_active_by_sig.get((signature, type_))
+        if existing is not None:
+            sub = _update_existing(existing, pruned, cadence, txn_by_id)
+            handled_ids.add(existing["id"])
+        else:
+            sub = _build_subscription(signature, type_, cadence, pruned)
 
-    return {"subscriptions": detected, "transaction_assignments": assignments}
+        out_subs.append(sub)
+        for tid in sub["member_txn_ids"]:
+            assignments[tid] = sub["id"]
+
+    # Carry over existing subs that didn't get a detected match.
+    for sub in existing_subscriptions:
+        if sub["id"] in handled_ids:
+            continue
+        carried = _carry_forward(sub, txn_by_id)
+        out_subs.append(carried)
+        for tid in carried["member_txn_ids"]:
+            assignments[tid] = carried["id"]
+
+    return {"subscriptions": out_subs, "transaction_assignments": assignments}
+
+
+def _update_existing(
+    existing: dict,
+    pruned: list[dict],
+    cadence: str,
+    txn_by_id: dict[str, dict],
+) -> dict[str, Any]:
+    overrides = existing["user_overrides"] or {}
+    excluded = set(overrides.get("excludedTxnIds") or [])
+    included = list(overrides.get("includedTxnIds") or [])
+
+    member_ids = [m["id"] for m in pruned if m["id"] not in excluded]
+    for tid in included:
+        if tid in txn_by_id and tid not in member_ids and tid not in excluded:
+            member_ids.append(tid)
+
+    members_for_stats = [txn_by_id[t] for t in member_ids if t in txn_by_id]
+    members_for_stats.sort(key=lambda t: t["date"])
+
+    amounts = [abs(float(m["amount"])) for m in members_for_stats] or [
+        float(existing.get("expected_amount") or 0)
+    ]
+    median = sorted(amounts)[len(amounts) // 2]
+
+    name = (
+        existing["name"]
+        if overrides.get("lockName")
+        else _signature_to_name(existing.get("detection_signature") or "")
+    )
+    amount = (
+        float(existing["expected_amount"]) if overrides.get("lockAmount") else median
+    )
+    final_cadence = existing["cadence"] if overrides.get("lockCadence") else cadence
+
+    first_seen = (
+        members_for_stats[0]["date"]
+        if members_for_stats
+        else existing.get("first_seen")
+    )
+    last_seen = (
+        members_for_stats[-1]["date"]
+        if members_for_stats
+        else existing.get("last_seen")
+    )
+
+    return {
+        "id": existing["id"],
+        "name": name,
+        "cadence": final_cadence,
+        "expected_amount": amount,
+        "type": existing["type"],
+        "status": "active",
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+        "detection_signature": existing.get("detection_signature"),
+        "user_overrides": overrides,
+        "metadata": existing.get("metadata") or {},
+        "member_txn_ids": member_ids,
+    }
+
+
+def _carry_forward(existing: dict, txn_by_id: dict[str, dict]) -> dict[str, Any]:
+    overrides = existing["user_overrides"] or {}
+    excluded = set(overrides.get("excludedTxnIds") or [])
+    included = list(overrides.get("includedTxnIds") or [])
+
+    # Existing members come from the FK column on the transactions input.
+    member_ids = [
+        t["id"]
+        for t in txn_by_id.values()
+        if t.get("subscriptionId") == existing["id"] and t["id"] not in excluded
+    ]
+    for tid in included:
+        if tid in txn_by_id and tid not in member_ids and tid not in excluded:
+            member_ids.append(tid)
+
+    members = sorted(
+        [txn_by_id[t] for t in member_ids if t in txn_by_id],
+        key=lambda t: t["date"],
+    )
+    first_seen = members[0]["date"] if members else existing.get("first_seen")
+    last_seen = members[-1]["date"] if members else existing.get("last_seen")
+
+    status = existing["status"]
+    if status == "active":
+        cadence_days = CADENCE_DAYS.get(existing["cadence"], 30)
+        days_since = (_today() - last_seen).days if last_seen else cadence_days * 2
+        if days_since > int(1.5 * cadence_days):
+            status = "possibly_cancelled"
+
+    return {
+        "id": existing["id"],
+        "name": existing["name"],
+        "cadence": existing["cadence"],
+        "expected_amount": float(existing["expected_amount"]),
+        "type": existing["type"],
+        "status": status,
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+        "detection_signature": existing.get("detection_signature"),
+        "user_overrides": overrides,
+        "metadata": existing.get("metadata") or {},
+        "member_txn_ids": member_ids,
+    }
 
 
 def _filter_eligible(
