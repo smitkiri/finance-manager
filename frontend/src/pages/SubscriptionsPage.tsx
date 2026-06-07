@@ -32,8 +32,12 @@ export const SubscriptionsPage: React.FC = () => {
     void load();
   }, [load]);
 
-  const monthlyBurn = subs
-    .filter((s) => s.status === 'active' && s.type === 'expense')
+  const recurring = subs.filter((s) => s.status === 'active');
+  const monthlyExpenses = recurring
+    .filter((s) => s.type === 'expense')
+    .reduce((acc, s) => acc + s.monthly_normalized_amount, 0);
+  const monthlyIncome = recurring
+    .filter((s) => s.type === 'income')
     .reduce((acc, s) => acc + s.monthly_normalized_amount, 0);
 
   const onDetect = async () => {
@@ -54,7 +58,8 @@ export const SubscriptionsPage: React.FC = () => {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <SubscriptionsHeader
-        monthlyBurn={monthlyBurn}
+        monthlyExpenses={monthlyExpenses}
+        monthlyIncome={monthlyIncome}
         lastDetectedAt={lastDetectedAt}
         detecting={detecting}
         onDetect={onDetect}

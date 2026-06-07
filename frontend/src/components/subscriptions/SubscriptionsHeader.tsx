@@ -2,7 +2,8 @@ import React from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 
 interface Props {
-  monthlyBurn: number;
+  monthlyExpenses: number;
+  monthlyIncome: number;
   lastDetectedAt: string | null;
   detecting: boolean;
   onDetect: () => void;
@@ -21,7 +22,8 @@ const fmtRel = (iso: string | null): string => {
 };
 
 export const SubscriptionsHeader: React.FC<Props> = ({
-  monthlyBurn,
+  monthlyExpenses,
+  monthlyIncome,
   lastDetectedAt,
   detecting,
   onDetect,
@@ -31,11 +33,19 @@ export const SubscriptionsHeader: React.FC<Props> = ({
     <div className="flex items-start justify-between gap-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Subscriptions</h1>
-        <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Monthly burn:{' '}
-          <span className="font-medium text-gray-900 dark:text-white">
-            ${monthlyBurn.toFixed(2)}
-          </span>
+        <div className="mt-1 text-sm text-gray-600 dark:text-gray-400 space-y-0.5">
+          <div>
+            Monthly recurring expenses:{' '}
+            <span className="font-medium text-red-600 dark:text-red-400">
+              -${monthlyExpenses.toFixed(2)}
+            </span>
+          </div>
+          <div>
+            Monthly recurring income:{' '}
+            <span className="font-medium text-green-600 dark:text-green-400">
+              +${monthlyIncome.toFixed(2)}
+            </span>
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
