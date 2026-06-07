@@ -3,6 +3,7 @@ import type { Subscription } from '../../types';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { SubscriptionRow } from './SubscriptionRow';
 import { SubscriptionCard } from './SubscriptionCard';
+import { PriceIncreaseBanner } from './PriceIncreaseBanner';
 
 interface Props {
   subscriptions: Subscription[];
@@ -43,7 +44,16 @@ export const SubscriptionList: React.FC<Props> = ({ subscriptions, onSelect }) =
       </thead>
       <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
         {subscriptions.map((s) => (
-          <SubscriptionRow key={s.id} sub={s} onClick={() => onSelect(s)} />
+          <React.Fragment key={s.id}>
+            <SubscriptionRow sub={s} onClick={() => onSelect(s)} />
+            {s.price_change && (
+              <tr>
+                <td colSpan={5} className="px-4 pb-3">
+                  <PriceIncreaseBanner info={s.price_change} />
+                </td>
+              </tr>
+            )}
+          </React.Fragment>
         ))}
       </tbody>
     </table>
