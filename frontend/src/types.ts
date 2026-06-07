@@ -329,7 +329,6 @@ export interface HouseholdSummary {
 }
 
 export type SubscriptionCadence = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annual';
-export type SubscriptionType = 'expense' | 'income';
 export type SubscriptionStatus = 'active' | 'possibly_cancelled' | 'cancelled' | 'manual';
 
 export interface SubscriptionOverrides {
@@ -345,7 +344,6 @@ export interface Subscription {
   name: string;
   cadence: SubscriptionCadence;
   expected_amount: number;
-  type: SubscriptionType;
   status: SubscriptionStatus;
   first_seen: string | null;
   last_seen: string | null;
@@ -360,7 +358,6 @@ export interface SubscriptionMember {
   date: string;
   description: string;
   amount: number;
-  type: SubscriptionType;
   category: string;
   user: string | null;
 }
@@ -378,7 +375,6 @@ export interface SubscriptionListResponse {
 export interface SubscriptionCreateBody {
   name: string;
   cadence: SubscriptionCadence;
-  type: SubscriptionType;
   expected_amount: number;
   transactionIds?: string[];
 }

@@ -28,7 +28,6 @@ from app.schemas.subscription import (
     SubscriptionMembersBody,
     SubscriptionOut,
     SubscriptionPatch,
-    TypeLiteral,
 )
 from app.utils.subscription_signature import normalize_signature
 from app.utils.subscription_utils import rerun_detection_bg, run_detection_bg
@@ -75,7 +74,6 @@ def _to_out(sub: Subscription, members_count: int) -> SubscriptionOut:
         name=sub.name,
         cadence=cast(CadenceLiteral, sub.cadence),
         expected_amount=float(sub.expected_amount),
-        type=cast(TypeLiteral, sub.type),
         status=cast(StatusLiteral, sub.status),
         first_seen=sub.first_seen,
         last_seen=sub.last_seen,
@@ -89,7 +87,6 @@ def _to_out(sub: Subscription, members_count: int) -> SubscriptionOut:
 @router.get("", response_model=SubscriptionListResponse)
 async def list_subscriptions(
     status: str | None = Query(default=None),
-    type: str | None = Query(default=None),
     userId: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -101,8 +98,6 @@ async def list_subscriptions(
         wanted = [s.strip() for s in status.split(",") if s.strip()]
         if wanted:
             stmt = stmt.where(Subscription.status.in_(wanted))
-    if type:
-        stmt = stmt.where(Subscription.type == type)
 
     subs = list((await db.execute(stmt.offset(offset).limit(limit))).scalars().all())
 
@@ -170,7 +165,6 @@ async def get_subscription(
                 date=t.date,
                 description=t.description,
                 amount=float(t.amount),
-                type=cast(TypeLiteral, t.type),
                 category=t.category,
                 user=t.created_by_user_id,
             )
@@ -227,7 +221,6 @@ async def create_subscription(
         name=body.name,
         cadence=body.cadence,
         expected_amount=Decimal(str(body.expected_amount)),
-        type=body.type,
         status=status,
         first_seen=None,
         last_seen=None,
@@ -261,10 +254,10 @@ async def create_subscription(
             return JSONResponse(
                 status_code=400, content={"error": "Some transactions not found"}
             )
-        if any(t.type != body.type for t in rows):
+        if any(t.type != "expense" for t in rows):
             return JSONResponse(
                 status_code=400,
-                content={"error": "Member transactions must match subscription type"},
+                content={"error": "Subscription members must be expense transactions"},
             )
         dates = sorted(t.date for t in rows)
         sub.first_seen = dates[0]
@@ -381,10 +374,10 @@ async def add_members(
         return JSONResponse(
             status_code=400, content={"error": "Some transactions not found"}
         )
-    if any(t.type != sub.type for t in txns):
+    if any(t.type != "expense" for t in txns):
         return JSONResponse(
             status_code=400,
-            content={"error": "Transaction type must match subscription"},
+            content={"error": "Subscription members must be expense transactions"},
         )
 
     overrides = dict(sub.user_overrides or {})

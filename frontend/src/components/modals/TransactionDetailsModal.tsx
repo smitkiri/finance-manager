@@ -38,7 +38,6 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   useEffect(() => {
     if (!subPicker || !transaction) return;
     void ApiClient.listSubscriptions({
-      type: transaction.type,
       status: ['active', 'manual', 'possibly_cancelled'],
     }).then((res) => setSubs(res.subscriptions));
   }, [subPicker, transaction]);
@@ -119,7 +118,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           <span>Mark as Transfer/Refund</span>
         </button>
       )}
-      {!isTransfer && (
+      {!isTransfer && transaction.type === 'expense' && (
         <button
           type="button"
           onClick={() => setSubPicker((v) => !v)}

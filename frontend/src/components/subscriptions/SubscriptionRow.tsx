@@ -30,14 +30,8 @@ export const SubscriptionRow: React.FC<Props> = ({ sub, onClick }) => (
       </div>
     </td>
     <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400 capitalize">{sub.cadence}</td>
-    <td
-      className={`py-3 px-4 text-sm md:text-xs font-medium ${
-        sub.type === 'income'
-          ? 'text-green-600 dark:text-green-400'
-          : 'text-red-600 dark:text-red-400'
-      }`}
-    >
-      {sub.type === 'income' ? '+' : '-'}${sub.expected_amount.toFixed(2)}
+    <td className="py-3 px-4 text-sm md:text-xs font-medium text-red-600 dark:text-red-400">
+      -${sub.expected_amount.toFixed(2)}
     </td>
     <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{sub.last_seen ?? '—'}</td>
     <td className="py-3 px-4">

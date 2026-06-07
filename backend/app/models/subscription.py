@@ -29,7 +29,6 @@ class Subscription(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     cadence: Mapped[str] = mapped_column(String(16), nullable=False)
     expected_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
-    type: Mapped[str] = mapped_column(String(10), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     first_seen: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_seen: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -57,9 +56,6 @@ class Subscription(Base):
         CheckConstraint(
             "cadence IN ('weekly','biweekly','monthly','quarterly','annual')",
             name="subscriptions_cadence_check",
-        ),
-        CheckConstraint(
-            "type IN ('expense','income')", name="subscriptions_type_check"
         ),
         CheckConstraint(
             "status IN ('active','possibly_cancelled','cancelled','manual')",

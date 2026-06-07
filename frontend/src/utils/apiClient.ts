@@ -25,7 +25,6 @@ import {
   SubscriptionCreateBody,
   SubscriptionPatchBody,
   SubscriptionStatus,
-  SubscriptionType,
 } from '../types';
 
 interface StorageMetadata {
@@ -1610,7 +1609,6 @@ export class ApiClient {
   static async listSubscriptions(
     opts: {
       status?: SubscriptionStatus[];
-      type?: SubscriptionType;
       userId?: string | null;
       limit?: number;
       offset?: number;
@@ -1618,7 +1616,6 @@ export class ApiClient {
   ): Promise<SubscriptionListResponse> {
     const qs = new URLSearchParams();
     if (opts.status?.length) qs.set('status', opts.status.join(','));
-    if (opts.type) qs.set('type', opts.type);
     if (opts.userId) qs.set('userId', opts.userId);
     if (opts.limit !== undefined) qs.set('limit', String(opts.limit));
     if (opts.offset !== undefined) qs.set('offset', String(opts.offset));

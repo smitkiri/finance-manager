@@ -1,6 +1,6 @@
 """Pure subscription detection algorithm.
 
-Groups transactions by normalized signature + type, then checks whether each
+Groups expense transactions by normalized signature, then checks whether each
 group forms a regular cadence (weekly/biweekly/monthly/quarterly/annual) with
 consistent amount. Mirrors the structure of transfer_detection.py.
 """
@@ -68,19 +68,19 @@ def detect_subscriptions(
     # Manual subs never auto-match. Cancelled subs DO match (so the user's
     # explicit "cancelled" decision sticks across re-detections) — but they
     # adopt new transactions without changing status.
-    existing_by_sig: dict[tuple[str, str], dict] = {}
+    existing_by_sig: dict[str, dict] = {}
     for sub in existing_subscriptions:
         if sub["status"] == "manual":
             continue
         sig = sub.get("detection_signature")
         if sig:
-            existing_by_sig[(sig, sub["type"])] = sub
+            existing_by_sig[sig] = sub
 
     out_subs: list[dict[str, Any]] = []
     assignments: dict[str, str | None] = {t["id"]: None for t in transactions}
     handled_ids: set[str] = set()
 
-    for (signature, type_), members in groups.items():
+    for signature, members in groups.items():
         if len(members) < MIN_OCCURRENCES:
             continue
         pruned = _prune_amount_outliers(members)
@@ -91,7 +91,7 @@ def detect_subscriptions(
         if cadence is None:
             continue
 
-        existing = existing_by_sig.get((signature, type_))
+        existing = existing_by_sig.get(signature)
         if existing is not None:
             if existing["status"] == "cancelled":
                 sub = _adopt_into_cancelled(existing, pruned, txn_by_id)
@@ -99,7 +99,7 @@ def detect_subscriptions(
                 sub = _update_existing(existing, pruned, cadence, txn_by_id)
             handled_ids.add(existing["id"])
         else:
-            sub = _build_subscription(signature, type_, cadence, pruned)
+            sub = _build_subscription(signature, cadence, pruned)
 
         out_subs.append(sub)
         for tid in sub["member_txn_ids"]:
@@ -146,7 +146,6 @@ def _adopt_into_cancelled(
         "name": existing["name"],
         "cadence": existing["cadence"],
         "expected_amount": float(existing["expected_amount"]),
-        "type": existing["type"],
         "status": "cancelled",
         "first_seen": first_seen,
         "last_seen": last_seen,
@@ -206,7 +205,6 @@ def _update_existing(
         "name": name,
         "cadence": final_cadence,
         "expected_amount": amount,
-        "type": existing["type"],
         "status": "active",
         "first_seen": first_seen,
         "last_seen": last_seen,
@@ -251,7 +249,6 @@ def _carry_forward(existing: dict, txn_by_id: dict[str, dict]) -> dict[str, Any]
         "name": existing["name"],
         "cadence": existing["cadence"],
         "expected_amount": float(existing["expected_amount"]),
-        "type": existing["type"],
         "status": status,
         "first_seen": first_seen,
         "last_seen": last_seen,
@@ -274,6 +271,8 @@ def _filter_eligible(
 
     eligible = []
     for t in transactions:
+        if t.get("type") != "expense":
+            continue
         info = t.get("transferInfo") or {}
         if info.get("isTransfer"):
             continue
@@ -287,16 +286,13 @@ def _filter_eligible(
     return eligible
 
 
-def _group_by_signature(
-    transactions: list[dict],
-) -> dict[tuple[str, str], list[dict]]:
-    groups: dict[tuple[str, str], list[dict]] = {}
+def _group_by_signature(transactions: list[dict]) -> dict[str, list[dict]]:
+    groups: dict[str, list[dict]] = {}
     for t in transactions:
         sig = normalize_signature(t["description"])
         if not sig:
             continue
-        key = (sig, t["type"])
-        groups.setdefault(key, []).append(t)
+        groups.setdefault(sig, []).append(t)
     return groups
 
 
@@ -327,7 +323,6 @@ def _infer_cadence(sorted_members: list[dict]) -> str | None:
 
 def _build_subscription(
     signature: str,
-    type_: str,
     cadence: str,
     members: list[dict],
 ) -> dict[str, Any]:
@@ -342,7 +337,6 @@ def _build_subscription(
         "name": _signature_to_name(signature),
         "cadence": cadence,
         "expected_amount": median,
-        "type": type_,
         "status": status,
         "first_seen": members[0]["date"],
         "last_seen": last_seen,
