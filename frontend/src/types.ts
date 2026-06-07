@@ -327,3 +327,65 @@ export interface HouseholdSummary {
   dashboards: number;
   reports: number;
 }
+
+export type SubscriptionCadence = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annual';
+export type SubscriptionType = 'expense' | 'income';
+export type SubscriptionStatus = 'active' | 'possibly_cancelled' | 'cancelled' | 'manual';
+
+export interface SubscriptionOverrides {
+  excludedTxnIds: string[];
+  includedTxnIds: string[];
+  lockName: boolean;
+  lockAmount: boolean;
+  lockCadence: boolean;
+}
+
+export interface Subscription {
+  id: string;
+  name: string;
+  cadence: SubscriptionCadence;
+  expected_amount: number;
+  type: SubscriptionType;
+  status: SubscriptionStatus;
+  first_seen: string | null;
+  last_seen: string | null;
+  detection_signature: string | null;
+  user_overrides: SubscriptionOverrides;
+  member_count: number;
+  monthly_normalized_amount: number;
+}
+
+export interface SubscriptionMember {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: SubscriptionType;
+  category: string;
+  user: string | null;
+}
+
+export interface SubscriptionDetail extends Subscription {
+  members: SubscriptionMember[];
+}
+
+export interface SubscriptionListResponse {
+  subscriptions: Subscription[];
+  last_detected_at: string | null;
+  total: number;
+}
+
+export interface SubscriptionCreateBody {
+  name: string;
+  cadence: SubscriptionCadence;
+  type: SubscriptionType;
+  expected_amount: number;
+  transactionIds?: string[];
+}
+
+export interface SubscriptionPatchBody {
+  name?: string;
+  cadence?: SubscriptionCadence;
+  expected_amount?: number;
+  status?: SubscriptionStatus;
+}

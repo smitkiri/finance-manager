@@ -19,6 +19,13 @@ import {
   InvitationCreated,
   InvitationLookup,
   HouseholdSummary,
+  Subscription,
+  SubscriptionDetail,
+  SubscriptionListResponse,
+  SubscriptionCreateBody,
+  SubscriptionPatchBody,
+  SubscriptionStatus,
+  SubscriptionType,
 } from '../types';
 
 interface StorageMetadata {
@@ -1597,6 +1604,102 @@ export class ApiClient {
   static async getHouseholdSummary(): Promise<HouseholdSummary> {
     const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/households/me/summary`);
     if (!res.ok) throw new Error(`getHouseholdSummary failed: ${res.status}`);
+    return res.json();
+  }
+
+  static async listSubscriptions(
+    opts: {
+      status?: SubscriptionStatus[];
+      type?: SubscriptionType;
+      userId?: string | null;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<SubscriptionListResponse> {
+    const qs = new URLSearchParams();
+    if (opts.status?.length) qs.set('status', opts.status.join(','));
+    if (opts.type) qs.set('type', opts.type);
+    if (opts.userId) qs.set('userId', opts.userId);
+    if (opts.limit !== undefined) qs.set('limit', String(opts.limit));
+    if (opts.offset !== undefined) qs.set('offset', String(opts.offset));
+    const url = `${ApiClient.API_BASE}/subscriptions${qs.toString() ? `?${qs}` : ''}`;
+    const res = await ApiClient.apiFetch(url);
+    if (!res.ok) throw new Error(`Failed to list subscriptions: ${res.status}`);
+    return res.json();
+  }
+
+  static async getSubscription(id: string): Promise<SubscriptionDetail> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/${id}`);
+    if (!res.ok) throw new Error(`Failed to load subscription: ${res.status}`);
+    return res.json();
+  }
+
+  static async createSubscription(body: SubscriptionCreateBody): Promise<Subscription> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Failed to create subscription: ${res.status}`);
+    return res.json();
+  }
+
+  static async patchSubscription(id: string, body: SubscriptionPatchBody): Promise<Subscription> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Failed to update subscription: ${res.status}`);
+    return res.json();
+  }
+
+  static async deleteSubscription(id: string): Promise<void> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete subscription: ${res.status}`);
+  }
+
+  static async addSubscriptionMembers(id: string, transactionIds: string[]): Promise<Subscription> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/${id}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transactionIds }),
+    });
+    if (!res.ok) throw new Error(`Failed to add members: ${res.status}`);
+    return res.json();
+  }
+
+  static async removeSubscriptionMember(id: string, txnId: string): Promise<Subscription> {
+    const res = await ApiClient.apiFetch(
+      `${ApiClient.API_BASE}/subscriptions/${id}/members/${txnId}`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok) throw new Error(`Failed to remove member: ${res.status}`);
+    return res.json();
+  }
+
+  static async triggerSubscriptionDetection(): Promise<{
+    queued: boolean;
+    last_detected_at: string | null;
+  }> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/detect`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`Failed to trigger detection: ${res.status}`);
+    return res.json();
+  }
+
+  static async rerunSubscriptionDetection(): Promise<{
+    queued: boolean;
+    last_detected_at: string | null;
+    message: string;
+  }> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/rerun-detection`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`Failed to rerun detection: ${res.status}`);
     return res.json();
   }
 }
