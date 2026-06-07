@@ -1,7 +1,7 @@
 from datetime import date as date_type
 from decimal import Decimal
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import case, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert
@@ -19,6 +19,8 @@ from app.schemas.transaction import (
     TransactionUpdate,
 )
 from app.utils.query_builder import build_expenses_filter, build_stats_filter
+from app.utils.subscription_signature import normalize_signature
+from app.utils.subscription_utils import reconcile_signature_bg, run_detection_bg
 
 router = APIRouter(prefix="/api", tags=["expenses"])
 
@@ -298,6 +300,7 @@ async def get_stats(
 @router.patch("/expenses/{expense_id}")
 async def update_expense(
     expense_id: str,
+    bg: BackgroundTasks,
     body: TransactionUpdate = Body(...),
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
@@ -310,6 +313,8 @@ async def update_expense(
     txn = result.scalar_one_or_none()
     if not txn:
         return JSONResponse(status_code=404, content={"error": "Transaction not found"})
+
+    old_description = txn.description
 
     updated = False
     if body.date is not None:
@@ -346,12 +351,19 @@ async def update_expense(
     await db.commit()
     await db.refresh(txn)
 
+    old_sig = normalize_signature(old_description)
+    new_sig = normalize_signature(txn.description)
+    bg.add_task(reconcile_signature_bg, household_id, new_sig)
+    if old_sig and old_sig != new_sig:
+        bg.add_task(reconcile_signature_bg, household_id, old_sig)
+
     return TransactionOut.from_orm_model(txn).model_dump()
 
 
 @router.post("/expenses")
 async def bulk_save_expenses(
     body: ExpenseBulkSaveRequest,
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -398,5 +410,6 @@ async def bulk_save_expenses(
         await db.execute(stmt)
 
     await db.commit()
+    bg.add_task(run_detection_bg, household_id)
 
     return {"success": True, "count": len(body.expenses)}
