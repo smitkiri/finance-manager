@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets
 import time
 from collections import Counter
+from datetime import date as date_type
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
@@ -20,6 +21,7 @@ from app.models.transaction import Transaction
 from app.schemas.subscription import (
     CadenceLiteral,
     DetectionQueuedResponse,
+    PriceChangeInfo,
     StatusLiteral,
     SubscriptionCreate,
     SubscriptionDetailOut,
@@ -29,6 +31,7 @@ from app.schemas.subscription import (
     SubscriptionOut,
     SubscriptionPatch,
 )
+from app.utils.subscription_price_change import compute_price_change
 from app.utils.subscription_signature import normalize_signature
 from app.utils.subscription_utils import rerun_detection_bg, run_detection_bg
 
@@ -67,7 +70,24 @@ async def _member_count(db: AsyncSession, sub_id: str) -> int:
     ).scalar_one()
 
 
-def _to_out(sub: Subscription, members_count: int) -> SubscriptionOut:
+async def _members_for_price_change(
+    db: AsyncSession, sub_id: str
+) -> list[tuple[date_type, float]]:
+    rows = (
+        await db.execute(
+            select(Transaction.date, Transaction.amount)
+            .where(Transaction.subscription_id == sub_id)
+            .order_by(Transaction.date.asc())
+        )
+    ).all()
+    return [(r[0], float(r[1])) for r in rows]
+
+
+def _to_out(
+    sub: Subscription,
+    members_count: int,
+    price_change: PriceChangeInfo | None = None,
+) -> SubscriptionOut:
     monthly = float(sub.expected_amount) * MONTHLY_MULT.get(sub.cadence, 1.0)
     return SubscriptionOut(
         id=sub.id,
@@ -81,6 +101,7 @@ def _to_out(sub: Subscription, members_count: int) -> SubscriptionOut:
         user_overrides=sub.user_overrides or {},
         member_count=members_count,
         monthly_normalized_amount=monthly,
+        price_change=price_change,
     )
 
 
@@ -120,7 +141,33 @@ async def list_subscriptions(
             )
             subs = [s for s in subs if s.id in visible_ids]
 
-    out = [_to_out(s, await _member_count(db, s.id)) for s in subs]
+    sub_ids = [s.id for s in subs]
+    members_by_sub: dict[str, list[tuple[date_type, float]]] = {
+        sid: [] for sid in sub_ids
+    }
+    if sub_ids:
+        rows = (
+            await db.execute(
+                select(
+                    Transaction.subscription_id,
+                    Transaction.date,
+                    Transaction.amount,
+                )
+                .where(Transaction.subscription_id.in_(sub_ids))
+                .order_by(Transaction.date.asc())
+            )
+        ).all()
+        for sid, d, amt in rows:
+            members_by_sub[sid].append((d, float(amt)))
+
+    out = [
+        _to_out(
+            s,
+            len(members_by_sub[s.id]),
+            compute_price_change(s.cadence, s.status, members_by_sub[s.id]),
+        )
+        for s in subs
+    ]
     last_detected_at = await _household_last_detected_at(db, household_id)
     return SubscriptionListResponse(
         subscriptions=out, last_detected_at=last_detected_at, total=len(out)
@@ -157,8 +204,14 @@ async def get_subscription(
         .scalars()
         .all()
     )
+    members_sorted_for_price = sorted(
+        [(t.date, float(t.amount)) for t in members_rows], key=lambda p: p[0]
+    )
+    price_change = compute_price_change(
+        sub.cadence, sub.status, members_sorted_for_price
+    )
     return SubscriptionDetailOut(
-        **_to_out(sub, len(members_rows)).model_dump(),
+        **_to_out(sub, len(members_rows), price_change).model_dump(),
         members=[
             SubscriptionMemberOut(
                 id=t.id,
@@ -267,7 +320,9 @@ async def create_subscription(
 
     await db.commit()
     member_count = await _member_count(db, sub.id)
-    return _to_out(sub, member_count)
+    members_for_price = await _members_for_price_change(db, sub.id)
+    price_change = compute_price_change(sub.cadence, sub.status, members_for_price)
+    return _to_out(sub, member_count, price_change)
 
 
 @router.patch("/{sub_id}", response_model=SubscriptionOut)
@@ -306,7 +361,9 @@ async def patch_subscription(
     sub.user_overrides = overrides
     await db.commit()
     member_count = await _member_count(db, sub.id)
-    return _to_out(sub, member_count)
+    members_for_price = await _members_for_price_change(db, sub.id)
+    price_change = compute_price_change(sub.cadence, sub.status, members_for_price)
+    return _to_out(sub, member_count, price_change)
 
 
 @router.delete("/{sub_id}", status_code=204)
@@ -399,7 +456,9 @@ async def add_members(
 
     await db.commit()
     member_count = await _member_count(db, sub.id)
-    return _to_out(sub, member_count)
+    members_for_price = await _members_for_price_change(db, sub.id)
+    price_change = compute_price_change(sub.cadence, sub.status, members_for_price)
+    return _to_out(sub, member_count, price_change)
 
 
 @router.delete("/{sub_id}/members/{txn_id}", response_model=SubscriptionOut)
@@ -444,7 +503,9 @@ async def remove_member(
 
     await db.commit()
     member_count = await _member_count(db, sub.id)
-    return _to_out(sub, member_count)
+    members_for_price = await _members_for_price_change(db, sub.id)
+    price_change = compute_price_change(sub.cadence, sub.status, members_for_price)
+    return _to_out(sub, member_count, price_change)
 
 
 @router.post("/detect", status_code=202, response_model=DetectionQueuedResponse)
