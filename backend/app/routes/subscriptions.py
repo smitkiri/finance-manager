@@ -4,6 +4,7 @@ import secrets
 import time
 from collections import Counter
 from datetime import datetime
+from decimal import Decimal
 from typing import cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
@@ -73,7 +74,7 @@ def _to_out(sub: Subscription, members_count: int) -> SubscriptionOut:
         id=sub.id,
         name=sub.name,
         cadence=cast(CadenceLiteral, sub.cadence),
-        expected_amount=sub.expected_amount,
+        expected_amount=float(sub.expected_amount),
         type=cast(TypeLiteral, sub.type),
         status=cast(StatusLiteral, sub.status),
         first_seen=sub.first_seen,
@@ -168,7 +169,7 @@ async def get_subscription(
                 id=t.id,
                 date=t.date,
                 description=t.description,
-                amount=t.amount,
+                amount=float(t.amount),
                 type=cast(TypeLiteral, t.type),
                 category=t.category,
                 user=t.created_by_user_id,
@@ -225,7 +226,7 @@ async def create_subscription(
         household_id=household_id,
         name=body.name,
         cadence=body.cadence,
-        expected_amount=body.expected_amount,
+        expected_amount=Decimal(str(body.expected_amount)),
         type=body.type,
         status=status,
         first_seen=None,
@@ -304,7 +305,7 @@ async def patch_subscription(
         sub.cadence = body.cadence
         overrides["lockCadence"] = True
     if body.expected_amount is not None:
-        sub.expected_amount = body.expected_amount
+        sub.expected_amount = Decimal(str(body.expected_amount))
         overrides["lockAmount"] = True
     if body.status is not None:
         sub.status = body.status

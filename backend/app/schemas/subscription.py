@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -15,7 +14,7 @@ class SubscriptionMemberOut(BaseModel):
     id: str
     date: date
     description: str
-    amount: Decimal
+    amount: float
     type: TypeLiteral
     category: str
     user: str | None = None
@@ -25,7 +24,7 @@ class SubscriptionOut(BaseModel):
     id: str
     name: str
     cadence: CadenceLiteral
-    expected_amount: Decimal
+    expected_amount: float
     type: TypeLiteral
     status: StatusLiteral
     first_seen: date | None
@@ -50,14 +49,14 @@ class SubscriptionCreate(BaseModel):
     name: str
     cadence: CadenceLiteral
     type: TypeLiteral
-    expected_amount: Decimal
+    expected_amount: float
     transactionIds: list[str] = Field(default_factory=list)
 
 
 class SubscriptionPatch(BaseModel):
     name: str | None = None
     cadence: CadenceLiteral | None = None
-    expected_amount: Decimal | None = None
+    expected_amount: float | None = None
     status: StatusLiteral | None = None
 
 
