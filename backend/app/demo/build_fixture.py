@@ -338,16 +338,27 @@ add_monthly(
     SRC_CHASE,
     ACCT_ALICE_CHECKING,
 )
-add_monthly(
-    "Netflix",
-    15.99,
-    "Subscriptions",
-    "expense",
-    USER_ALICE,
-    5,
-    SRC_AMEX,
-    ACCT_JOINT_CARD,
-)
+# Netflix: $15.99 for most of the history, $17.99 starting 90 days before ANCHOR.
+# Demonstrates the "price went up" banner on the Subscriptions page.
+NETFLIX_HIKE_DATE = ANCHOR - timedelta(days=90)
+for first in iter_months(FIXTURE_START, ANCHOR):
+    d = first_or_clamp(first.year, first.month, 5)
+    if not (FIXTURE_START <= d <= ANCHOR):
+        continue
+    amt = Decimal("17.99") if d >= NETFLIX_HIKE_DATE else Decimal("15.99")
+    txns.append(
+        Txn(
+            id=next_id("txn"),
+            date=d,
+            description="Netflix",
+            category="Subscriptions",
+            amount=amt,
+            type="expense",
+            user_id=USER_ALICE,
+            labels=[],
+            metadata={"sourceId": SRC_AMEX, "accountId": ACCT_JOINT_CARD},
+        )
+    )
 add_monthly(
     "Spotify",
     11.99,
