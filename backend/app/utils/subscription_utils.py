@@ -206,3 +206,8 @@ async def run_detection_bg(household_id: str) -> None:
 async def reconcile_signature_bg(household_id: str, signature: str) -> None:
     async with _lock_for(household_id), async_session_factory() as db:
         await reconcile_signature(db, household_id=household_id, signature=signature)
+
+
+async def rerun_detection_bg(household_id: str) -> None:
+    async with _lock_for(household_id), async_session_factory() as db:
+        await run_detection(db, household_id=household_id, strip_existing=True)

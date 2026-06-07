@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import datetime
 from typing import cast
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,7 @@ from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.schemas.subscription import (
     CadenceLiteral,
+    DetectionQueuedResponse,
     StatusLiteral,
     SubscriptionCreate,
     SubscriptionDetailOut,
@@ -29,6 +30,7 @@ from app.schemas.subscription import (
     TypeLiteral,
 )
 from app.utils.subscription_signature import normalize_signature
+from app.utils.subscription_utils import rerun_detection_bg, run_detection_bg
 
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
@@ -449,3 +451,31 @@ async def remove_member(
     await db.commit()
     member_count = await _member_count(db, sub.id)
     return _to_out(sub, member_count)
+
+
+@router.post("/detect", status_code=202, response_model=DetectionQueuedResponse)
+async def trigger_detection(
+    bg: BackgroundTasks,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    bg.add_task(run_detection_bg, household_id)
+    last = await _household_last_detected_at(db, household_id)
+    return DetectionQueuedResponse(queued=True, last_detected_at=last)
+
+
+@router.post(
+    "/rerun-detection", status_code=202, response_model=DetectionQueuedResponse
+)
+async def trigger_rerun(
+    bg: BackgroundTasks,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    bg.add_task(rerun_detection_bg, household_id)
+    last = await _household_last_detected_at(db, household_id)
+    return DetectionQueuedResponse(
+        queued=True,
+        last_detected_at=last,
+        message="Detection queued; manual subscriptions and overrides preserved.",
+    )

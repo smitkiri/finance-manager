@@ -276,3 +276,29 @@ async def test_add_member_wrong_type_rejected(
         json={"transactionIds": ["t_income"]},
     )
     assert res.status_code == 400
+
+
+async def test_detect_returns_202_and_queues(client, monkeypatch) -> None:
+    calls: list[str] = []
+
+    async def fake_bg(household_id: str) -> None:
+        calls.append(household_id)
+
+    monkeypatch.setattr("app.routes.subscriptions.run_detection_bg", fake_bg)
+
+    res = await client.post("/api/subscriptions/detect")
+    assert res.status_code == 202
+    body = res.json()
+    assert body["queued"] is True
+
+
+async def test_rerun_detection_returns_202(client, monkeypatch) -> None:
+    called: list[str] = []
+
+    async def fake_bg(household_id: str) -> None:
+        called.append(household_id)
+
+    monkeypatch.setattr("app.routes.subscriptions.rerun_detection_bg", fake_bg)
+    res = await client.post("/api/subscriptions/rerun-detection")
+    assert res.status_code == 202
+    assert "Detection queued" in res.json()["message"]
