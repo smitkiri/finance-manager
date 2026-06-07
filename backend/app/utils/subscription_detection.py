@@ -301,7 +301,27 @@ def _prune_amount_outliers(members: list[dict]) -> list[dict]:
     n = len(amounts)
     median = amounts[n // 2] if n % 2 else (amounts[n // 2 - 1] + amounts[n // 2]) / 2
     tolerance = max(AMOUNT_ABS_TOLERANCE, AMOUNT_REL_TOLERANCE * median)
-    return [m for m in members if abs(abs(float(m["amount"])) - median) <= tolerance]
+
+    in_band = [m for m in members if abs(abs(float(m["amount"])) - median) <= tolerance]
+    out_band = [m for m in members if abs(abs(float(m["amount"])) - median) > tolerance]
+
+    if not out_band or not in_band:
+        return in_band
+
+    # Price-step pattern: if at least 2 outliers all post-date every in-band
+    # member and cluster around a consistent new amount, treat them as a price
+    # hike and keep them in the subscription. Without this, the new amount
+    # gets silently pruned and the subscription appears stuck at the old price.
+    in_band_last_date = max(m["date"] for m in in_band)
+    tail = [m for m in out_band if m["date"] > in_band_last_date]
+    if len(tail) >= 2 and len(tail) == len(out_band):
+        tail_amounts = sorted(abs(float(m["amount"])) for m in tail)
+        tail_median = tail_amounts[len(tail_amounts) // 2]
+        tail_tolerance = max(AMOUNT_ABS_TOLERANCE, AMOUNT_REL_TOLERANCE * tail_median)
+        if all(abs(a - tail_median) <= tail_tolerance for a in tail_amounts):
+            return in_band + tail
+
+    return in_band
 
 
 def _infer_cadence(sorted_members: list[dict]) -> str | None:
