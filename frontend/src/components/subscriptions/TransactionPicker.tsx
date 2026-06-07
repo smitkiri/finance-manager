@@ -1,21 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import type { Expense, SubscriptionType } from '../../types';
+import type { Expense } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 
 interface Props {
-  type: SubscriptionType;
   excludeIds?: string[];
   onSelect: (txnIds: string[]) => void;
   onCancel: () => void;
 }
 
-export const TransactionPicker: React.FC<Props> = ({
-  type,
-  excludeIds = [],
-  onSelect,
-  onCancel,
-}) => {
+export const TransactionPicker: React.FC<Props> = ({ excludeIds = [], onSelect, onCancel }) => {
   const [all, setAll] = useState<Expense[]>([]);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -23,12 +17,12 @@ export const TransactionPicker: React.FC<Props> = ({
   useEffect(() => {
     let cancelled = false;
     void ApiClient.loadExpenses().then((rows) => {
-      if (!cancelled) setAll(rows.filter((e) => e.type === type));
+      if (!cancelled) setAll(rows.filter((e) => e.type === 'expense'));
     });
     return () => {
       cancelled = true;
     };
-  }, [type]);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

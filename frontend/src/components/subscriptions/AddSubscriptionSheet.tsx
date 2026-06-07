@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { Sheet } from '../ui/Sheet';
 import { ApiClient } from '../../utils/apiClient';
-import type { SubscriptionCadence, SubscriptionType } from '../../types';
+import type { SubscriptionCadence } from '../../types';
 import { TransactionPicker } from './TransactionPicker';
 
 interface Props {
@@ -15,7 +15,6 @@ const CADENCES: SubscriptionCadence[] = ['weekly', 'biweekly', 'monthly', 'quart
 export const AddSubscriptionSheet: React.FC<Props> = ({ onClose, onCreated }) => {
   const [name, setName] = useState('');
   const [cadence, setCadence] = useState<SubscriptionCadence>('monthly');
-  const [type, setType] = useState<SubscriptionType>('expense');
   const [amount, setAmount] = useState('');
   const [pickedTxnIds, setPickedTxnIds] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -30,7 +29,6 @@ export const AddSubscriptionSheet: React.FC<Props> = ({ onClose, onCreated }) =>
       const created = await ApiClient.createSubscription({
         name: name.trim(),
         cadence,
-        type,
         expected_amount: parseFloat(amount),
         transactionIds: pickedTxnIds,
       });
@@ -47,7 +45,6 @@ export const AddSubscriptionSheet: React.FC<Props> = ({ onClose, onCreated }) =>
     return (
       <Sheet isOpen onClose={onClose} title="Pick transactions">
         <TransactionPicker
-          type={type}
           onSelect={(ids) => {
             setPickedTxnIds(ids);
             setPickerOpen(false);
@@ -86,17 +83,6 @@ export const AddSubscriptionSheet: React.FC<Props> = ({ onClose, onCreated }) =>
             onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full px-3 py-3 min-h-[48px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
           />
-        </label>
-        <label className="block">
-          <span className="text-xs uppercase tracking-wide text-gray-500">Type</span>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as SubscriptionType)}
-            className="mt-1 w-full px-3 py-3 min-h-[48px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-          >
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
         </label>
         <label className="block">
           <span className="text-xs uppercase tracking-wide text-gray-500">Cadence</span>

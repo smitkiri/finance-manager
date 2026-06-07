@@ -25,7 +25,6 @@ async def hh_with_sub(db_session, client: AsyncClient) -> dict:
         name="Netflix",
         cadence="monthly",
         expected_amount=Decimal("15.99"),
-        type="expense",
         status="active",
         first_seen=date(2026, 1, 5),
         last_seen=date(2026, 3, 5),
@@ -88,7 +87,6 @@ async def test_list_filters_by_status(client, hh_with_sub, db_session) -> None:
             name="OldThing",
             cadence="monthly",
             expected_amount=Decimal("9.99"),
-            type="expense",
             status="cancelled",
             first_seen=None,
             last_seen=None,
@@ -121,7 +119,6 @@ async def test_create_manual_subscription(client) -> None:
         json={
             "name": "Manual Sub",
             "cadence": "monthly",
-            "type": "expense",
             "expected_amount": 9.99,
         },
     )
@@ -161,7 +158,6 @@ async def test_create_active_subscription_with_seed_txns(
         json={
             "name": "Spotify",
             "cadence": "monthly",
-            "type": "expense",
             "expected_amount": 11.99,
             "transactionIds": ["seed10", "seed11", "seed12"],
         },

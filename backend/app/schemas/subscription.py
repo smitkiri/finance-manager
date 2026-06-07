@@ -6,7 +6,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 CadenceLiteral = Literal["weekly", "biweekly", "monthly", "quarterly", "annual"]
-TypeLiteral = Literal["expense", "income"]
 StatusLiteral = Literal["active", "possibly_cancelled", "cancelled", "manual"]
 
 
@@ -15,7 +14,6 @@ class SubscriptionMemberOut(BaseModel):
     date: date
     description: str
     amount: float
-    type: TypeLiteral
     category: str
     user: str | None = None
 
@@ -25,7 +23,6 @@ class SubscriptionOut(BaseModel):
     name: str
     cadence: CadenceLiteral
     expected_amount: float
-    type: TypeLiteral
     status: StatusLiteral
     first_seen: date | None
     last_seen: date | None
@@ -48,7 +45,6 @@ class SubscriptionListResponse(BaseModel):
 class SubscriptionCreate(BaseModel):
     name: str
     cadence: CadenceLiteral
-    type: TypeLiteral
     expected_amount: float
     transactionIds: list[str] = Field(default_factory=list)
 

@@ -84,7 +84,6 @@ export const SubscriptionDetailSheet: React.FC<Props> = ({
     return (
       <Sheet isOpen onClose={onClose} title="Add transactions">
         <TransactionPicker
-          type={sub.type}
           excludeIds={sub.members.map((m) => m.id)}
           onSelect={addMembers}
           onCancel={() => setPicker(false)}

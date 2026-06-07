@@ -53,7 +53,6 @@ def test_three_monthly_charges_detected() -> None:
     assert len(result["subscriptions"]) == 1
     sub = result["subscriptions"][0]
     assert sub["cadence"] == "monthly"
-    assert sub["type"] == "expense"
     assert float(sub["expected_amount"]) == 15.99
     assert sub["status"] == "active"
     assert sub["first_seen"] == date(2026, 1, 5)
@@ -118,38 +117,30 @@ def test_amount_outlier_dropped_below_threshold() -> None:
 
 def test_biweekly_cadence_detected() -> None:
     txns = [
-        _txn(
-            "p1",
-            description="Acme Payroll",
-            amount=2000,
-            type_="income",
-            d=date(2026, 1, 2),
-        ),
-        _txn(
-            "p2",
-            description="Acme Payroll",
-            amount=2000,
-            type_="income",
-            d=date(2026, 1, 16),
-        ),
-        _txn(
-            "p3",
-            description="Acme Payroll",
-            amount=2000,
-            type_="income",
-            d=date(2026, 1, 30),
-        ),
-        _txn(
-            "p4",
-            description="Acme Payroll",
-            amount=2000,
-            type_="income",
-            d=date(2026, 2, 13),
-        ),
+        _txn("g1", description="Gym Membership", amount=40, d=date(2026, 1, 2)),
+        _txn("g2", description="Gym Membership", amount=40, d=date(2026, 1, 16)),
+        _txn("g3", description="Gym Membership", amount=40, d=date(2026, 1, 30)),
+        _txn("g4", description="Gym Membership", amount=40, d=date(2026, 2, 13)),
     ]
     result = detect_subscriptions(txns, existing_subscriptions=[])
     assert len(result["subscriptions"]) == 1
     assert result["subscriptions"][0]["cadence"] == "biweekly"
+
+
+def test_income_txns_not_detected_as_subscriptions() -> None:
+    txns = [
+        _txn(
+            "p1", description="Payroll", amount=2000, type_="income", d=date(2026, 1, 2)
+        ),
+        _txn(
+            "p2", description="Payroll", amount=2000, type_="income", d=date(2026, 2, 2)
+        ),
+        _txn(
+            "p3", description="Payroll", amount=2000, type_="income", d=date(2026, 3, 2)
+        ),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[])
+    assert result["subscriptions"] == []
 
 
 def test_quarterly_cadence_detected() -> None:
@@ -206,7 +197,6 @@ def _existing(
     name: str = "Netflix",
     cadence: str = "monthly",
     expected_amount: float = 15.99,
-    type_: str = "expense",
     status: str = "active",
     first_seen: date | None = date(2026, 1, 5),
     last_seen: date | None = date(2026, 3, 5),
@@ -217,7 +207,6 @@ def _existing(
         "name": name,
         "cadence": cadence,
         "expected_amount": expected_amount,
-        "type": type_,
         "status": status,
         "first_seen": first_seen,
         "last_seen": last_seen,

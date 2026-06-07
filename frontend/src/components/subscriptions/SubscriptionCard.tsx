@@ -30,14 +30,8 @@ export const SubscriptionCard: React.FC<Props> = ({ sub, onClick }) => (
           {STATUS_LABEL[sub.status]}
         </div>
       </div>
-      <div
-        className={`text-sm md:text-xs font-semibold shrink-0 ${
-          sub.type === 'income'
-            ? 'text-green-600 dark:text-green-400'
-            : 'text-red-600 dark:text-red-400'
-        }`}
-      >
-        {sub.type === 'income' ? '+' : '-'}${sub.expected_amount.toFixed(2)}
+      <div className="text-sm md:text-xs font-semibold shrink-0 text-red-600 dark:text-red-400">
+        -${sub.expected_amount.toFixed(2)}
       </div>
     </div>
   </button>
