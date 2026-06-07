@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import secrets
+import time
+from collections import Counter
 from datetime import datetime
 from typing import cast
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -16,12 +19,15 @@ from app.models.transaction import Transaction
 from app.schemas.subscription import (
     CadenceLiteral,
     StatusLiteral,
+    SubscriptionCreate,
     SubscriptionDetailOut,
     SubscriptionListResponse,
     SubscriptionMemberOut,
     SubscriptionOut,
+    SubscriptionPatch,
     TypeLiteral,
 )
+from app.utils.subscription_signature import normalize_signature
 
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
@@ -167,3 +173,169 @@ async def get_subscription(
             for t in members_rows
         ],
     )
+
+
+def _new_id() -> str:
+    return f"sub_{int(time.time() * 1000):x}_{secrets.token_hex(4)}"
+
+
+async def _derive_signature(
+    db: AsyncSession, txn_ids: list[str], household_id: str
+) -> str | None:
+    if not txn_ids:
+        return None
+    rows = (
+        (
+            await db.execute(
+                select(Transaction.description).where(
+                    Transaction.id.in_(txn_ids),
+                    Transaction.household_id == household_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    sigs = [normalize_signature(d) for d in rows if d]
+    sigs = [s for s in sigs if s]
+    if not sigs:
+        return None
+    return Counter(sigs).most_common(1)[0][0]
+
+
+@router.post("", response_model=SubscriptionOut)
+async def create_subscription(
+    body: SubscriptionCreate,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    has_members = bool(body.transactionIds)
+    signature = (
+        await _derive_signature(db, body.transactionIds, household_id)
+        if has_members
+        else None
+    )
+    status = "active" if has_members else "manual"
+
+    sub = Subscription(
+        id=_new_id(),
+        household_id=household_id,
+        name=body.name,
+        cadence=body.cadence,
+        expected_amount=body.expected_amount,
+        type=body.type,
+        status=status,
+        first_seen=None,
+        last_seen=None,
+        detection_signature=signature,
+        user_overrides={
+            "excludedTxnIds": [],
+            "includedTxnIds": list(body.transactionIds),
+            "lockName": False,
+            "lockAmount": False,
+            "lockCadence": False,
+        },
+        metadata_={},
+    )
+    db.add(sub)
+    await db.flush()
+
+    if has_members:
+        rows = list(
+            (
+                await db.execute(
+                    select(Transaction).where(
+                        Transaction.id.in_(body.transactionIds),
+                        Transaction.household_id == household_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if len(rows) != len(body.transactionIds):
+            return JSONResponse(
+                status_code=400, content={"error": "Some transactions not found"}
+            )
+        if any(t.type != body.type for t in rows):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Member transactions must match subscription type"},
+            )
+        dates = sorted(t.date for t in rows)
+        sub.first_seen = dates[0]
+        sub.last_seen = dates[-1]
+        for t in rows:
+            t.subscription_id = sub.id
+
+    await db.commit()
+    member_count = await _member_count(db, sub.id)
+    return _to_out(sub, member_count)
+
+
+@router.patch("/{sub_id}", response_model=SubscriptionOut)
+async def patch_subscription(
+    sub_id: str,
+    body: SubscriptionPatch,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = (
+        await db.execute(
+            select(Subscription).where(
+                Subscription.id == sub_id,
+                Subscription.household_id == household_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not sub:
+        return JSONResponse(
+            status_code=404, content={"error": "Subscription not found"}
+        )
+
+    overrides = dict(sub.user_overrides or {})
+    if body.name is not None:
+        sub.name = body.name
+        overrides["lockName"] = True
+    if body.cadence is not None:
+        sub.cadence = body.cadence
+        overrides["lockCadence"] = True
+    if body.expected_amount is not None:
+        sub.expected_amount = body.expected_amount
+        overrides["lockAmount"] = True
+    if body.status is not None:
+        sub.status = body.status
+
+    sub.user_overrides = overrides
+    await db.commit()
+    member_count = await _member_count(db, sub.id)
+    return _to_out(sub, member_count)
+
+
+@router.delete("/{sub_id}", status_code=204)
+async def delete_subscription(
+    sub_id: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = (
+        await db.execute(
+            select(Subscription).where(
+                Subscription.id == sub_id,
+                Subscription.household_id == household_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not sub:
+        return JSONResponse(
+            status_code=404, content={"error": "Subscription not found"}
+        )
+
+    await db.execute(
+        update(Transaction)
+        .where(Transaction.subscription_id == sub_id)
+        .values(subscription_id=None)
+    )
+    await db.delete(sub)
+    await db.commit()
+    return JSONResponse(status_code=204, content=None)
