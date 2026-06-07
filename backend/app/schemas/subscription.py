@@ -18,6 +18,14 @@ class SubscriptionMemberOut(BaseModel):
     user: str | None = None
 
 
+class PriceChangeInfo(BaseModel):
+    previous_amount: float
+    current_amount: float
+    delta_amount: float
+    percent_change: float
+    period_label: str
+
+
 class SubscriptionOut(BaseModel):
     id: str
     name: str
@@ -30,6 +38,7 @@ class SubscriptionOut(BaseModel):
     user_overrides: dict
     member_count: int = 0
     monthly_normalized_amount: float = 0.0
+    price_change: PriceChangeInfo | None = None
 
 
 class SubscriptionDetailOut(SubscriptionOut):
