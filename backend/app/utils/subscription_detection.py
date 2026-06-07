@@ -65,13 +65,16 @@ def detect_subscriptions(
 
     txn_by_id = {t["id"]: t for t in transactions}
 
-    existing_active_by_sig: dict[tuple[str, str], dict] = {}
+    # Manual subs never auto-match. Cancelled subs DO match (so the user's
+    # explicit "cancelled" decision sticks across re-detections) — but they
+    # adopt new transactions without changing status.
+    existing_by_sig: dict[tuple[str, str], dict] = {}
     for sub in existing_subscriptions:
-        if sub["status"] in {"cancelled", "manual"}:
+        if sub["status"] == "manual":
             continue
         sig = sub.get("detection_signature")
         if sig:
-            existing_active_by_sig[(sig, sub["type"])] = sub
+            existing_by_sig[(sig, sub["type"])] = sub
 
     out_subs: list[dict[str, Any]] = []
     assignments: dict[str, str | None] = {t["id"]: None for t in transactions}
@@ -88,9 +91,12 @@ def detect_subscriptions(
         if cadence is None:
             continue
 
-        existing = existing_active_by_sig.get((signature, type_))
+        existing = existing_by_sig.get((signature, type_))
         if existing is not None:
-            sub = _update_existing(existing, pruned, cadence, txn_by_id)
+            if existing["status"] == "cancelled":
+                sub = _adopt_into_cancelled(existing, pruned, txn_by_id)
+            else:
+                sub = _update_existing(existing, pruned, cadence, txn_by_id)
             handled_ids.add(existing["id"])
         else:
             sub = _build_subscription(signature, type_, cadence, pruned)
@@ -109,6 +115,46 @@ def detect_subscriptions(
             assignments[tid] = carried["id"]
 
     return {"subscriptions": out_subs, "transaction_assignments": assignments}
+
+
+def _adopt_into_cancelled(
+    existing: dict,
+    pruned: list[dict],
+    txn_by_id: dict[str, dict],
+) -> dict[str, Any]:
+    """Adopt newly-detected matching txns into a cancelled sub without
+    changing its user-set status, name, cadence, or amount. Prevents a
+    duplicate sub from appearing every time detection re-runs."""
+    overrides = existing.get("user_overrides") or {}
+    excluded = set(overrides.get("excludedTxnIds") or [])
+    included = list(overrides.get("includedTxnIds") or [])
+
+    member_ids = [m["id"] for m in pruned if m["id"] not in excluded]
+    for tid in included:
+        if tid in txn_by_id and tid not in member_ids and tid not in excluded:
+            member_ids.append(tid)
+
+    members = sorted(
+        [txn_by_id[t] for t in member_ids if t in txn_by_id],
+        key=lambda t: t["date"],
+    )
+    first_seen = members[0]["date"] if members else existing.get("first_seen")
+    last_seen = members[-1]["date"] if members else existing.get("last_seen")
+
+    return {
+        "id": existing["id"],
+        "name": existing["name"],
+        "cadence": existing["cadence"],
+        "expected_amount": float(existing["expected_amount"]),
+        "type": existing["type"],
+        "status": "cancelled",
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+        "detection_signature": existing.get("detection_signature"),
+        "user_overrides": overrides,
+        "metadata": existing.get("metadata") or {},
+        "member_txn_ids": member_ids,
+    }
 
 
 def _update_existing(

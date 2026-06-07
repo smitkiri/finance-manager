@@ -337,7 +337,10 @@ def test_stale_sub_marked_possibly_cancelled(monkeypatch) -> None:
     assert result["subscriptions"][0]["status"] == "possibly_cancelled"
 
 
-def test_cancelled_sub_does_not_auto_match(monkeypatch) -> None:
+def test_cancelled_sub_adopts_new_charges_but_stays_cancelled(monkeypatch) -> None:
+    """The user's explicit 'cancelled' decision sticks: re-detection must
+    NOT spawn a duplicate sub for the same merchant. Instead the cancelled
+    sub adopts the new transactions, while keeping status='cancelled'."""
     today = date(2026, 6, 1)
     monkeypatch.setattr("app.utils.subscription_detection._today", lambda: today)
     existing = _existing("sub_cancelled", status="cancelled")
@@ -347,12 +350,16 @@ def test_cancelled_sub_does_not_auto_match(monkeypatch) -> None:
         _txn("t3", d=date(2026, 5, 5)),
     ]
     result = detect_subscriptions(txns, existing_subscriptions=[existing])
-    assert len(result["subscriptions"]) == 2
-    cancelled = next(s for s in result["subscriptions"] if s["id"] == "sub_cancelled")
-    new_sub = next(s for s in result["subscriptions"] if s["id"] != "sub_cancelled")
-    assert cancelled["status"] == "cancelled"
-    assert new_sub["status"] == "active"
-    assert new_sub["member_txn_ids"] == ["t1", "t2", "t3"]
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sub["id"] == "sub_cancelled"
+    assert sub["status"] == "cancelled"
+    assert sub["member_txn_ids"] == ["t1", "t2", "t3"]
+    assert result["transaction_assignments"] == {
+        "t1": "sub_cancelled",
+        "t2": "sub_cancelled",
+        "t3": "sub_cancelled",
+    }
 
 
 def test_manual_sub_not_auto_grown() -> None:
