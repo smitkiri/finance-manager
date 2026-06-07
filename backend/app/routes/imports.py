@@ -2,7 +2,7 @@ import secrets
 import time
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ from app.schemas.imports import (
 )
 from app.utils.csv_parser import merge_expenses, parse_csv, parse_csv_with_mapping
 from app.utils.date_parser import parse_date
+from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_detection import detect_transfers
 from app.utils.transfer_utils import txns_to_dicts
 
@@ -103,6 +104,7 @@ async def save_column_mapping(
 @router.post("/import-csv")
 async def import_csv(
     body: ImportCsvRequest,
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -179,6 +181,7 @@ async def import_csv(
         )
 
     await db.commit()
+    bg.add_task(run_detection_bg, household_id)
 
     return {
         "success": True,
@@ -193,6 +196,7 @@ async def import_csv(
 @router.post("/import-with-mapping")
 async def import_with_mapping(
     body: ImportWithMappingRequest,
+    bg: BackgroundTasks,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -277,6 +281,7 @@ async def import_with_mapping(
         )
 
     await db.commit()
+    bg.add_task(run_detection_bg, household_id)
 
     return {
         "success": True,

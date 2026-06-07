@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -16,6 +17,8 @@ from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.utils.subscription_detection import DetectionResult, detect_subscriptions
 from app.utils.subscription_signature import normalize_signature
+
+_log = logging.getLogger(__name__)
 
 _household_locks: dict[str, asyncio.Lock] = {}
 
@@ -198,16 +201,35 @@ async def _persist_result(
 
 
 async def run_detection_bg(household_id: str) -> None:
-    """Background-task wrapper: opens its own session, holds household lock."""
-    async with _lock_for(household_id), async_session_factory() as db:
-        await run_detection(db, household_id=household_id)
+    """Background-task wrapper: opens its own session, holds household lock.
+
+    Errors are logged and swallowed — detection is best-effort and must never
+    surface to a user request that has already returned.
+    """
+    try:
+        async with _lock_for(household_id), async_session_factory() as db:
+            await run_detection(db, household_id=household_id)
+    except Exception:
+        _log.exception("Subscription detection failed for household %s", household_id)
 
 
 async def reconcile_signature_bg(household_id: str, signature: str) -> None:
-    async with _lock_for(household_id), async_session_factory() as db:
-        await reconcile_signature(db, household_id=household_id, signature=signature)
+    try:
+        async with _lock_for(household_id), async_session_factory() as db:
+            await reconcile_signature(
+                db, household_id=household_id, signature=signature
+            )
+    except Exception:
+        _log.exception(
+            "Subscription signature reconcile failed for household %s sig=%s",
+            household_id,
+            signature,
+        )
 
 
 async def rerun_detection_bg(household_id: str) -> None:
-    async with _lock_for(household_id), async_session_factory() as db:
-        await run_detection(db, household_id=household_id, strip_existing=True)
+    try:
+        async with _lock_for(household_id), async_session_factory() as db:
+            await run_detection(db, household_id=household_id, strip_existing=True)
+    except Exception:
+        _log.exception("Subscription rerun failed for household %s", household_id)
