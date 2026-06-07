@@ -30,7 +30,7 @@ class Subscription(Base):
     cadence: Mapped[str] = mapped_column(String(16), nullable=False)
     expected_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     type: Mapped[str] = mapped_column(String(10), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
     first_seen: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_seen: Mapped[date | None] = mapped_column(Date, nullable=True)
     detection_signature: Mapped[str | None] = mapped_column(Text, nullable=True)

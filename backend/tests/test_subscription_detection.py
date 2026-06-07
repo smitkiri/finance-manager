@@ -2,7 +2,18 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+
 from app.utils.subscription_detection import detect_subscriptions
+
+
+@pytest.fixture(autouse=True)
+def _pin_today(monkeypatch):
+    """Pin `_today()` close to the test transaction dates so detection tests
+    aren't affected by the real wall clock or by the new-sub stale check."""
+    monkeypatch.setattr(
+        "app.utils.subscription_detection._today", lambda: date(2026, 3, 10)
+    )
 
 
 def _txn(

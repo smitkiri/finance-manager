@@ -287,15 +287,19 @@ def _build_subscription(
 ) -> dict[str, Any]:
     amounts = [abs(float(m["amount"])) for m in members]
     median = sorted(amounts)[len(amounts) // 2]
+    last_seen = members[-1]["date"]
+    cadence_days = CADENCE_DAYS.get(cadence, 30)
+    days_since = (_today() - last_seen).days
+    status = "possibly_cancelled" if days_since > int(1.5 * cadence_days) else "active"
     return {
         "id": _new_id(),
         "name": _signature_to_name(signature),
         "cadence": cadence,
         "expected_amount": median,
         "type": type_,
-        "status": "active",
+        "status": status,
         "first_seen": members[0]["date"],
-        "last_seen": members[-1]["date"],
+        "last_seen": last_seen,
         "detection_signature": signature,
         "user_overrides": {
             "excludedTxnIds": [],

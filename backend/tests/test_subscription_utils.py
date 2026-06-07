@@ -14,6 +14,15 @@ from app.utils.subscription_utils import run_detection
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.fixture(autouse=True)
+def _pin_today(monkeypatch):
+    """Pin `_today()` close to the test transaction dates so detection
+    doesn't classify them as stale based on the real wall clock."""
+    monkeypatch.setattr(
+        "app.utils.subscription_detection._today", lambda: date(2026, 3, 10)
+    )
+
+
 @pytest.fixture
 async def household(db_session) -> Household:
     h = Household(id="hh1", name="Test")
