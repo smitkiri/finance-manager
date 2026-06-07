@@ -5,6 +5,7 @@ import type { Subscription, SubscriptionStatus, SubscriptionType } from '../type
 import { SubscriptionsHeader } from '../components/subscriptions/SubscriptionsHeader';
 import { SubscriptionsFilters } from '../components/subscriptions/SubscriptionsFilters';
 import { SubscriptionList } from '../components/subscriptions/SubscriptionList';
+import { SubscriptionDetailSheet } from '../components/subscriptions/SubscriptionDetailSheet';
 
 const DEFAULT_STATUS: SubscriptionStatus[] = ['active', 'possibly_cancelled'];
 
@@ -65,7 +66,13 @@ export const SubscriptionsPage: React.FC = () => {
         onTypeChange={setType}
       />
       <SubscriptionList subscriptions={subs} onSelect={(s) => setSelectedId(s.id)} />
-      {selectedId && <div className="hidden">{selectedId}</div>}
+      {selectedId && (
+        <SubscriptionDetailSheet
+          subscriptionId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onChanged={() => void load()}
+        />
+      )}
       {showAdd && <div className="hidden">add</div>}
     </div>
   );
