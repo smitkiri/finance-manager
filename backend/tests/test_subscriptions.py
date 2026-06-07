@@ -203,3 +203,76 @@ async def test_delete_subscription_unlinks_members(
         .all()
     )
     assert all(t.subscription_id is None for t in rows)
+
+
+async def test_add_members(client, hh_with_sub, db_session) -> None:
+    hh_id = hh_with_sub["household_id"]
+    db_session.add(
+        Transaction(
+            id="t_new",
+            date=date(2026, 4, 5),
+            description="Netflix",
+            category="Entertainment",
+            amount=Decimal("15.99"),
+            type="expense",
+            household_id=hh_id,
+            labels=[],
+            metadata_={},
+            excluded_from_calculations=False,
+        )
+    )
+    await db_session.commit()
+
+    res = await client.post(
+        f"/api/subscriptions/{hh_with_sub['sub_id']}/members",
+        json={"transactionIds": ["t_new"]},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert "t_new" in body["user_overrides"]["includedTxnIds"]
+
+    txn = (
+        await db_session.execute(select(Transaction).where(Transaction.id == "t_new"))
+    ).scalar_one()
+    assert txn.subscription_id == hh_with_sub["sub_id"]
+
+
+async def test_remove_member(client, hh_with_sub, db_session) -> None:
+    res = await client.delete(f"/api/subscriptions/{hh_with_sub['sub_id']}/members/t2")
+    assert res.status_code == 200
+    body = res.json()
+    assert "t2" in body["user_overrides"]["excludedTxnIds"]
+
+    txn = (
+        await db_session.execute(select(Transaction).where(Transaction.id == "t2"))
+    ).scalar_one()
+    assert txn.subscription_id is None
+
+
+async def test_add_member_wrong_type_rejected(
+    client,
+    hh_with_sub,
+    db_session,
+) -> None:
+    hh_id = hh_with_sub["household_id"]
+    db_session.add(
+        Transaction(
+            id="t_income",
+            date=date(2026, 4, 5),
+            description="Refund",
+            category="Other",
+            amount=Decimal("15.99"),
+            type="income",
+            household_id=hh_id,
+            labels=[],
+            metadata_={},
+            excluded_from_calculations=False,
+        )
+    )
+    await db_session.commit()
+
+    res = await client.post(
+        f"/api/subscriptions/{hh_with_sub['sub_id']}/members",
+        json={"transactionIds": ["t_income"]},
+    )
+    assert res.status_code == 400

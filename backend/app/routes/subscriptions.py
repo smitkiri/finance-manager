@@ -23,6 +23,7 @@ from app.schemas.subscription import (
     SubscriptionDetailOut,
     SubscriptionListResponse,
     SubscriptionMemberOut,
+    SubscriptionMembersBody,
     SubscriptionOut,
     SubscriptionPatch,
     TypeLiteral,
@@ -339,3 +340,112 @@ async def delete_subscription(
     await db.delete(sub)
     await db.commit()
     return JSONResponse(status_code=204, content=None)
+
+
+@router.post("/{sub_id}/members", response_model=SubscriptionOut)
+async def add_members(
+    sub_id: str,
+    body: SubscriptionMembersBody,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = (
+        await db.execute(
+            select(Subscription).where(
+                Subscription.id == sub_id,
+                Subscription.household_id == household_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not sub:
+        return JSONResponse(
+            status_code=404, content={"error": "Subscription not found"}
+        )
+
+    txns = list(
+        (
+            await db.execute(
+                select(Transaction).where(
+                    Transaction.id.in_(body.transactionIds),
+                    Transaction.household_id == household_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if len(txns) != len(body.transactionIds):
+        return JSONResponse(
+            status_code=400, content={"error": "Some transactions not found"}
+        )
+    if any(t.type != sub.type for t in txns):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Transaction type must match subscription"},
+        )
+
+    overrides = dict(sub.user_overrides or {})
+    included = list(overrides.get("includedTxnIds") or [])
+    excluded = [
+        x
+        for x in (overrides.get("excludedTxnIds") or [])
+        if x not in body.transactionIds
+    ]
+    for tid in body.transactionIds:
+        if tid not in included:
+            included.append(tid)
+    overrides["includedTxnIds"] = included
+    overrides["excludedTxnIds"] = excluded
+    sub.user_overrides = overrides
+
+    for t in txns:
+        t.subscription_id = sub.id
+
+    await db.commit()
+    member_count = await _member_count(db, sub.id)
+    return _to_out(sub, member_count)
+
+
+@router.delete("/{sub_id}/members/{txn_id}", response_model=SubscriptionOut)
+async def remove_member(
+    sub_id: str,
+    txn_id: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = (
+        await db.execute(
+            select(Subscription).where(
+                Subscription.id == sub_id,
+                Subscription.household_id == household_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not sub:
+        return JSONResponse(
+            status_code=404, content={"error": "Subscription not found"}
+        )
+
+    overrides = dict(sub.user_overrides or {})
+    excluded = list(overrides.get("excludedTxnIds") or [])
+    included = [x for x in (overrides.get("includedTxnIds") or []) if x != txn_id]
+    if txn_id not in excluded:
+        excluded.append(txn_id)
+    overrides["excludedTxnIds"] = excluded
+    overrides["includedTxnIds"] = included
+    sub.user_overrides = overrides
+
+    txn = (
+        await db.execute(
+            select(Transaction).where(
+                Transaction.id == txn_id,
+                Transaction.household_id == household_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if txn and txn.subscription_id == sub_id:
+        txn.subscription_id = None
+
+    await db.commit()
+    member_count = await _member_count(db, sub.id)
+    return _to_out(sub, member_count)
