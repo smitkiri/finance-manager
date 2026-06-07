@@ -52,6 +52,9 @@ class Transaction(Base):
     import_id: Mapped[str | None] = mapped_column(
         String(255), ForeignKey("import_sessions.id", ondelete="SET NULL")
     )
+    subscription_id: Mapped[str | None] = mapped_column(
+        String(255), ForeignKey("subscriptions.id", ondelete="SET NULL")
+    )
 
     import_session = relationship("ImportSession", back_populates="transactions")
 
@@ -66,4 +69,5 @@ class Transaction(Base):
         Index("idx_transactions_type", "type"),
         Index("idx_transactions_excluded", "excluded_from_calculations"),
         Index("idx_transactions_import_id", "import_id"),
+        Index("idx_transactions_subscription_id", "subscription_id"),
     )

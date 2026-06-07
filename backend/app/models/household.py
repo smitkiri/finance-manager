@@ -14,3 +14,6 @@ class Household(Base):
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.current_timestamp()
     )
+    last_subscription_detection_at: Mapped[datetime | None] = mapped_column(
+        nullable=True
+    )
