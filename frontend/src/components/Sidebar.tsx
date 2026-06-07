@@ -8,6 +8,7 @@ import {
   Settings,
   TrendingUp,
   LayoutDashboard,
+  Repeat,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -54,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { path: '/transactions', label: 'Transactions', icon: Receipt },
     { path: '/reports', label: 'Reports', icon: FileText },
     { path: '/net-worth', label: 'Net Worth', icon: TrendingUp },
+    { path: '/subscriptions', label: 'Subscriptions', icon: Repeat },
     { path: '/personal-dashboards', label: 'Personal Dashboards', icon: LayoutDashboard },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
