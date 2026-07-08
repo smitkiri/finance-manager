@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { PanelMonthData } from '../../types';
-import { formatCurrency } from '../../utils';
+import { formatCurrency, formatAxisCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -80,7 +80,7 @@ export const PanelChart: React.FC<PanelChartProps> = ({
   }
 
   const isNet = seriesMode === 'net_amount';
-  const yFormatter = (v: number) => `$${Math.abs(v).toFixed(0)}`;
+  const yFormatter = (v: number) => formatAxisCurrency(Math.abs(v));
 
   const renderChart = () => {
     if (chartType === 'line') {

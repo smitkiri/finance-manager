@@ -13,6 +13,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NetWorthHistory } from '../../types';
+import { formatAxisCurrency } from '../../utils';
 
 interface BalanceChartProps {
   history: NetWorthHistory[];
@@ -117,7 +118,7 @@ export const BalanceChart: React.FC<BalanceChartProps> = ({
             stroke={gridStroke}
           />
           <YAxis
-            tickFormatter={(v) => `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+            tickFormatter={formatAxisCurrency}
             tick={{ fontSize: tickFontSize, fill: tickFill }}
             stroke={gridStroke}
             width={isMobile ? 40 : 60}
