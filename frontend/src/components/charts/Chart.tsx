@@ -13,7 +13,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { formatCurrency } from '../../utils';
+import { formatCurrency, formatAxisCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -84,7 +84,7 @@ export const Chart: React.FC<ChartProps> = ({
             <YAxis
               stroke={axisStroke}
               fontSize={axisFontSize}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={formatAxisCurrency}
               width={isMobile ? 40 : 60}
             />
             <Tooltip content={<CustomTooltip />} />
@@ -133,7 +133,7 @@ export const Chart: React.FC<ChartProps> = ({
             <YAxis
               stroke={axisStroke}
               fontSize={axisFontSize}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={formatAxisCurrency}
               width={isMobile ? 40 : 60}
               domain={[
                 (dataMin: number) => Math.min(0, dataMin),

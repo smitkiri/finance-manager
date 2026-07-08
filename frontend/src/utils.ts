@@ -8,6 +8,22 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+// Compact currency for chart axis ticks: rounds away floating-point drift and
+// abbreviates 4+ digit values (e.g. 23671.79 → "$24k", -1_500_000 → "-$1.5M").
+export const formatAxisCurrency = (value: number): string => {
+  const rounded = Math.round(value * 100) / 100;
+  const abs = Math.abs(rounded);
+  const sign = rounded < 0 ? '-' : '';
+  if (abs >= 1_000_000) {
+    const millions = abs / 1_000_000;
+    return `${sign}$${abs >= 10_000_000 ? millions.toFixed(0) : millions.toFixed(1)}M`;
+  }
+  if (abs >= 1000) {
+    return `${sign}$${Math.round(abs / 1000)}k`;
+  }
+  return `${sign}$${Math.round(abs)}`;
+};
+
 export const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
