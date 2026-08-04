@@ -59,6 +59,14 @@ services:
         REACT_APP_API_BASE_URL: /api
     depends_on:
       - backend
+    # Coolify does NOT apply the implicit compose `default` network to
+    # services that omit a `networks:` key (unlike vanilla `docker compose`),
+    # so nginx must declare it explicitly or it comes up attached to no
+    # network and fails with `host not found in upstream "backend:8000"`.
+    # Deliberately NOT on `coolify`: multiple stacks share that network with
+    # the same `backend` alias, so routing there would resolve ambiguously.
+    networks:
+      - default
     ports:
       # Coolify's Traefik will route domain → this published port.
       # NGINX_PORT lets you override the host port for local testing.
