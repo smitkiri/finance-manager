@@ -23,6 +23,8 @@ RUN npm run build
 FROM nginx:alpine
 
 COPY --from=builder /app/build /usr/share/nginx/html
-COPY nginx/prod.conf /etc/nginx/conf.d/default.conf
+# Rendered to /etc/nginx/conf.d/default.conf at boot by the base image's
+# 20-envsubst-on-templates.sh entrypoint, substituting ${BACKEND_UPSTREAM}.
+COPY nginx/prod.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80

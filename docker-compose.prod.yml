@@ -45,8 +45,14 @@ services:
       # On Coolify, set TELLER_SECRETS_PATH to an absolute path on the server.
       - ${TELLER_SECRETS_PATH:-./teller_secrets}:/secrets/teller:ro
     networks:
-      - default
-      - coolify
+      default: {}
+      # Stack-unique alias so nginx (which shares this network with every
+      # other stack's backend) can target THIS backend unambiguously. The
+      # plain `backend` service-name alias is still added automatically and
+      # collides across stacks on `coolify`; the uuid alias does not.
+      coolify:
+        aliases:
+          - backend-${COOLIFY_RESOURCE_UUID:-local}
     expose:
       - '8000'
     restart: unless-stopped
@@ -59,14 +65,22 @@ services:
         REACT_APP_API_BASE_URL: /api
     depends_on:
       - backend
+    environment:
+      # Stack-unique upstream target rendered into the nginx conf at boot.
+      # Must match the `backend-<uuid>` alias on the backend service above.
+      BACKEND_UPSTREAM: backend-${COOLIFY_RESOURCE_UUID:-local}:8000
+      # Restrict envsubst to our var so nginx's own $variables are untouched.
+      NGINX_ENVSUBST_FILTER: BACKEND_UPSTREAM
     # Coolify does NOT apply the implicit compose `default` network to
     # services that omit a `networks:` key (unlike vanilla `docker compose`),
-    # so nginx must declare it explicitly or it comes up attached to no
-    # network and fails with `host not found in upstream "backend:8000"`.
-    # Deliberately NOT on `coolify`: multiple stacks share that network with
-    # the same `backend` alias, so routing there would resolve ambiguously.
+    # so nginx must join networks explicitly.
+    #  - default: reach this stack's backend (via the container IP path).
+    #  - coolify: let Coolify's Traefik proxy reach nginx for domain routing
+    #    (e.g. tally.local). nginx targets backend via its stack-unique alias
+    #    (BACKEND_UPSTREAM), never the ambiguous shared `backend` name.
     networks:
       - default
+      - coolify
     ports:
       # Coolify's Traefik will route domain → this published port.
       # NGINX_PORT lets you override the host port for local testing.
