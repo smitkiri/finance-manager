@@ -1,5 +1,10 @@
+# BACKEND_UPSTREAM is a stack-unique host:port (backend-<uuid>:8000) injected
+# by the nginx entrypoint's envsubst. It must be stack-unique because nginx
+# sits on the shared `coolify` network where every stack's backend answers to
+# the plain `backend` alias — resolving `backend` there would round-robin
+# across stacks. See docker-compose.prod.yml for the matching backend alias.
 upstream backend {
-    server backend:8000;
+    server ${BACKEND_UPSTREAM};
 }
 
 server {
