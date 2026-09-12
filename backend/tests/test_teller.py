@@ -184,6 +184,30 @@ async def test_teller_client_non_json_response():
         assert data == "Internal Server Error"
 
 
+@pytest.mark.asyncio
+async def test_teller_client_uses_generous_read_timeout():
+    """Teller's /balances endpoint pulls live from the bank and regularly takes
+    longer than httpx's 5s default read timeout, which surfaced as a 500 on
+    /api/teller/refresh-balances with an empty-message httpx.ReadTimeout."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {}
+
+    with patch("app.utils.teller_client.httpx.AsyncClient") as MockClient:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get.return_value = mock_response
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+        MockClient.return_value = mock_client_instance
+
+        client = TellerClient(cert_path="/tmp/cert.pem", key_path="/tmp/key.pem")
+        await client.request("/accounts/acc_1/balances", "test-token")
+
+    timeout = MockClient.call_args.kwargs["timeout"]
+    assert timeout.read >= 30, "read timeout must survive a slow Teller balance fetch"
+    assert timeout.connect <= 10, "connect should still fail fast when egress is broken"
+
+
 # --- Route tests ---
 
 
