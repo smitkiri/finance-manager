@@ -5,6 +5,13 @@ from typing import Any
 
 import httpx
 
+# httpx defaults to a 5s timeout on every phase. Teller's
+# /accounts/{id}/balances endpoint pulls live from the bank and routinely
+# takes longer than that, so the default made refresh-balances fail with an
+# empty-message ReadTimeout. Keep connect short (a broken egress path should
+# fail fast) but give the response plenty of room.
+TELLER_TIMEOUT = httpx.Timeout(connect=10.0, read=45.0, write=10.0, pool=10.0)
+
 
 class TellerClient:
     def __init__(self, cert_path: str, key_path: str):
@@ -19,6 +26,7 @@ class TellerClient:
         async with httpx.AsyncClient(
             base_url="https://api.teller.io",
             cert=self.cert,
+            timeout=TELLER_TIMEOUT,
         ) as client:
             response = await client.get(
                 path,

@@ -7,6 +7,7 @@ identical URL paths and JSON response shapes for frontend compatibility.
 import os
 import secrets
 import time
+import traceback
 import uuid
 from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
@@ -45,6 +46,18 @@ from app.utils.transfer_detection import detect_transfers
 router = APIRouter(prefix="/api/teller", tags=["teller"])
 
 UNCATEGORIZED = "Uncategorized"
+
+
+def _log_route_error(message: str, exc: Exception) -> None:
+    """Log a handler exception with its type and traceback.
+
+    `print(f"...: {exc}")` alone is useless when ``str(exc)`` is empty, which
+    is exactly what httpx timeout exceptions (ConnectTimeout / ReadTimeout)
+    stringify to. Always emit the class name and the stack.
+    """
+    print(f"{message}: {type(exc).__name__}: {exc}")
+    traceback.print_exc()
+
 
 # In-memory preview cache (matches Express behavior)
 _import_preview_cache: dict[str, dict] = {}
@@ -258,7 +271,7 @@ async def teller_config(
             ],
         }
     except Exception as exc:
-        print(f"Error checking teller config: {exc}")
+        _log_route_error("Error checking teller config", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to check teller config"}
         )
@@ -286,7 +299,7 @@ async def get_enrollment_token(
             )
         return {"accessToken": enrollment["accessToken"]}
     except Exception as exc:
-        print(f"Error fetching enrollment token: {exc}")
+        _log_route_error("Error fetching enrollment token", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to fetch enrollment token"}
         )
@@ -323,7 +336,7 @@ async def update_enrollment_token(
         await db.commit()
         return {"success": True}
     except Exception as exc:
-        print(f"Error updating enrollment token: {exc}")
+        _log_route_error("Error updating enrollment token", exc)
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to update enrollment token"},
@@ -359,7 +372,7 @@ async def preview_accounts(
             for a in accounts
         ]
     except Exception as exc:
-        print(f"Error previewing Teller accounts: {exc}")
+        _log_route_error("Error previewing Teller accounts", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to preview accounts"}
         )
@@ -430,7 +443,7 @@ async def enroll(
         await db.commit()
         return {"success": True}
     except Exception as exc:
-        print(f"Error saving teller enrollment: {exc}")
+        _log_route_error("Error saving teller enrollment", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to save enrollment"}
         )
@@ -461,7 +474,7 @@ async def disconnect(
 
         return {"success": True, "accountsDeleted": deleted_count}
     except Exception as exc:
-        print(f"Error disconnecting teller enrollment: {exc}")
+        _log_route_error("Error disconnecting teller enrollment", exc)
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to disconnect enrollment"},
@@ -501,7 +514,7 @@ async def enrollment_preview_accounts(
             for a in accounts
         ]
     except Exception as exc:
-        print(f"Error previewing accounts for enrollment: {exc}")
+        _log_route_error("Error previewing accounts for enrollment", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to preview accounts"}
         )
@@ -568,7 +581,7 @@ async def manage_accounts(
         await db.commit()
         return {"success": True, "added": added, "removed": removed}
     except Exception as exc:
-        print(f"Error managing accounts for enrollment: {exc}")
+        _log_route_error("Error managing accounts for enrollment", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to manage accounts"}
         )
@@ -596,7 +609,7 @@ async def refresh_balances(
         try:
             teller = _get_teller_client()
         except FileNotFoundError as exc:
-            print(f"Error refreshing Teller balances: {exc}")
+            _log_route_error("Error refreshing Teller balances", exc)
             return JSONResponse(status_code=503, content={"error": str(exc)})
 
         for enrollment in enrollments:
@@ -655,7 +668,7 @@ async def refresh_balances(
             result_data["reconnectRequired"] = reconnect_required
         return result_data
     except Exception as exc:
-        print(f"Error refreshing Teller balances: {exc}")
+        _log_route_error("Error refreshing Teller balances", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to refresh balances"}
         )
@@ -698,7 +711,7 @@ async def get_category_mappings(
 
         return {"mappings": mappings}
     except Exception as exc:
-        print(f"Error loading Teller category mappings: {exc}")
+        _log_route_error("Error loading Teller category mappings", exc)
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to load category mappings"},
@@ -750,7 +763,7 @@ async def update_category_mappings(
         await db.commit()
         return {"success": True, "updated": len(new_mappings)}
     except Exception as exc:
-        print(f"Error updating Teller category mappings: {exc}")
+        _log_route_error("Error updating Teller category mappings", exc)
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to update category mappings"},
@@ -942,7 +955,7 @@ async def preview_import(
             "newCategories": new_categories,
         }
     except Exception as exc:
-        print(f"Error previewing Teller import: {exc}")
+        _log_route_error("Error previewing Teller import", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to preview import"}
         )
@@ -1114,7 +1127,7 @@ async def import_transactions(
         _import_preview_cache.pop(body.previewToken, None)
         return {"sessions": sessions}
     except Exception as exc:
-        print(f"Error importing Teller transactions: {exc}")
+        _log_route_error("Error importing Teller transactions", exc)
         return JSONResponse(
             status_code=500, content={"error": "Failed to import transactions"}
         )
