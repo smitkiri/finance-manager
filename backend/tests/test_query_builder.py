@@ -464,6 +464,29 @@ async def test_filter_groups_description_matches(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+async def test_filter_groups_description_not_matches(db_session: AsyncSession):
+    await _seed_transactions(db_session)
+    filter_groups = [
+        {
+            "conditions": [
+                {
+                    "field": "description",
+                    "operator": "not_matches",
+                    "value": "(?i)coffee",
+                }
+            ]
+        }
+    ]
+    stmt = select(Transaction)
+    clause = build_filter_groups_clause(filter_groups)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    result = await db_session.execute(stmt)
+    rows = result.scalars().all()
+    assert {r.id for r in rows} == {"t1", "t2", "t3"}
+
+
+@pytest.mark.asyncio
 async def test_filter_groups_amount_gte_lte(db_session: AsyncSession):
     await _seed_transactions(db_session)
     filter_groups = [

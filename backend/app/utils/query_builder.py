@@ -265,8 +265,16 @@ def build_filter_groups_clause(filter_groups: list[dict] | None):
                 else:  # "includes"
                     cond_clauses.append(exists(label_subq))
 
-            elif field == "description" and operator == "matches" and value:
-                cond_clauses.append(Transaction.description.regexp_match(value, "i"))
+            elif (
+                field == "description"
+                and operator in ("matches", "not_matches")
+                and value
+            ):
+                match_clause = Transaction.description.regexp_match(value, "i")
+                if operator == "not_matches":
+                    cond_clauses.append(~match_clause)
+                else:
+                    cond_clauses.append(match_clause)
 
             elif field == "amount" and value is not None and value != "":
                 if operator == "gte":
