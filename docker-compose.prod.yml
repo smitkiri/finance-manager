@@ -25,6 +25,16 @@ services:
     restart: 'no'
 
   backend:
+    # Same image as backend-migrate (one image, two commands). The duplicated
+    # build block is NOT redundant: Coolify >= 4.3.19 runs
+    # `docker compose pull --ignore-buildable` before stopping the old
+    # containers, and that flag skips only services declaring `build:`. With
+    # `image:` alone this service looks like a registry image, so compose tries
+    # to pull finance-manager-backend:latest from Docker Hub — where it has
+    # never existed, since the tag is produced locally by the build.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     image: finance-manager-backend:latest
     depends_on:
       backend-migrate:

@@ -98,7 +98,7 @@ In prod, nginx is the only exposed service. It serves the built React app as sta
 
 When making changes that affect prod, remember:
 
-- The backend `Dockerfile` is shared between `backend` and `backend-migrate` services (same image, different commands).
+- The backend `Dockerfile` is shared between `backend` and `backend-migrate` services (same image, different commands). Both services declare the identical `build:` block on purpose — Coolify pre-pulls with `docker compose pull --ignore-buildable`, which only skips services that declare `build:`, so an `image:`-only service is pulled from Docker Hub and the deploy fails.
 - `REACT_APP_*` vars are **build args** for the nginx Dockerfile, not runtime env vars (CRA bakes them into the JS bundle at build time).
 - Compose service DNS: nginx talks to backend at `backend:8000` (not `localhost:8000`, not `host.docker.internal`).
 
