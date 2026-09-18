@@ -46,8 +46,13 @@ class DashboardPanel(TimestampMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(255))
     chart_type: Mapped[str] = mapped_column(String(10))
-    # Legacy filter columns (frozen, not used by new code)
-    filter_type: Mapped[str | None] = mapped_column(String(10))
+    # Legacy filter columns (frozen, not used by new code). They carry
+    # server defaults so INSERTs omit them entirely: databases created before
+    # Alembic declare filter_type NOT NULL, and an explicit NULL would fail
+    # there even though the baseline migration declares it nullable.
+    filter_type: Mapped[str | None] = mapped_column(
+        String(10), server_default=text("'both'")
+    )
     filter_categories: Mapped[Any | None] = mapped_column(
         JSONB, server_default=text("'[]'::jsonb")
     )
