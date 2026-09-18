@@ -27,7 +27,10 @@ const OPERATORS_BY_FIELD: Record<FilterCondition['field'], { value: string; labe
     { value: 'includes', label: 'includes' },
     { value: 'excludes', label: 'excludes' },
   ],
-  description: [{ value: 'matches', label: 'matches' }],
+  description: [
+    { value: 'matches', label: 'matches' },
+    { value: 'not_matches', label: 'does not match' },
+  ],
   amount: [
     { value: 'gte', label: '>=' },
     { value: 'lte', label: '<=' },

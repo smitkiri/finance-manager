@@ -247,7 +247,7 @@ export interface Dashboard {
 
 export interface FilterCondition {
   field: 'type' | 'category' | 'labels' | 'description' | 'amount';
-  operator: string; // 'is' | 'is_not' | 'includes' | 'excludes' | 'matches' | 'gte' | 'lte'
+  operator: string; // 'is' | 'is_not' | 'includes' | 'excludes' | 'matches' | 'not_matches' | 'gte' | 'lte'
   value: string | string[] | number;
 }
 

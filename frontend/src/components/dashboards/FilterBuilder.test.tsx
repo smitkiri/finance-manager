@@ -327,6 +327,30 @@ describe('FilterBuilder', () => {
     ]);
   });
 
+  it('offers "does not match" as a description operator', () => {
+    const groups: FilterGroup[] = [
+      { conditions: [{ field: 'description', operator: 'matches', value: 'uber' }] },
+    ];
+    const { onChange } = renderFilterBuilder(groups);
+    const operatorSelect = screen.getByDisplayValue('matches');
+    fireEvent.change(operatorSelect, { target: { value: 'not_matches' } });
+    expect(onChange).toHaveBeenCalledWith([
+      { conditions: [{ field: 'description', operator: 'not_matches', value: 'uber' }] },
+    ]);
+  });
+
+  it('keeps the regex input when the description operator is "does not match"', () => {
+    const groups: FilterGroup[] = [
+      { conditions: [{ field: 'description', operator: 'not_matches', value: '' }] },
+    ];
+    const { onChange } = renderFilterBuilder(groups);
+    const descInput = screen.getByPlaceholderText('regex pattern (e.g. uber|lyft)');
+    fireEvent.change(descInput, { target: { value: 'venmo' } });
+    expect(onChange).toHaveBeenCalledWith([
+      { conditions: [{ field: 'description', operator: 'not_matches', value: 'venmo' }] },
+    ]);
+  });
+
   // Labels value input
   it('toggles label selection when clicking label buttons', () => {
     const groups: FilterGroup[] = [
