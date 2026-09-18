@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dashboard import Dashboard, DashboardPanel
@@ -236,6 +237,58 @@ async def test_create_panel(client: AsyncClient, db_session: AsyncSession):
     assert data["dashboardId"] == "d1"
     assert data["title"] == "Expenses"
     assert len(data["filterGroups"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_create_panel_when_legacy_filter_type_is_not_null(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Panels still insert on databases predating Alembic.
+
+    The pre-Alembic schema declared the now-unused filter_type column
+    NOT NULL DEFAULT 'both'; the baseline migration declares it nullable, so
+    long-lived databases carry the stricter constraint. The INSERT must leave
+    the column out and let the DB default fill it, never send an explicit NULL.
+    """
+    await db_session.execute(
+        text("ALTER TABLE dashboard_panels ALTER COLUMN filter_type SET NOT NULL")
+    )
+    db_session.add(
+        Dashboard(
+            id="d1",
+            name="Test",
+            is_default=False,
+            date_range_start=date(2024, 1, 1),
+            date_range_end=date(2024, 12, 31),
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/dashboards/d1/panels",
+        json={
+            "id": "p1",
+            "title": "Car Payment",
+            "chartType": "bar",
+            "seriesMode": "two_series",
+            "netOrientation": None,
+            "legendOptions": None,
+            "filterGroups": [
+                {
+                    "conditions": [
+                        {"field": "category", "operator": "is", "value": ["Car"]}
+                    ]
+                }
+            ],
+            "panelOrder": 0,
+        },
+    )
+    assert response.status_code == 201
+
+    stored = await db_session.execute(
+        text("SELECT filter_type FROM dashboard_panels WHERE id = 'p1'")
+    )
+    assert stored.scalar() == "both"
 
 
 @pytest.mark.asyncio
