@@ -1,8 +1,9 @@
 """
-CSV parsing and merging utilities.
+CSV parsing utilities.
 
-Ports legacy/helpers/csvParser.js — handles CSV text parsing, column
-mapping with auto-categorization, and expense merge/deduplication.
+Ports legacy/helpers/csvParser.js — handles CSV text parsing and column
+mapping with auto-categorization. Imports are always additive: identical
+rows are inserted as separate transactions, never collapsed.
 """
 
 import secrets
@@ -111,47 +112,6 @@ def parse_csv(
         )
 
     return transactions
-
-
-def merge_expenses(existing: list[dict], new_expenses: list[dict]) -> dict:
-    """Merge new expenses with existing, deduplicating by date+description+amount+type.
-
-    Returns dict with:
-    - merged: all unique transactions sorted by date descending
-    - added: only the new ones that weren't duplicates
-    """
-    seen: set[tuple] = set()
-    merged: list[dict] = []
-
-    # Add existing first
-    for e in existing:
-        key = (
-            str(e["date"]),
-            e["description"],
-            float(e["amount"]),
-            e["type"],
-        )
-        seen.add(key)
-        merged.append(e)
-
-    # Add new if not duplicate
-    added: list[dict] = []
-    for e in new_expenses:
-        key = (
-            str(e["date"]),
-            e["description"],
-            float(e["amount"]),
-            e["type"],
-        )
-        if key not in seen:
-            seen.add(key)
-            merged.append(e)
-            added.append(e)
-
-    # Sort by date descending
-    merged.sort(key=lambda x: str(x["date"]), reverse=True)
-
-    return {"merged": merged, "added": added}
 
 
 def parse_csv_with_mapping(

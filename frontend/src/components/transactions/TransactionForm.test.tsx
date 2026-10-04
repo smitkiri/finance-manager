@@ -91,6 +91,68 @@ describe('TransactionForm', () => {
     expect(userSelect.value).toBe('user-2');
   });
 
+  describe('prefillFrom (duplicate transaction)', () => {
+    it('populates the fields but keeps the form in "add" mode', () => {
+      const source = createExpense({
+        date: '2026-03-10',
+        description: 'Gym membership',
+        category: 'Entertainment',
+        amount: 39.99,
+        type: 'expense',
+        user: 'user-2',
+      });
+      const props = createDefaultProps({ prefillFrom: source });
+      render(<TransactionForm {...props} />);
+
+      expect(screen.getByText('Add New Transaction')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Add Transaction/i })).toBeInTheDocument();
+
+      expect(screen.getByDisplayValue('2026-03-10')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Gym membership')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('39.99')).toBeInTheDocument();
+      expect((screen.getByDisplayValue('Entertainment') as HTMLSelectElement).value).toBe(
+        'Entertainment'
+      );
+      expect((screen.getByDisplayValue('Bob') as HTMLSelectElement).value).toBe('user-2');
+    });
+
+    it('submits the prefilled values as a new transaction', () => {
+      const source = createExpense({
+        date: '2026-03-10',
+        description: 'Gym membership',
+        category: 'Entertainment',
+        amount: 39.99,
+        type: 'expense',
+        user: 'user-2',
+      });
+      const props = createDefaultProps({ prefillFrom: source });
+      render(<TransactionForm {...props} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
+
+      expect(props.onSubmit).toHaveBeenCalledTimes(1);
+      expect((props.onSubmit as jest.Mock).mock.calls[0][0]).toEqual({
+        date: '2026-03-10',
+        description: 'Gym membership',
+        category: 'Entertainment',
+        amount: '39.99',
+        type: 'expense',
+        user: 'user-2',
+      });
+    });
+
+    it('editingExpense wins over prefillFrom', () => {
+      const props = createDefaultProps({
+        editingExpense: createExpense({ description: 'Being edited' }),
+        prefillFrom: createExpense({ id: 'exp-2', description: 'Being duplicated' }),
+      });
+      render(<TransactionForm {...props} />);
+
+      expect(screen.getByText('Edit Transaction')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Being edited')).toBeInTheDocument();
+    });
+  });
+
   it('type toggle switches between expense and income', async () => {
     const props = createDefaultProps();
     render(<TransactionForm {...props} />);

@@ -1,5 +1,4 @@
 from app.utils.csv_parser import (
-    merge_expenses,
     parse_csv,
     parse_csv_line,
     parse_csv_with_mapping,
@@ -61,131 +60,28 @@ class TestParseCsv:
         assert result[0]["id"] != result[1]["id"]
 
     def test_metadata_populated(self):
-        csv_text = (
-            "Date,Description,Category,Amount\n"
-            "2024-01-15,Coffee,Food,-4.50\n"
-        )
+        csv_text = "Date,Description,Category,Amount\n2024-01-15,Coffee,Food,-4.50\n"
         result = parse_csv(csv_text, file_name="test.csv")
         assert result[0]["metadata"]["sourceName"] == "test.csv"
         assert "importedAt" in result[0]["metadata"]
 
     def test_negative_amount_is_expense(self):
-        csv_text = (
-            "Date,Description,Category,Amount\n"
-            "2024-01-15,Coffee,Food,-4.50\n"
-        )
+        csv_text = "Date,Description,Category,Amount\n2024-01-15,Coffee,Food,-4.50\n"
         result = parse_csv(csv_text)
         assert result[0]["type"] == "expense"
         assert result[0]["amount"] == 4.50  # absolute value
 
     def test_positive_amount_is_income(self):
         csv_text = (
-            "Date,Description,Category,Amount\n"
-            "2024-01-15,Refund,Shopping,25.00\n"
+            "Date,Description,Category,Amount\n2024-01-15,Refund,Shopping,25.00\n"
         )
         result = parse_csv(csv_text)
         assert result[0]["type"] == "income"
 
 
-class TestMergeExpenses:
-    def test_no_duplicates(self):
-        existing = [
-            {
-                "id": "1",
-                "date": "2024-01-15",
-                "description": "Coffee",
-                "amount": 4.5,
-                "type": "expense",
-            },
-        ]
-        new = [
-            {
-                "id": "2",
-                "date": "2024-01-16",
-                "description": "Tea",
-                "amount": 3.0,
-                "type": "expense",
-            },
-        ]
-        result = merge_expenses(existing, new)
-        assert len(result["merged"]) == 2
-        assert len(result["added"]) == 1
-
-    def test_exact_duplicate_removed(self):
-        existing = [
-            {
-                "id": "1",
-                "date": "2024-01-15",
-                "description": "Coffee",
-                "amount": 4.5,
-                "type": "expense",
-            },
-        ]
-        new = [
-            {
-                "id": "2",
-                "date": "2024-01-15",
-                "description": "Coffee",
-                "amount": 4.5,
-                "type": "expense",
-            },
-        ]
-        result = merge_expenses(existing, new)
-        assert len(result["merged"]) == 1
-        assert len(result["added"]) == 0
-
-    def test_sorted_by_date_descending(self):
-        existing = [
-            {
-                "id": "1",
-                "date": "2024-01-10",
-                "description": "Old",
-                "amount": 1.0,
-                "type": "expense",
-            },
-        ]
-        new = [
-            {
-                "id": "2",
-                "date": "2024-01-20",
-                "description": "New",
-                "amount": 2.0,
-                "type": "expense",
-            },
-        ]
-        result = merge_expenses(existing, new)
-        assert result["merged"][0]["date"] == "2024-01-20"
-
-    def test_same_description_different_amount_not_duplicate(self):
-        existing = [
-            {
-                "id": "1",
-                "date": "2024-01-15",
-                "description": "Coffee",
-                "amount": 4.5,
-                "type": "expense",
-            },
-        ]
-        new = [
-            {
-                "id": "2",
-                "date": "2024-01-15",
-                "description": "Coffee",
-                "amount": 5.0,
-                "type": "expense",
-            },
-        ]
-        result = merge_expenses(existing, new)
-        assert len(result["merged"]) == 2
-        assert len(result["added"]) == 1
-
-
 class TestParseCsvWithMapping:
     def test_basic_mapping(self):
-        csv_text = (
-            "Trans Date,Desc,Cat,Amt\n"
-            "2024-01-15,Coffee Shop,Food,4.50\n"
-        )
+        csv_text = "Trans Date,Desc,Cat,Amt\n2024-01-15,Coffee Shop,Food,4.50\n"
         mapping = {
             "id": "src1",
             "name": "Test Bank",
@@ -203,10 +99,7 @@ class TestParseCsvWithMapping:
         assert result["expenses"][0]["amount"] == 4.50
 
     def test_flip_income_expense(self):
-        csv_text = (
-            "Date,Description,Category,Amount\n"
-            "2024-01-15,Coffee,Food,-4.50\n"
-        )
+        csv_text = "Date,Description,Category,Amount\n2024-01-15,Coffee,Food,-4.50\n"
         mapping = {
             "id": "src1",
             "name": "Test Bank",
@@ -223,10 +116,7 @@ class TestParseCsvWithMapping:
         assert result["expenses"][0]["type"] == "income"
 
     def test_ignore_column(self):
-        csv_text = (
-            "Date,Extra,Description,Amount\n"
-            "2024-01-15,junk,Coffee,-4.50\n"
-        )
+        csv_text = "Date,Extra,Description,Amount\n2024-01-15,junk,Coffee,-4.50\n"
         mapping = {
             "id": "src1",
             "name": "Test",
@@ -242,10 +132,7 @@ class TestParseCsvWithMapping:
         assert result["expenses"][0]["description"] == "Coffee"
 
     def test_auto_fills_categories(self):
-        csv_text = (
-            "Date,Description,Amount\n"
-            "2024-01-15,Starbucks Coffee,-5.00\n"
-        )
+        csv_text = "Date,Description,Amount\n2024-01-15,Starbucks Coffee,-5.00\n"
         mapping = {
             "id": "src1",
             "name": "Test",
@@ -266,10 +153,7 @@ class TestParseCsvWithMapping:
         result = parse_csv_with_mapping(csv_text, mapping, "user1", existing)
         assert result["expenses"][0]["category"] == "Food & Drink"
         assert len(result["autoFilledCategories"]) == 1
-        assert (
-            result["autoFilledCategories"][0]["suggestedCategory"]
-            == "Food & Drink"
-        )
+        assert result["autoFilledCategories"][0]["suggestedCategory"] == "Food & Drink"
 
     def test_skips_rows_without_required_fields(self):
         csv_text = (
