@@ -11,6 +11,7 @@ from app.models.report import Report
 from app.models.source import Source
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
+from app.models.transfer_group import TransferGroup
 from app.models.user import User
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "Source",
     "Subscription",
     "Transaction",
+    "TransferGroup",
     "User",
 ]

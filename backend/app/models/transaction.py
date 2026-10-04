@@ -55,6 +55,15 @@ class Transaction(Base):
     subscription_id: Mapped[str | None] = mapped_column(
         String(255), ForeignKey("subscriptions.id", ondelete="SET NULL")
     )
+    # Transfer/refund group membership. No ondelete: groups are only removed by
+    # `dissolve_group`, which clears these columns first (enforced by CHECKs).
+    transfer_group_id: Mapped[str | None] = mapped_column(
+        String(255),
+        ForeignKey("transfer_groups.id", name="fk_transactions_transfer_group"),
+    )
+    transfer_role: Mapped[str | None] = mapped_column(String(10))
+    # Counted amount after group allocation; NULL means "counts in full".
+    effective_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
 
     import_session = relationship("ImportSession", back_populates="transactions")
 
@@ -70,4 +79,23 @@ class Transaction(Base):
         Index("idx_transactions_excluded", "excluded_from_calculations"),
         Index("idx_transactions_import_id", "import_id"),
         Index("idx_transactions_subscription_id", "subscription_id"),
+        CheckConstraint(
+            "transfer_role IN ('anchor', 'member')",
+            name="transactions_transfer_role_check",
+        ),
+        CheckConstraint(
+            "(transfer_group_id IS NULL) = (transfer_role IS NULL)",
+            name="transactions_transfer_group_role_check",
+        ),
+        CheckConstraint(
+            "transfer_group_id IS NOT NULL OR effective_amount IS NULL",
+            name="transactions_effective_amount_check",
+        ),
+        Index("idx_transactions_transfer_group", "transfer_group_id"),
+        Index(
+            "uq_transactions_transfer_group_anchor",
+            "transfer_group_id",
+            unique=True,
+            postgresql_where=text("transfer_role = 'anchor'"),
+        ),
     )
