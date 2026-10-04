@@ -72,7 +72,7 @@ describe('AuthGuard', () => {
       user: {
         id: 'demo-user',
         name: 'Demo',
-        email: 'demo@tally.local',
+        email: 'demo@demo.tallyfinance.xyz',
         householdId: 'household-demo',
       },
       household: { id: 'household-demo', name: 'Demo' },

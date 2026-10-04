@@ -130,7 +130,7 @@ async def test_create_invitation_503_in_demo_mode(
         User(
             id=settings.demo_user_id,
             name="Demo",
-            email="demo@tally.local",
+            email="demo@demo.tallyfinance.xyz",
             password_hash=hash_password("unused"),
             household_id=settings.demo_household_id,
         )

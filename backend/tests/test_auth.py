@@ -348,7 +348,7 @@ async def test_demo_mode_me_returns_demo_user_without_token(
         User(
             id=settings.demo_user_id,
             name="Demo",
-            email="demo@tally.local",
+            email="demo@demo.tallyfinance.xyz",
             password_hash=hash_password("unused"),
             household_id=settings.demo_household_id,
         )

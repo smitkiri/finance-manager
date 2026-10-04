@@ -80,19 +80,19 @@ USERS = [
     {
         "id": USER_DEMO,
         "name": "Demo",
-        "email": "demo@tally.local",
+        "email": "demo@demo.tallyfinance.xyz",
         "password_hash": DEMO_PASSWORD_HASH,
     },
     {
         "id": USER_ALICE,
         "name": "Alice Chen",
-        "email": "alice@demo.tally.local",
+        "email": "alice@demo.tallyfinance.xyz",
         "password_hash": DEMO_PASSWORD_HASH,
     },
     {
         "id": USER_BEN,
         "name": "Ben Reyes",
-        "email": "ben@demo.tally.local",
+        "email": "ben@demo.tallyfinance.xyz",
         "password_hash": DEMO_PASSWORD_HASH,
     },
 ]
@@ -1198,13 +1198,11 @@ reports = [
 
 # ---------- Saved date ranges ----------
 
+# A single row: GET /date-range returns the newest by created_at, and rows
+# inserted in the same reset transaction tie. Default view = last 1 year.
 date_ranges = [
     {
-        "start_date": (ANCHOR - timedelta(days=30)).isoformat(),
-        "end_date": ANCHOR.isoformat(),
-    },
-    {
-        "start_date": date(ANCHOR.year, 1, 1).isoformat(),
+        "start_date": (ANCHOR - timedelta(days=365)).isoformat(),
         "end_date": ANCHOR.isoformat(),
     },
 ]
