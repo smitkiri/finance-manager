@@ -259,3 +259,87 @@ class TestRestore:
         # created_by_user_id should be either None or the authenticated user
         # — never an arbitrary id supplied by the uploader.
         assert txn.created_by_user_id != "u-someone-else"
+
+
+class TestTransferGroupBackup:
+    async def _restore(self, client: AsyncClient, data: dict):
+        files = {
+            "backupFile": ("backup.json", json.dumps(data).encode(), "application/json")
+        }
+        response = await client.post("/api/restore", files=files)
+        assert response.status_code == 200
+        return response
+
+    async def test_backup_round_trip_preserves_groups(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        from app.models.transfer_group import TransferGroup
+        from app.utils.transfer_groups import create_group
+
+        for tid, amount, typ in (
+            ("bk_in", "50.00", "income"),
+            ("bk_out", "80.00", "expense"),
+        ):
+            db_session.add(
+                Transaction(
+                    id=tid,
+                    date=date(2024, 1, 15),
+                    description=tid,
+                    category="Shopping",
+                    amount=Decimal(amount),
+                    type=typ,
+                    labels=[],
+                    metadata_={},
+                )
+            )
+        await db_session.flush()
+        group = await create_group(db_session, "household-default", "bk_in", ["bk_out"])
+
+        backup = (await client.get("/api/backup")).json()
+        assert [g["id"] for g in backup["transfer_groups"]] == [group.id]
+
+        # Wipe and restore.
+        assert (await client.delete("/api/delete-all")).status_code == 200
+        assert (await db_session.execute(select(TransferGroup))).scalars().all() == []
+        await self._restore(client, backup)
+
+        out = await db_session.get(Transaction, "bk_out")
+        assert out is not None
+        await db_session.refresh(out)
+        assert out.transfer_group_id == group.id
+        assert out.transfer_role == "member"
+        assert out.effective_amount == Decimal("30.00")
+
+    async def test_restore_legacy_backup_converts_transfer_pairs(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        info = {
+            "isTransfer": True,
+            "transferId": "legacy-x",
+            "transferType": "self",
+            "excludedFromCalculations": True,
+            "userOverride": False,
+        }
+
+        def row(tid, typ):
+            return {
+                "id": tid,
+                "date": "2024-01-15",
+                "description": tid,
+                "category": "Transfers",
+                "amount": 20.0,
+                "type": typ,
+                "labels": [],
+                "metadata": {},
+                "transfer_info": info,
+                "excluded_from_calculations": False,
+            }
+
+        await self._restore(
+            client, {"transactions": [row("lg_out", "expense"), row("lg_in", "income")]}
+        )
+        lg_out = await db_session.get(Transaction, "lg_out")
+        assert lg_out is not None
+        await db_session.refresh(lg_out)
+        assert lg_out.transfer_group_id is not None
+        assert lg_out.effective_amount == Decimal("0.00")

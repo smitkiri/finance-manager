@@ -18,7 +18,9 @@ from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
 from app.models.transaction import Transaction
+from app.models.transfer_group import TransferGroup
 from app.models.user import User
+from app.utils.transfer_groups import adopt_legacy_transfer_info, recompute_groups
 
 router = APIRouter(prefix="/api", tags=["backup"])
 
@@ -114,6 +116,14 @@ async def backup(
     if dateTo:
         txn_query = txn_query.where(Transaction.date <= date.fromisoformat(dateTo))
     transactions = (await db.execute(txn_query)).scalars().all()
+    group_ids = {t.transfer_group_id for t in transactions if t.transfer_group_id}
+    transfer_groups = (
+        (await db.execute(select(TransferGroup).where(TransferGroup.id.in_(group_ids))))
+        .scalars()
+        .all()
+        if group_ids
+        else []
+    )
 
     return {
         "categories": [_row_to_dict(r) for r in categories],
@@ -125,6 +135,7 @@ async def backup(
         "accounts": [_row_to_dict(r) for r in accounts],
         "account_balances": [_row_to_dict(r) for r in account_balances],
         "transactions": [_row_to_dict(r) for r in transactions],
+        "transfer_groups": [_row_to_dict(r) for r in transfer_groups],
     }
 
 
@@ -194,6 +205,38 @@ async def restore(
         )
         await db.execute(stmt)
 
+    for group in data.get("transfer_groups", []):
+        stmt = (
+            insert(TransferGroup)
+            .values(
+                id=group["id"],
+                household_id=household_id,
+                kind=group.get("kind", "self"),
+                source=group.get("source", "manual"),
+                include_in_calculations=group.get("include_in_calculations", False),
+            )
+            .on_conflict_do_nothing(index_elements=["id"])
+        )
+        await db.execute(stmt)
+    uploaded_group_ids = [g["id"] for g in data.get("transfer_groups", [])]
+    # Only groups that ended up in this household (ids may collide).
+    valid_group_ids = (
+        set(
+            (
+                await db.execute(
+                    select(TransferGroup.id).where(
+                        TransferGroup.id.in_(uploaded_group_ids),
+                        TransferGroup.household_id == household_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if uploaded_group_ids
+        else set()
+    )
+
     for txn in data.get("transactions", []):
         txn_date = txn["date"]
         if isinstance(txn_date, str):
@@ -201,6 +244,10 @@ async def restore(
         # Backups taken before the household migration use `user_id`;
         # newer backups use `created_by_user_id`.
         uploaded_attr = txn.get("created_by_user_id") or txn.get("user_id")
+        group_id = txn.get("transfer_group_id")
+        role = txn.get("transfer_role")
+        if group_id not in valid_group_ids or role not in ("anchor", "member"):
+            group_id = role = None
         stmt = (
             insert(Transaction)
             .values(
@@ -216,10 +263,17 @@ async def restore(
                 metadata_=txn.get("metadata", {}),
                 transfer_info=txn.get("transfer_info"),
                 excluded_from_calculations=txn.get("excluded_from_calculations", False),
+                transfer_group_id=group_id,
+                transfer_role=role,
             )
             .on_conflict_do_nothing(index_elements=["id"])
         )
         await db.execute(stmt)
+
+    # Effective amounts are derived, so recompute rather than trust the upload;
+    # legacy backups only carry `transfer_info` pairs.
+    await recompute_groups(db, valid_group_ids)
+    await adopt_legacy_transfer_info(db, household_id)
 
     for report in data.get("reports", []):
         stmt = (

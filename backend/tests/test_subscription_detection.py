@@ -23,7 +23,7 @@ def _txn(
     amount: float = 15.99,
     type_: str = "expense",
     d: date | None = None,
-    transfer_info: dict | None = None,
+    transfer_group_id: str | None = None,
     excluded: bool = False,
 ) -> dict:
     return {
@@ -36,7 +36,7 @@ def _txn(
         "user": "u1",
         "labels": [],
         "metadata": {},
-        "transferInfo": transfer_info,
+        "transferGroupId": transfer_group_id,
         "excludedFromCalculations": excluded,
         "subscriptionId": None,
     }
@@ -76,9 +76,9 @@ def test_two_charges_not_enough() -> None:
 
 def test_transfer_txns_filtered_out() -> None:
     txns = [
-        _txn("t1", d=date(2026, 1, 5), transfer_info={"isTransfer": True}),
-        _txn("t2", d=date(2026, 2, 5), transfer_info={"isTransfer": True}),
-        _txn("t3", d=date(2026, 3, 5), transfer_info={"isTransfer": True}),
+        _txn("t1", d=date(2026, 1, 5), transfer_group_id="tg_1"),
+        _txn("t2", d=date(2026, 2, 5), transfer_group_id="tg_1"),
+        _txn("t3", d=date(2026, 3, 5), transfer_group_id="tg_1"),
     ]
     result = detect_subscriptions(txns, existing_subscriptions=[])
     assert result["subscriptions"] == []

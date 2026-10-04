@@ -164,7 +164,6 @@ async def import_csv(
                 created_by_user_id=t.get("user") or body.userId or None,
                 labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
-                transfer_info=t.get("transferInfo"),
                 excluded_from_calculations=t.get("excludedFromCalculations", False),
                 import_id=session_id,
             )
@@ -254,7 +253,6 @@ async def import_with_mapping(
                 created_by_user_id=t.get("user") or body.userId,
                 labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
-                transfer_info=t.get("transferInfo"),
                 excluded_from_calculations=t.get("excludedFromCalculations", False),
                 import_id=session_id,
             )

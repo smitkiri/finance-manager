@@ -35,8 +35,10 @@ from app.models.report import Report
 from app.models.source import Source
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
+from app.models.transfer_group import TransferGroup
 from app.models.user import User
 from app.utils.subscription_utils import run_detection
+from app.utils.transfer_groups import adopt_legacy_transfer_info
 
 logger = logging.getLogger("demo.reset")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -52,6 +54,7 @@ _WIPE_ORDER = [
     AccountBalance,
     Account,
     Transaction,
+    TransferGroup,
     Subscription,
     ImportSession,
     Report,
@@ -267,6 +270,9 @@ async def _run_reset(db: AsyncSession) -> None:
     await _wipe_all(db)
     await _insert_fixture(db, fixture)
     await db.flush()
+    # The fixture stores transfer pairs as legacy `transfer_info`.
+    for hid in {h["id"] for h in fixture.get("households") or []} or {"household-demo"}:
+        await adopt_legacy_transfer_info(db, hid)
     logger.info(
         "demo reset: shifted %d days; inserted %d users, %d sources, "
         "%d transactions, %d accounts",
