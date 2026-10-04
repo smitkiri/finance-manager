@@ -52,6 +52,7 @@ function AppContent() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<Expense | null>(null);
   const [transactionFilters, setTransactionFilters] = useState<FilterType>({});
   const [dateRange, setDateRange] = useState<DateRange>({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Start of current month
@@ -319,6 +320,7 @@ function AppContent() {
         setExpenses(updatedExpenses);
         bumpTransactionListVersion();
         setIsFormOpen(false);
+        setDuplicateSource(null);
       } catch (error) {
         console.error('Error adding expense:', error);
       }
@@ -326,7 +328,14 @@ function AppContent() {
     [bumpTransactionListVersion]
   );
 
+  const openAddTransactionForm = useCallback(() => {
+    setEditingExpense(null);
+    setDuplicateSource(null);
+    setIsFormOpen(true);
+  }, []);
+
   const handleEditExpense = useCallback((expense: Expense) => {
+    setDuplicateSource(null);
     setEditingExpense(expense);
     setIsFormOpen(true);
   }, []);
@@ -870,6 +879,15 @@ function AppContent() {
     setIsTransactionDetailsOpen(true);
   }, []);
 
+  // Close the details sheet and open a blank "add" form pre-filled from it.
+  const handleDuplicateTransaction = useCallback((transaction: Expense) => {
+    setIsTransactionDetailsOpen(false);
+    setSelectedTransaction(null);
+    setEditingExpense(null);
+    setDuplicateSource(transaction);
+    setIsFormOpen(true);
+  }, []);
+
   const handleTransferOverride = async (transactionId: string, includeInCalculations: boolean) => {
     try {
       const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/transfer-override`, {
@@ -1084,7 +1102,7 @@ function AppContent() {
                     </div>
                   </label>
                   <button
-                    onClick={() => setIsFormOpen(true)}
+                    onClick={openAddTransactionForm}
                     className="flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     title="Add Transaction"
                   >
@@ -1108,7 +1126,7 @@ function AppContent() {
                       {
                         label: 'Add transaction',
                         icon: <Plus size={18} />,
-                        onClick: () => setIsFormOpen(true),
+                        onClick: openAddTransactionForm,
                       },
                       {
                         label: 'Import CSV',
@@ -1284,8 +1302,10 @@ function AppContent() {
         onCancel={() => {
           setIsFormOpen(false);
           setEditingExpense(null);
+          setDuplicateSource(null);
         }}
         editingExpense={editingExpense}
+        prefillFrom={duplicateSource}
         categories={categories}
         users={users}
       />
@@ -1338,6 +1358,7 @@ function AppContent() {
         onTransferOverride={handleTransferOverride}
         onExcludeToggle={handleExcludeToggle}
         onMarkAsTransferRefund={handleMarkAsTransferRefund}
+        onDuplicate={handleDuplicateTransaction}
         allTransactions={expenses}
         selectedUserId={selectedUserId}
       />

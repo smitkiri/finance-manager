@@ -7,6 +7,8 @@ interface TransactionFormProps {
   onCancel: () => void;
   isOpen: boolean;
   editingExpense?: Expense | null;
+  /** Pre-fills the fields for a brand-new transaction (e.g. "Duplicate transaction"). */
+  prefillFrom?: Expense | null;
   categories: string[];
   users: { id: string; name: string }[];
 }
@@ -16,6 +18,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onCancel,
   isOpen,
   editingExpense,
+  prefillFrom,
   categories,
   users,
 }) => {
@@ -29,14 +32,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   });
 
   useEffect(() => {
-    if (editingExpense) {
+    const source = editingExpense ?? prefillFrom;
+    if (source) {
       setFormData({
-        date: editingExpense.date,
-        description: editingExpense.description,
-        category: editingExpense.category,
-        amount: editingExpense.amount.toString(),
-        type: editingExpense.type,
-        user: editingExpense.user || '',
+        date: source.date,
+        description: source.description,
+        category: source.category,
+        amount: source.amount.toString(),
+        type: source.type,
+        user: source.user || '',
       });
     } else {
       setFormData({
@@ -48,7 +52,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         user: '',
       });
     }
-  }, [editingExpense, isOpen, users]);
+  }, [editingExpense, prefillFrom, isOpen, users]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

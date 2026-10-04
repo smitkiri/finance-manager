@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse, PlainTextResponse
-from sqlalchemy import delete, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -19,16 +19,24 @@ from app.schemas.imports import (
     ImportWithMappingRequest,
     SaveColumnMappingRequest,
 )
-from app.utils.csv_parser import merge_expenses, parse_csv, parse_csv_with_mapping
+from app.utils.csv_parser import parse_csv, parse_csv_with_mapping
 from app.utils.date_parser import parse_date
 from app.utils.subscription_utils import run_detection_bg
-from app.utils.transfer_detection import detect_transfers
-from app.utils.transfer_utils import txns_to_dicts
+from app.utils.transfer_utils import run_detection, txns_to_dicts
 
 router = APIRouter(prefix="/api", tags=["imports"])
 
 
 COLUMN_MAPPINGS_KEY = "column_mappings"
+
+
+async def _household_transaction_count(db: AsyncSession, household_id: str) -> int:
+    count = await db.scalar(
+        select(func.count())
+        .select_from(Transaction)
+        .where(Transaction.household_id == household_id)
+    )
+    return count or 0
 
 
 @router.get("/export-csv")
@@ -122,24 +130,11 @@ async def import_csv(
             "sessionId": None,
         }
 
-    # Load existing transactions for this household
-    result = await db.execute(
-        select(Transaction).where(Transaction.household_id == household_id)
-    )
-    existing_orm = result.scalars().all()
-    existing_dicts = txns_to_dicts(existing_orm)
-
-    # Merge (deduplicate)
-    merge_result = merge_expenses(existing_dicts, new_transactions)
-    merged = merge_result["merged"]
-    added = merge_result["added"]
-
-    # Run transfer detection on full merged set
-    detection = detect_transfers(merged)
-    updated = detection["updatedTransactions"]
-
+    existing_count = await _household_transaction_count(db, household_id)
     assert_demo_replace_count(
-        len(updated), cap=settings.demo_max_transactions, entity="transactions"
+        existing_count + len(new_transactions),
+        cap=settings.demo_max_transactions,
+        entity="transactions",
     )
 
     # Create import session
@@ -152,16 +147,11 @@ async def import_csv(
         file_name=body.fileName,
         transaction_count=len(new_transactions),
     )
-
-    # Delete all transactions in this household and reinsert
-    await db.execute(
-        delete(Transaction).where(Transaction.household_id == household_id)
-    )
     db.add(import_session)
     await db.flush()
 
-    added_ids = {id(t) for t in added}
-    for t in updated:
+    # Imports are additive — every parsed row becomes its own transaction.
+    for t in new_transactions:
         db.add(
             Transaction(
                 id=t["id"],
@@ -176,19 +166,21 @@ async def import_csv(
                 metadata_=t.get("metadata", {}),
                 transfer_info=t.get("transferInfo"),
                 excluded_from_calculations=t.get("excludedFromCalculations", False),
-                import_id=session_id if id(t) in added_ids else None,
+                import_id=session_id,
             )
         )
+    await db.flush()
 
-    await db.commit()
+    # Transfer detection runs over the household's full set (commits the inserts)
+    detection = await run_detection(db, household_id=household_id)
     bg.add_task(run_detection_bg, household_id)
 
     return {
         "success": True,
         "imported": len(new_transactions),
-        "added": len(added),
-        "total": len(updated),
-        "transfersDetected": len(detection["transfers"]),
+        "added": len(new_transactions),
+        "total": detection["totalTransactions"] if detection else len(new_transactions),
+        "transfersDetected": detection["transfersDetected"] if detection else 0,
         "sessionId": session_id,
     }
 
@@ -228,17 +220,10 @@ async def import_with_mapping(
             "sessionId": None,
         }
 
-    # Merge (deduplicate)
-    merge_result = merge_expenses(existing_dicts, new_transactions)
-    merged = merge_result["merged"]
-    added = merge_result["added"]
-
-    # Run transfer detection
-    detection = detect_transfers(merged)
-    updated = detection["updatedTransactions"]
-
     assert_demo_replace_count(
-        len(updated), cap=settings.demo_max_transactions, entity="transactions"
+        len(existing_dicts) + len(new_transactions),
+        cap=settings.demo_max_transactions,
+        entity="transactions",
     )
 
     # Create import session
@@ -252,16 +237,11 @@ async def import_with_mapping(
         file_name=body.fileName,
         transaction_count=len(new_transactions),
     )
-
-    # Delete transactions in this household and reinsert
-    await db.execute(
-        delete(Transaction).where(Transaction.household_id == household_id)
-    )
     db.add(import_session)
     await db.flush()
 
-    added_ids = {id(t) for t in added}
-    for t in updated:
+    # Imports are additive — every parsed row becomes its own transaction.
+    for t in new_transactions:
         db.add(
             Transaction(
                 id=t["id"],
@@ -276,19 +256,21 @@ async def import_with_mapping(
                 metadata_=t.get("metadata", {}),
                 transfer_info=t.get("transferInfo"),
                 excluded_from_calculations=t.get("excludedFromCalculations", False),
-                import_id=session_id if id(t) in added_ids else None,
+                import_id=session_id,
             )
         )
+    await db.flush()
 
-    await db.commit()
+    # Transfer detection runs over the household's full set (commits the inserts)
+    detection = await run_detection(db, household_id=household_id)
     bg.add_task(run_detection_bg, household_id)
 
     return {
         "success": True,
         "imported": len(new_transactions),
-        "added": len(added),
-        "total": len(updated),
-        "transfersDetected": len(detection["transfers"]),
+        "added": len(new_transactions),
+        "total": detection["totalTransactions"] if detection else len(new_transactions),
+        "transfersDetected": detection["transfersDetected"] if detection else 0,
         "autoFilledCategories": auto_filled,
         "sessionId": session_id,
     }

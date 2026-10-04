@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.import_session import ImportSession
@@ -116,9 +117,11 @@ class TestImportCsv:
         assert session is not None
         assert session.file_name == "test.csv"
 
-    async def test_import_deduplicates(
+    async def test_import_keeps_rows_matching_existing_transactions(
         self, client: AsyncClient, db_session: AsyncSession
     ):
+        """Imports are additive — a row identical to an existing transaction
+        is still inserted rather than silently dropped."""
         # Pre-populate a transaction
         db_session.add(
             Transaction(
@@ -140,8 +143,54 @@ class TestImportCsv:
         )
         response = await client.post("/api/import-csv", json={"csvText": csv_text})
         data = response.json()
-        assert data["added"] == 1  # Only Tea is new
-        assert data["total"] == 2  # Coffee (existing) + Tea
+        assert data["added"] == 2  # both CSV rows imported
+        assert data["total"] == 3  # existing Coffee + imported Coffee + Tea
+
+    async def test_import_keeps_identical_rows_within_one_file(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Two identical rows in the same CSV become two transactions."""
+        csv_text = (
+            "Date,Description,Category,Amount\n"
+            "2024-01-15,Coffee Shop,Food,-4.50\n"
+            "2024-01-15,Coffee Shop,Food,-4.50\n"
+        )
+        response = await client.post("/api/import-csv", json={"csvText": csv_text})
+        data = response.json()
+        assert data["imported"] == 2
+        assert data["added"] == 2
+        assert data["total"] == 2
+
+    async def test_import_preserves_earlier_import_ids(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """A second import must not orphan the first session's transactions."""
+        first = await client.post(
+            "/api/import-csv",
+            json={
+                "csvText": (
+                    "Date,Description,Category,Amount\n"
+                    "2024-01-15,Coffee Shop,Food,-4.50\n"
+                ),
+                "fileName": "first.csv",
+            },
+        )
+        first_session = first.json()["sessionId"]
+
+        await client.post(
+            "/api/import-csv",
+            json={
+                "csvText": (
+                    "Date,Description,Category,Amount\n2024-02-15,Tea,Food,-3.00\n"
+                ),
+                "fileName": "second.csv",
+            },
+        )
+
+        result = await db_session.execute(
+            select(Transaction).where(Transaction.import_id == first_session)
+        )
+        assert len(result.scalars().all()) == 1
 
 
 class TestImportWithMapping:

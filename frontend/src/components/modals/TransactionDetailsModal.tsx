@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Tag, DollarSign, Clock, Database, ArrowRightLeft, Repeat } from 'lucide-react';
+import {
+  Calendar,
+  Tag,
+  DollarSign,
+  Clock,
+  Database,
+  ArrowRightLeft,
+  Repeat,
+  Copy,
+} from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { Expense, Subscription } from '../../types';
@@ -16,6 +25,7 @@ interface TransactionDetailsModalProps {
   onTransferOverride?: (transactionId: string, includeInCalculations: boolean) => void;
   onExcludeToggle?: (transactionId: string, exclude: boolean) => void;
   onMarkAsTransferRefund?: (transactionId: string, pairTransactionId: string) => void;
+  onDuplicate?: (transaction: Expense) => void;
   allTransactions?: Expense[];
   selectedUserId?: string | null;
 }
@@ -27,6 +37,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   onTransferOverride,
   onExcludeToggle,
   onMarkAsTransferRefund,
+  onDuplicate,
   allTransactions = [],
   selectedUserId,
 }) => {
@@ -126,6 +137,16 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         >
           <Repeat size={16} />
           Add to subscription
+        </button>
+      )}
+      {onDuplicate && (
+        <button
+          type="button"
+          onClick={() => onDuplicate(transaction)}
+          className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          <Copy size={16} />
+          Duplicate Transaction
         </button>
       )}
       <button
