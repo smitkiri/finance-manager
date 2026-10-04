@@ -25,6 +25,7 @@ import {
   SubscriptionCreateBody,
   SubscriptionPatchBody,
   SubscriptionStatus,
+  TransferGroupDetail,
 } from '../types';
 
 interface StorageMetadata {
@@ -1426,6 +1427,53 @@ export class ApiClient {
       }
     );
     if (!response.ok) throw new Error('Failed to reorder panels');
+  }
+
+  // ------------------------------------------------------------------
+  // Transfer/refund groups
+  // ------------------------------------------------------------------
+
+  private static async transferGroupRequest(path: string, init?: RequestInit): Promise<Response> {
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/transfer-groups${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...init,
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || 'Transfer group request failed');
+    }
+    return response;
+  }
+
+  static async createTransferGroup(
+    anchorId: string,
+    memberIds: string[]
+  ): Promise<TransferGroupDetail> {
+    const response = await this.transferGroupRequest('', {
+      method: 'POST',
+      body: JSON.stringify({ anchorId, memberIds }),
+    });
+    return response.json();
+  }
+
+  static async getTransferGroup(groupId: string): Promise<TransferGroupDetail> {
+    const response = await this.transferGroupRequest(`/${groupId}`);
+    return response.json();
+  }
+
+  static async updateTransferGroup(
+    groupId: string,
+    patch: { memberIds?: string[]; includeInCalculations?: boolean }
+  ): Promise<TransferGroupDetail> {
+    const response = await this.transferGroupRequest(`/${groupId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+    return response.json();
+  }
+
+  static async deleteTransferGroup(groupId: string): Promise<void> {
+    await this.transferGroupRequest(`/${groupId}`, { method: 'DELETE' });
   }
 
   static async loadDashboardData(

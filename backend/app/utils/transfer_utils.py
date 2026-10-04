@@ -1,7 +1,7 @@
 """
 Shared transfer detection helpers.
 
-Used by: transfers, imports, import_sessions, data routes.
+Used by: transfers, imports, import_sessions, data, teller routes.
 """
 
 from collections.abc import Sequence
@@ -10,12 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import Transaction
+from app.models.transfer_group import TransferGroup
 from app.utils.transfer_detection import detect_transfers
+from app.utils.transfer_groups import create_group, dissolve_groups_where
 
 
-def txns_to_dicts(
-    all_txns: Sequence[Transaction], strip_transfer_info: bool = False
-) -> list[dict]:
+def txns_to_dicts(all_txns: Sequence[Transaction]) -> list[dict]:
     """Convert ORM Transaction objects to dicts for transfer detection."""
     return [
         {
@@ -28,7 +28,6 @@ def txns_to_dicts(
             "user": t.created_by_user_id,
             "labels": t.labels or [],
             "metadata": t.metadata_ or {},
-            "transferInfo": None if strip_transfer_info else t.transfer_info,
             "excludedFromCalculations": t.excluded_from_calculations,
         }
         for t in all_txns
@@ -40,39 +39,50 @@ async def run_detection(
     strip_existing: bool = False,
     household_id: str | None = None,
 ) -> dict | None:
-    """Run transfer detection on all transactions and persist results.
+    """Detect 1:1 transfer pairs and store them as `auto` transfer groups.
 
-    If `household_id` is provided, detection is scoped to that household;
-    otherwise all transactions are considered.
+    Only ungrouped transactions are considered, so manual groups are never
+    touched. `strip_existing` first dissolves the existing `auto` groups so
+    they are re-detected from scratch. Scoped to `household_id` when given;
+    pairs never cross households either way.
 
     Returns dict with success/transfersDetected/totalTransactions,
     or None if no transactions exist.
     """
+    if strip_existing:
+        clauses = [TransferGroup.source == "auto"]
+        if household_id is not None:
+            clauses.append(TransferGroup.household_id == household_id)
+        await dissolve_groups_where(db, *clauses)
+
     stmt = select(Transaction)
     if household_id is not None:
         stmt = stmt.where(Transaction.household_id == household_id)
-    result = await db.execute(stmt)
-    all_txns = result.scalars().all()
+    all_txns = (await db.execute(stmt)).scalars().all()
 
     if not all_txns:
         return None
 
-    transactions = txns_to_dicts(all_txns, strip_transfer_info=strip_existing)
-    detection_result = detect_transfers(transactions)
-
-    updated_map = {t["id"]: t for t in detection_result["updatedTransactions"]}
+    by_household: dict[str, list[Transaction]] = {}
     for txn in all_txns:
-        updated = updated_map.get(txn.id)
-        if updated:
-            txn.transfer_info = updated.get("transferInfo")
-            txn.excluded_from_calculations = updated.get(
-                "excludedFromCalculations", False
-            )
+        if txn.transfer_group_id is None:
+            by_household.setdefault(txn.household_id, []).append(txn)
+
+    detected = 0
+    for hid, candidates in by_household.items():
+        by_id = {t.id: t for t in candidates}
+        result = detect_transfers(txns_to_dicts(candidates))
+        for pair in result["transfers"]:
+            credit = by_id[pair["credit"]["id"]]
+            debit = by_id[pair["debit"]["id"]]
+            anchor, member = sorted((credit, debit), key=lambda t: (t.date, t.id))
+            await create_group(db, hid, anchor.id, [member.id], source="auto")
+            detected += 1
 
     await db.commit()
 
     return {
         "success": True,
-        "transfersDetected": len(detection_result["transfers"]),
-        "totalTransactions": len(transactions),
+        "transfersDetected": detected,
+        "totalTransactions": len(all_txns),
     }

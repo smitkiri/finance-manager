@@ -106,7 +106,6 @@ def parse_csv(
                     "sourceName": file_name or "CSV Import",
                     "importedAt": now_iso,
                 },
-                "transferInfo": None,
                 "excludedFromCalculations": False,
             }
         )
@@ -217,7 +216,6 @@ def parse_csv_with_mapping(
                     "sourceId": source_id,
                     "importedAt": now_iso,
                 },
-                "transferInfo": None,
                 "excludedFromCalculations": False,
             }
         )

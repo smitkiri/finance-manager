@@ -9,7 +9,7 @@ import secrets
 import time
 import traceback
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from datetime import date as date_type
 from decimal import Decimal
 from typing import Any
@@ -41,7 +41,7 @@ from app.schemas.teller import (
 )
 from app.utils.category_matcher import find_similar_category
 from app.utils.teller_client import TellerClient
-from app.utils.transfer_detection import detect_transfers
+from app.utils.transfer_utils import run_detection
 
 router = APIRouter(prefix="/api/teller", tags=["teller"])
 
@@ -1046,7 +1046,6 @@ async def import_transactions(
                         created_by_user_id=account.get("userId") or None,
                         labels=[],
                         metadata_=metadata,
-                        transfer_info=None,
                         excluded_from_calculations=False,
                         import_id=session_id,
                     )
@@ -1077,52 +1076,9 @@ async def import_transactions(
 
         await db.commit()
 
-        # Transfer detection on nearby transactions (after commit)
+        # Transfer detection over the household (commits)
         if all_new_expenses:
-            import_dates = sorted(e["date"] for e in all_new_expenses)
-            window_start = date_type.fromisoformat(import_dates[0])
-            window_end = date_type.fromisoformat(import_dates[-1])
-
-            window_start -= timedelta(days=3)
-            window_end += timedelta(days=3)
-
-            result = await db.execute(
-                select(Transaction).where(
-                    Transaction.date.between(window_start, window_end)
-                )
-            )
-            all_txns = result.scalars().all()
-            all_dicts = [
-                {
-                    "id": t.id,
-                    "date": t.date,
-                    "description": t.description,
-                    "category": t.category,
-                    "amount": float(t.amount),
-                    "type": t.type,
-                    "user": t.created_by_user_id,
-                    "labels": t.labels or [],
-                    "metadata": t.metadata_ or {},
-                    "transferInfo": t.transfer_info,
-                    "excludedFromCalculations": t.excluded_from_calculations,
-                    "importId": t.import_id,
-                }
-                for t in all_txns
-            ]
-
-            detection = detect_transfers(all_dicts)
-            for expense in detection["updatedTransactions"]:
-                if expense.get("transferInfo"):
-                    result = await db.execute(
-                        select(Transaction).where(Transaction.id == expense["id"])
-                    )
-                    txn = result.scalar_one_or_none()
-                    if txn:
-                        txn.transfer_info = expense["transferInfo"]
-                        txn.excluded_from_calculations = expense.get(
-                            "excludedFromCalculations", False
-                        )
-            await db.commit()
+            await run_detection(db, household_id=household_id)
 
         _import_preview_cache.pop(body.previewToken, None)
         return {"sessions": sessions}

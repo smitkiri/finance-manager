@@ -273,8 +273,7 @@ def _filter_eligible(
     for t in transactions:
         if t.get("type") != "expense":
             continue
-        info = t.get("transferInfo") or {}
-        if info.get("isTransfer"):
+        if t.get("transferGroupId"):
             continue
         if t.get("excludedFromCalculations"):
             continue

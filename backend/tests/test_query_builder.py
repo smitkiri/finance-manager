@@ -13,6 +13,7 @@ from app.utils.query_builder import (
     build_panel_data_query,
     build_stats_filter,
 )
+from app.utils.transfer_groups import create_group
 
 
 async def _seed_transactions(db: AsyncSession):
@@ -196,105 +197,70 @@ async def test_combined_filters(db_session: AsyncSession):
 
 
 async def _seed_stats_transactions(db: AsyncSession):
-    """Seed transactions with various transfer_info states for stats filter tests."""
-    txns = [
-        # Normal expense — should be included
-        Transaction(
-            id="s1",
-            date=date(2024, 1, 15),
-            description="Groceries",
-            category="Food",
-            amount=Decimal("50.00"),
-            type="expense",
-            created_by_user_id="alice",
+    """Seed transactions with various transfer group states for stats tests."""
+
+    def txn(tid, d, desc, amount, typ, user="alice", **kw):
+        return Transaction(
+            id=tid,
+            date=d,
+            description=desc,
+            category=kw.pop("category", "Transfer"),
+            amount=Decimal(amount),
+            type=typ,
+            created_by_user_id=user,
             labels=[],
             metadata_={},
-        ),
-        # Excluded from calculations — should be excluded
-        Transaction(
-            id="s2",
-            date=date(2024, 1, 16),
-            description="Excluded item",
-            category="Food",
-            amount=Decimal("25.00"),
-            type="expense",
-            created_by_user_id="alice",
-            labels=[],
-            metadata_={},
-            excluded_from_calculations=True,
-        ),
-        # Transfer with no user override — should be excluded
-        Transaction(
-            id="s3",
-            date=date(2024, 1, 17),
-            description="Transfer out",
-            category="Transfer",
-            amount=Decimal("100.00"),
-            type="expense",
-            created_by_user_id="alice",
-            labels=[],
-            metadata_={},
-            transfer_info={
-                "isTransfer": True,
-                "transferId": "tf1",
-                "transferType": "self",
-                "excludedFromCalculations": True,
-                "userOverride": False,
-            },
-        ),
-        # Transfer with user override, included — should be included
-        Transaction(
-            id="s4",
-            date=date(2024, 1, 18),
-            description="Override included",
-            category="Transfer",
-            amount=Decimal("200.00"),
-            type="expense",
-            created_by_user_id="alice",
-            labels=[],
-            metadata_={},
-            transfer_info={
-                "isTransfer": True,
-                "transferId": "tf2",
-                "transferType": "self",
-                "excludedFromCalculations": False,
-                "userOverride": True,
-            },
-        ),
-        # Normal income — should be included
-        Transaction(
-            id="s5",
-            date=date(2024, 2, 1),
-            description="Salary",
-            category="Income",
-            amount=Decimal("3000.00"),
-            type="income",
-            created_by_user_id="alice",
-            labels=[],
-            metadata_={},
-        ),
-        # User-type transfer — should be included when userId is specified
-        Transaction(
-            id="s6",
-            date=date(2024, 1, 20),
-            description="User transfer",
-            category="Transfer",
-            amount=Decimal("150.00"),
-            type="expense",
-            created_by_user_id="bob",
-            labels=[],
-            metadata_={},
-            transfer_info={
-                "isTransfer": True,
-                "transferId": "tf3",
-                "transferType": "user",
-                "excludedFromCalculations": True,
-                "userOverride": False,
-            },
-        ),
-    ]
-    db.add_all(txns)
+            **kw,
+        )
+
+    db.add_all(
+        [
+            # Normal expense — included
+            txn(
+                "s1",
+                date(2024, 1, 15),
+                "Groceries",
+                "50.00",
+                "expense",
+                category="Food",
+            ),
+            # Excluded from calculations — excluded
+            txn(
+                "s2",
+                date(2024, 1, 16),
+                "Excluded item",
+                "25.00",
+                "expense",
+                category="Food",
+                excluded_from_calculations=True,
+            ),
+            # Self transfer pair, fully offset — excluded
+            txn("s3", date(2024, 1, 17), "Transfer out", "100.00", "expense"),
+            txn("s3b", date(2024, 1, 17), "Transfer in", "100.00", "income"),
+            # Self transfer pair counted in full by the user — included
+            txn("s4", date(2024, 1, 18), "Override included", "200.00", "expense"),
+            txn("s4b", date(2024, 1, 18), "Override in", "200.00", "income"),
+            # Normal income — included
+            txn(
+                "s5", date(2024, 2, 1), "Salary", "3000.00", "income", category="Income"
+            ),
+            # User-type transfer (bob -> alice) — included only with a userId
+            txn(
+                "s6",
+                date(2024, 1, 20),
+                "User transfer",
+                "150.00",
+                "expense",
+                user="bob",
+            ),
+            txn("s6b", date(2024, 1, 20), "From bob", "150.00", "income"),
+        ]
+    )
     await db.flush()
+    hh = "household-default"
+    await create_group(db, hh, "s3b", ["s3"])
+    await create_group(db, hh, "s4b", ["s4"], include_in_calculations=True)
+    await create_group(db, hh, "s6b", ["s6"])
 
 
 @pytest.mark.asyncio
@@ -314,29 +280,20 @@ async def test_stats_filter_excludes_excluded_transactions(db_session: AsyncSess
 
 
 @pytest.mark.asyncio
-async def test_stats_filter_excludes_unoverridden_transfers(db_session: AsyncSession):
+async def test_stats_filter_excludes_fully_offset_transfers(db_session: AsyncSession):
     await _seed_stats_transactions(db_session)
-    stmt = select(Transaction)
-    filters = build_stats_filter(None, None, None)
-    stmt = stmt.where(*filters)
-    result = await db_session.execute(stmt)
-    rows = result.scalars().all()
-    ids = {r.id for r in rows}
-    # s3 (self transfer, excluded, no override) must be excluded
+    stmt = select(Transaction).where(*build_stats_filter(None, None, None))
+    ids = {r.id for r in (await db_session.execute(stmt)).scalars().all()}
     assert "s3" not in ids
+    assert "s3b" not in ids
 
 
 @pytest.mark.asyncio
-async def test_stats_filter_includes_overridden_transfer(db_session: AsyncSession):
+async def test_stats_filter_includes_group_counted_in_full(db_session: AsyncSession):
     await _seed_stats_transactions(db_session)
-    stmt = select(Transaction)
-    filters = build_stats_filter(None, None, None)
-    stmt = stmt.where(*filters)
-    result = await db_session.execute(stmt)
-    rows = result.scalars().all()
-    ids = {r.id for r in rows}
-    # s4 (user override, not excluded from calc) must be included
-    assert "s4" in ids
+    stmt = select(Transaction).where(*build_stats_filter(None, None, None))
+    ids = {r.id for r in (await db_session.execute(stmt)).scalars().all()}
+    assert {"s4", "s4b"} <= ids
 
 
 @pytest.mark.asyncio
@@ -363,6 +320,16 @@ async def test_stats_filter_user_type_transfer_with_userid(db_session: AsyncSess
     ids = {r.id for r in rows}
     # s6 is user-type transfer with userId specified — should be included
     assert "s6" in ids
+
+
+@pytest.mark.asyncio
+async def test_stats_filter_user_type_transfer_without_userid(
+    db_session: AsyncSession,
+):
+    await _seed_stats_transactions(db_session)
+    stmt = select(Transaction).where(*build_stats_filter(None, None, None))
+    ids = {r.id for r in (await db_session.execute(stmt)).scalars().all()}
+    assert "s6" not in ids
 
 
 # --- Filter groups tests ---

@@ -7,10 +7,11 @@ into SQLAlchemy filter clauses.
 
 from datetime import date as date_type
 
-from sqlalchemy import Text, and_, cast, exists, func, or_, select, text
+from sqlalchemy import Text, and_, case, cast, exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.transaction import Transaction
+from app.models.transfer_group import TransferGroup
 
 
 def build_panel_data_query(
@@ -40,7 +41,7 @@ def build_panel_data_query(
             ),
             func.to_char(Transaction.date, "Mon YYYY").label("month"),
             Transaction.type,
-            func.sum(Transaction.amount).label("total"),
+            func.sum(counted_amount(user_id)).label("total"),
         )
         .where(*filters)
         .group_by(
@@ -133,6 +134,23 @@ def build_expenses_filter(params: dict) -> list:
     return filters
 
 
+def counted_amount(user_id: str | None):
+    """SQL expression for the amount a transaction contributes to totals.
+
+    `effective_amount` is the persisted transfer-group allocation (NULL means
+    "counts in full"). When the view is filtered to one user, transfers
+    between household members count in full, as they did before groups.
+    """
+    base = func.coalesce(Transaction.effective_amount, Transaction.amount)
+    if not user_id:
+        return base
+    is_user_group = exists().where(
+        TransferGroup.id == Transaction.transfer_group_id,
+        TransferGroup.kind == "user",
+    )
+    return case((is_user_group, Transaction.amount), else_=base)
+
+
 def build_stats_filter(
     date_from: str | None,
     date_to: str | None,
@@ -140,9 +158,8 @@ def build_stats_filter(
 ) -> list:
     """Build SQLAlchemy filter clauses for stats queries.
 
-    Mirrors buildStatsWhereClause() in legacy/helpers/queryBuilders.js.
-    Excludes excluded_from_calculations records and handles complex
-    transfer_info filtering logic.
+    Excludes manually excluded rows and rows whose counted amount is zero
+    (fully offset by a transfer/refund group).
     """
     filters = []
 
@@ -153,65 +170,8 @@ def build_stats_filter(
     if user_id:
         filters.append(Transaction.created_by_user_id == user_id)
 
-    # Exclude records marked as excluded from calculations
     filters.append(Transaction.excluded_from_calculations.is_not(True))
-
-    # Complex transfer filtering logic — mirrors the Express SQL:
-    # Include if:
-    #   - Not a transfer at all, OR
-    #   - Has user override and not excluded from calculations, OR
-    #   - Is "user" type transfer and userId is specified, OR
-    #   - Is "self" type transfer and not excluded from calculations, OR
-    #   - Has no/unknown transfer type and not excluded from calculations
-    ti = Transaction.transfer_info
-    is_not_transfer = or_(
-        ti.is_(None),
-        ti["isTransfer"].astext.is_distinct_from("true"),
-    )
-
-    ti_excluded = text(
-        "COALESCE((transfer_info->>'excludedFromCalculations')::boolean, false) = false"
-    )
-
-    has_override_included = and_(
-        ti["userOverride"].astext == "true",
-        ti_excluded,
-    )
-
-    # For user-type transfers: include only when userId filter is active
-    if user_id is not None:
-        is_user_transfer_with_userid = and_(
-            ti["transferType"].astext == "user",
-        )
-    else:
-        # When no userId specified, user-type transfers are not included via this branch
-        is_user_transfer_with_userid = and_(
-            ti["transferType"].astext == "user",
-            text("false"),
-        )
-
-    is_self_not_excluded = and_(
-        ti["transferType"].astext == "self",
-        ti_excluded,
-    )
-
-    is_other_not_excluded = and_(
-        or_(
-            ti["transferType"].astext.is_(None),
-            ti["transferType"].astext.not_in(["user", "self"]),
-        ),
-        ti_excluded,
-    )
-
-    filters.append(
-        or_(
-            is_not_transfer,
-            has_override_included,
-            is_user_transfer_with_userid,
-            is_self_not_excluded,
-            is_other_not_excluded,
-        )
-    )
+    filters.append(counted_amount(user_id) != 0)
 
     return filters
 

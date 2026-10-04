@@ -165,7 +165,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [isInitialLoadComplete, location.pathname, dateRange, selectedUserId]);
+  }, [isInitialLoadComplete, location.pathname, dateRange, selectedUserId, transactionListVersion]);
 
   // Load full expenses only when user visits Reports (Dashboard uses /api/stats)
   useEffect(() => {
@@ -888,32 +888,6 @@ function AppContent() {
     setIsFormOpen(true);
   }, []);
 
-  const handleTransferOverride = async (transactionId: string, includeInCalculations: boolean) => {
-    try {
-      const response = await ApiClient.apiFetch(`${ApiClient.getApiBase()}/transfer-override`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactionId,
-          includeInCalculations,
-        }),
-      });
-
-      if (response.ok) {
-        // Reload expenses to get updated transfer info
-        const updatedExpenses = await ApiClient.loadExpenses();
-        setExpenses(updatedExpenses);
-        bumpTransactionListVersion();
-      } else {
-        console.error('Failed to update transfer override');
-      }
-    } catch (error) {
-      console.error('Error updating transfer override:', error);
-    }
-  };
-
   const handleExcludeToggle = async (transactionId: string, exclude: boolean) => {
     try {
       const expenseToUpdate =
@@ -939,95 +913,54 @@ function AppContent() {
     }
   };
 
-  const handleMarkAsTransferRefund = async (transactionId: string, pairTransactionId: string) => {
+  // Transfer/refund groups change several transactions' counted amounts at
+  // once, so reload everything and re-point the open details sheet.
+  const refreshAfterTransferGroupChange = async (focusId?: string) => {
+    const reloaded = await ApiClient.loadExpenses();
+    setExpenses(reloaded);
+    bumpTransactionListVersion();
+    const focus = focusId ?? selectedTransaction?.id;
+    const updated = focus ? reloaded.find((e) => e.id === focus) : undefined;
+    if (updated) setSelectedTransaction(updated);
+  };
+
+  const handleSaveTransferGroup = async (
+    anchorId: string,
+    memberIds: string[],
+    groupId?: string
+  ) => {
     try {
-      // Look up locally first, then fall back to loading from the API
-      let transaction1 =
-        transactionList.find((exp) => exp.id === transactionId) ||
-        expenses.find((exp) => exp.id === transactionId);
-      let transaction2 =
-        transactionList.find((exp) => exp.id === pairTransactionId) ||
-        expenses.find((exp) => exp.id === pairTransactionId);
-
-      if (!transaction1 || !transaction2) {
-        const allExpenses = await ApiClient.loadExpenses();
-        transaction1 = transaction1 || allExpenses.find((exp) => exp.id === transactionId);
-        transaction2 = transaction2 || allExpenses.find((exp) => exp.id === pairTransactionId);
+      if (groupId) {
+        await ApiClient.updateTransferGroup(groupId, { memberIds });
+      } else {
+        await ApiClient.createTransferGroup(anchorId, memberIds);
       }
-
-      if (!transaction1 || !transaction2) {
-        console.error('One or both transactions not found');
-        toast.error('Could not find one or both transactions', {
-          position: 'bottom-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Generate a unique transfer ID
-      const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      const transferType = transaction1.user === transaction2.user ? 'self' : 'user';
-
-      // Update both transactions with transfer info via individual PATCH calls
-      const updatedTransaction1 = await ApiClient.updateExpense({
-        ...transaction1,
-        transferInfo: {
-          isTransfer: true,
-          transferId,
-          transferType,
-          excludedFromCalculations: true,
-          userOverride: false,
-        },
-      });
-
-      const updatedTransaction2 = await ApiClient.updateExpense({
-        ...transaction2,
-        transferInfo: {
-          isTransfer: true,
-          transferId,
-          transferType,
-          excludedFromCalculations: true,
-          userOverride: false,
-        },
-      });
-
-      setExpenses((prev) =>
-        prev.map((e) => {
-          if (e.id === transactionId) return updatedTransaction1;
-          if (e.id === pairTransactionId) return updatedTransaction2;
-          return e;
-        })
-      );
-      setTransactionList((prev) =>
-        prev.map((e) => {
-          if (e.id === transactionId) return updatedTransaction1;
-          if (e.id === pairTransactionId) return updatedTransaction2;
-          return e;
-        })
-      );
-      bumpTransactionListVersion();
-
-      // Update selected transaction if it's one of the updated ones
-      if (
-        selectedTransaction &&
-        (selectedTransaction.id === transactionId || selectedTransaction.id === pairTransactionId)
-      ) {
-        const updatedSelected =
-          selectedTransaction.id === transactionId ? updatedTransaction1 : updatedTransaction2;
-        setSelectedTransaction(updatedSelected);
-      }
-
-      toast.success('Transactions marked as transfer/refund pair', {
-        position: 'bottom-right',
-        autoClose: 3000,
-      });
+      await refreshAfterTransferGroupChange();
+      toast.success(groupId ? 'Transfer/refund group updated' : 'Marked as transfer/refund');
     } catch (error) {
-      console.error('Error marking as self-transfer:', error);
-      toast.error('Failed to mark transactions as transfer/refund', {
-        position: 'bottom-right',
-        autoClose: 3000,
-      });
+      console.error('Error saving transfer group:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save transfer/refund group');
+    }
+  };
+
+  const handleUnlinkTransferGroup = async (groupId: string) => {
+    try {
+      await ApiClient.deleteTransferGroup(groupId);
+      await refreshAfterTransferGroupChange();
+      toast.success('Transactions unlinked');
+    } catch (error) {
+      console.error('Error unlinking transfer group:', error);
+      toast.error('Failed to unlink transactions');
+    }
+  };
+
+  const handleToggleTransferGroupInclude = async (groupId: string, include: boolean) => {
+    try {
+      await ApiClient.updateTransferGroup(groupId, { includeInCalculations: include });
+      await refreshAfterTransferGroupChange();
+    } catch (error) {
+      console.error('Error updating transfer group:', error);
+      toast.error('Failed to update transfer/refund group');
     }
   };
 
@@ -1355,11 +1288,12 @@ function AppContent() {
           setIsTransactionDetailsOpen(false);
           setSelectedTransaction(null);
         }}
-        onTransferOverride={handleTransferOverride}
         onExcludeToggle={handleExcludeToggle}
-        onMarkAsTransferRefund={handleMarkAsTransferRefund}
+        onSaveTransferGroup={handleSaveTransferGroup}
+        onUnlinkTransferGroup={handleUnlinkTransferGroup}
+        onToggleTransferGroupInclude={handleToggleTransferGroupInclude}
+        onOpenTransaction={handleViewTransactionDetails}
         onDuplicate={handleDuplicateTransaction}
-        allTransactions={expenses}
         selectedUserId={selectedUserId}
       />
     </div>

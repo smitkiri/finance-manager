@@ -19,15 +19,29 @@ export interface Expense {
       };
     };
   };
-  transferInfo?: {
-    isTransfer: boolean;
-    transferId?: string;
-    transferType?: 'user' | 'self'; // 'user' = between different users, 'self' = within same user
-    excludedFromCalculations: boolean;
-    userOverride?: boolean;
-  };
   excludedFromCalculations?: boolean;
   importId?: string | null;
+  /** Counted amount after transfer group allocation; null/undefined = counts in full. */
+  effectiveAmount?: number | null;
+  transferGroup?: TransferGroupRef | null;
+}
+
+/** A transaction's membership in a transfer/refund group. */
+export interface TransferGroupRef {
+  id: string;
+  role: 'anchor' | 'member';
+  /** 'user' = between different household members, 'self' = within one user. */
+  kind: 'self' | 'user';
+  includeInCalculations: boolean;
+}
+
+export interface TransferGroupDetail {
+  id: string;
+  kind: 'self' | 'user';
+  source: 'manual' | 'auto';
+  includeInCalculations: boolean;
+  /** Anchor first, then members in allocation order. */
+  transactions: Expense[];
 }
 
 export interface User {
@@ -81,6 +95,8 @@ export interface DashboardStats extends ExpenseStats {
     description: string;
     category: string;
     amount: number;
+    /** Counted amount when a transfer group reduced it. */
+    effectiveAmount?: number | null;
     type: 'expense';
     user: string;
   }>;
@@ -90,6 +106,8 @@ export interface DashboardStats extends ExpenseStats {
     description: string;
     category: string;
     amount: number;
+    /** Counted amount when a transfer group reduced it. */
+    effectiveAmount?: number | null;
     type: 'income';
     user: string;
   }>;

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trash2, Edit, ChevronDown, Plus, ChevronUp } from 'lucide-react';
 import { Expense } from '../../types';
-import { formatCurrency } from '../../utils';
+import { countState } from '../../utils/transferGroups';
+import { CountedAmount } from '../ui/CountedAmount';
 import { LabelSelector } from '../ui/LabelSelector';
 import { LabelBadge } from '../ui/LabelBadge';
 
@@ -149,35 +150,9 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
     });
   }, []);
 
-  // Helper function to determine if a transaction should be visually excluded
+  // Dim rows that contribute nothing to totals (manually excluded or fully offset).
   const isTransactionExcluded = useCallback(
-    (expense: Expense) => {
-      // Exclude if top-level excludedFromCalculations is true (manual exclusion)
-      if (expense.excludedFromCalculations === true) return true;
-
-      // For transfers, check transfer-specific exclusion logic
-      if (expense.transferInfo?.isTransfer) {
-        // Include if user has explicitly overridden the exclusion
-        if (expense.transferInfo.userOverride !== undefined) {
-          return expense.transferInfo.excludedFromCalculations;
-        }
-
-        // Handle different transfer types based on user selection
-        if (expense.transferInfo.transferType === 'user') {
-          // User transfers: exclude when "All users" is selected, include when specific user is selected
-          return selectedUserId === null;
-        } else if (expense.transferInfo.transferType === 'self') {
-          // Transfer/Refunds: always exclude from calculations (they cancel each other out)
-          return expense.transferInfo.excludedFromCalculations;
-        }
-
-        // Default behavior: exclude transfers from calculations
-        return expense.transferInfo.excludedFromCalculations;
-      }
-
-      // Non-transfer transactions are included unless manually excluded
-      return false;
-    },
+    (expense: Expense) => countState(expense, selectedUserId) === 'offset',
     [selectedUserId]
   );
 
@@ -251,16 +226,11 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                       <p className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
                         {expense.description}
                       </p>
-                      <div
-                        className={`flex-shrink-0 font-semibold text-sm ${
-                          expense.type === 'expense'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-green-600 dark:text-green-400'
-                        }`}
-                      >
-                        {expense.type === 'expense' ? '-' : '+'}
-                        {formatCurrency(expense.amount)}
-                      </div>
+                      <CountedAmount
+                        expense={expense}
+                        selectedUserId={selectedUserId}
+                        className="flex-shrink-0"
+                      />
                     </div>
 
                     <div className="flex items-center space-x-2 mt-1">
@@ -304,17 +274,22 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
                           </div>
                         )}
                       </div>
-                      {expense.transferInfo?.isTransfer && (
+                      {expense.transferGroup && (
                         <span
                           className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium ${
-                            expense.transferInfo.transferType === 'user'
+                            expense.transferGroup.kind === 'user'
                               ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                               : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                           }`}
                         >
-                          {expense.transferInfo.transferType === 'user'
+                          {expense.transferGroup.kind === 'user'
                             ? 'User Transfer'
                             : 'Transfer/Refund'}
+                        </span>
+                      )}
+                      {countState(expense, selectedUserId) === 'partial' && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                          Partial
                         </span>
                       )}
                       {expense.labels && expense.labels.length > 0 && (

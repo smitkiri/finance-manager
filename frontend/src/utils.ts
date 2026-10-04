@@ -1,5 +1,4 @@
 import { Expense, ExpenseStats, DateRange } from './types';
-// import { filterTransfersForCalculations } from './utils/transferDetection';
 
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {

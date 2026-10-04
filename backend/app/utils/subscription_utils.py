@@ -43,7 +43,7 @@ def _txns_to_dicts(txns: Sequence[Transaction]) -> list[dict]:
             "user": t.created_by_user_id,
             "labels": t.labels or [],
             "metadata": t.metadata_ or {},
-            "transferInfo": t.transfer_info,
+            "transferGroupId": t.transfer_group_id,
             "excludedFromCalculations": t.excluded_from_calculations,
             "subscriptionId": t.subscription_id,
         }

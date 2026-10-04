@@ -4,6 +4,13 @@ from typing import Any
 from pydantic import BaseModel
 
 
+class TransferGroupRef(BaseModel):
+    id: str
+    role: str
+    kind: str
+    includeInCalculations: bool
+
+
 class TransactionOut(BaseModel):
     id: str
     date: date_type
@@ -15,12 +22,14 @@ class TransactionOut(BaseModel):
     householdId: str
     labels: list[Any]
     metadata: dict[str, Any]
-    transferInfo: dict[str, Any] | None = None
     excludedFromCalculations: bool
     importId: str | None = None
+    effectiveAmount: float | None = None
+    transferGroup: TransferGroupRef | None = None
 
     @classmethod
-    def from_orm_model(cls, t) -> TransactionOut:
+    def from_orm_model(cls, t, group=None) -> TransactionOut:
+        """Serialize a transaction; pass its `TransferGroup` when it has one."""
         return cls(
             id=t.id,
             date=t.date,
@@ -32,9 +41,21 @@ class TransactionOut(BaseModel):
             householdId=t.household_id,
             labels=t.labels or [],
             metadata=t.metadata_ or {},
-            transferInfo=t.transfer_info if t.transfer_info else None,
             excludedFromCalculations=t.excluded_from_calculations or False,
             importId=t.import_id,
+            effectiveAmount=(
+                float(t.effective_amount) if t.effective_amount is not None else None
+            ),
+            transferGroup=(
+                TransferGroupRef(
+                    id=group.id,
+                    role=t.transfer_role,
+                    kind=group.kind,
+                    includeInCalculations=group.include_in_calculations,
+                )
+                if group is not None and t.transfer_group_id == group.id
+                else None
+            ),
         )
 
 
@@ -47,7 +68,6 @@ class TransactionUpdate(BaseModel):
     user: str | None = None
     labels: list[Any] | None = None
     excludedFromCalculations: bool | None = None
-    transferInfo: dict[str, Any] | None = None
 
 
 class ExpenseBulkItem(BaseModel):
@@ -60,7 +80,6 @@ class ExpenseBulkItem(BaseModel):
     user: str | None = None
     labels: list[Any] | None = None
     metadata: dict[str, Any] | None = None
-    transferInfo: dict[str, Any] | None = None
     excludedFromCalculations: bool | None = False
 
 
