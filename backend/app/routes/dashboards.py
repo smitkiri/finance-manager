@@ -28,6 +28,7 @@ from app.utils.query_builder import (
     build_month_series,
     build_panel_data_query,
     build_stats_filter,
+    counted_amount,
 )
 
 router = APIRouter(prefix="/api", tags=["dashboards"])
@@ -331,6 +332,7 @@ async def panel_preview(
             Transaction.description,
             Transaction.category,
             Transaction.amount,
+            counted_amount(body.userId).label("counted"),
             Transaction.type,
             Transaction.created_by_user_id,
         )
@@ -347,6 +349,9 @@ async def panel_preview(
             "description": row.description,
             "category": row.category,
             "amount": float(row.amount),
+            "effectiveAmount": (
+                None if row.counted == row.amount else float(row.counted)
+            ),
             "type": row.type,
             "user": row.created_by_user_id,
         }

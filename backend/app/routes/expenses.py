@@ -18,7 +18,11 @@ from app.schemas.transaction import (
     TransactionOut,
     TransactionUpdate,
 )
-from app.utils.query_builder import build_expenses_filter, build_stats_filter
+from app.utils.query_builder import (
+    build_expenses_filter,
+    build_stats_filter,
+    counted_amount,
+)
 from app.utils.subscription_signature import normalize_signature
 from app.utils.subscription_utils import reconcile_signature_bg, run_detection_bg
 
@@ -30,6 +34,11 @@ def _parse_list(value: str | None) -> list[str] | None:
     if not value:
         return None
     return [s.strip() for s in value.split(",") if s.strip()]
+
+
+def _effective(counted, original) -> float | None:
+    """Counted amount when a transfer group reduced it, else None."""
+    return None if counted == original else float(counted)
 
 
 @router.get("/expenses")
@@ -100,7 +109,8 @@ async def get_stats(
             Transaction.id,
             Transaction.date,
             Transaction.type,
-            Transaction.amount,
+            counted_amount(userId).label("amount"),
+            Transaction.amount.label("original_amount"),
             Transaction.category,
             Transaction.description,
             Transaction.created_by_user_id,
@@ -233,6 +243,7 @@ async def get_stats(
                 base.c.description,
                 base.c.category,
                 base.c.amount,
+                base.c.original_amount,
                 base.c.created_by_user_id,
             )
             .select_from(base)
@@ -247,7 +258,8 @@ async def get_stats(
             "date": r.date.isoformat() if hasattr(r.date, "isoformat") else r.date,
             "description": r.description,
             "category": r.category,
-            "amount": float(r.amount),
+            "amount": float(r.original_amount),
+            "effectiveAmount": _effective(r.amount, r.original_amount),
             "type": "expense",
             "user": r.created_by_user_id or "",
         }
@@ -263,6 +275,7 @@ async def get_stats(
                 base.c.description,
                 base.c.category,
                 base.c.amount,
+                base.c.original_amount,
                 base.c.created_by_user_id,
             )
             .select_from(base)
@@ -277,7 +290,8 @@ async def get_stats(
             "date": r.date.isoformat() if hasattr(r.date, "isoformat") else r.date,
             "description": r.description,
             "category": r.category,
-            "amount": float(r.amount),
+            "amount": float(r.original_amount),
+            "effectiveAmount": _effective(r.amount, r.original_amount),
             "type": "income",
             "user": r.created_by_user_id or "",
         }
