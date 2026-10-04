@@ -86,62 +86,46 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     setSelector({ anchor, memberIds: members.map((m) => m.id), groupId: group.id });
   };
 
-  const showInlineActions = !isTransfer && (onExcludeToggle || onSaveTransferGroup);
+  const actionBtnCls =
+    'flex-1 md:flex-none min-h-[48px] md:min-h-0 px-3 py-2 flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors';
 
-  const footer = (
-    <div className="flex flex-col gap-2">
-      {showInlineActions && onExcludeToggle && (
-        <button
-          type="button"
-          onClick={() => handleExcludeToggle(!isExcludedFromCalculations)}
-          className={`w-full py-3 min-h-[48px] text-sm font-medium rounded-lg transition-colors ${
-            isExcludedFromCalculations
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-red-600 text-white hover:bg-red-700'
-          }`}
-        >
-          {isExcludedFromCalculations ? 'Include in Calculations' : 'Exclude from Calculations'}
-        </button>
-      )}
-      {showInlineActions && onSaveTransferGroup && (
+  const canLinkTransfer = !isTransfer && !!onSaveTransferGroup;
+  const canAddToSubscription = !isTransfer && transaction.type === 'expense';
+  const hasActions = canLinkTransfer || canAddToSubscription || !!onDuplicate;
+
+  const footer = hasActions ? (
+    <div className="flex gap-2 md:justify-end">
+      {canLinkTransfer && (
         <button
           type="button"
           onClick={() => setSelector({ anchor: transaction })}
-          className="w-full py-3 min-h-[48px] flex items-center justify-center space-x-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+          className={actionBtnCls}
         >
-          <ArrowRightLeft size={16} />
-          <span>Mark as Transfer/Refund</span>
+          <ArrowRightLeft size={16} className="flex-shrink-0" />
+          <span className="md:hidden">Transfer</span>
+          <span className="hidden md:inline">Mark as Transfer/Refund</span>
         </button>
       )}
-      {!isTransfer && transaction.type === 'expense' && (
+      {canAddToSubscription && (
         <button
           type="button"
           onClick={() => setSubPicker((v) => !v)}
-          className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300"
+          aria-expanded={subPicker}
+          className={actionBtnCls}
         >
-          <Repeat size={16} />
-          Add to subscription
+          <Repeat size={16} className="flex-shrink-0" />
+          <span className="md:hidden">Subscription</span>
+          <span className="hidden md:inline">Add to Subscription</span>
         </button>
       )}
       {onDuplicate && (
-        <button
-          type="button"
-          onClick={() => onDuplicate(transaction)}
-          className="w-full py-3 min-h-[48px] flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-        >
-          <Copy size={16} />
-          Duplicate Transaction
+        <button type="button" onClick={() => onDuplicate(transaction)} className={actionBtnCls}>
+          <Copy size={16} className="flex-shrink-0" />
+          <span>Duplicate</span>
         </button>
       )}
-      <button
-        type="button"
-        onClick={onClose}
-        className="w-full py-3 min-h-[48px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
-      >
-        Close
-      </button>
     </div>
-  );
+  ) : undefined;
 
   const title = (
     <div className="flex items-center space-x-3">
@@ -188,7 +172,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           )}
 
           {!isTransfer && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between gap-3">
               <span
                 className={`px-2 py-1 rounded text-xs font-medium ${
                   isExcludedFromCalculations
@@ -200,6 +184,27 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                   ? 'Excluded from calculations'
                   : 'Included in calculations'}
               </span>
+              {onExcludeToggle && (
+                <label className="flex items-center gap-2 min-h-[44px] md:min-h-0 cursor-pointer select-none">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Count in totals</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!isExcludedFromCalculations}
+                    aria-label="Count in calculations"
+                    onClick={() => handleExcludeToggle(!isExcludedFromCalculations)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+                      isExcludedFromCalculations ? 'bg-gray-300 dark:bg-gray-600' : 'bg-green-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                        isExcludedFromCalculations ? 'translate-x-0.5' : 'translate-x-[22px]'
+                      }`}
+                    />
+                  </button>
+                </label>
+              )}
             </div>
           )}
 
