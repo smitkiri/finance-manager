@@ -6,6 +6,7 @@ import { ReportCreator } from './ReportCreator';
 import { ReportViewer } from './ReportViewer';
 import { formatCurrency, formatDate } from '../../utils';
 import { applyReportFilters } from '../../utils/reportUtils';
+import { countedAmount } from '../../utils/transferGroups';
 
 interface ReportsProps {
   expenses: Expense[];
@@ -72,7 +73,7 @@ export const Reports: React.FC<ReportsProps> = ({
       // Handle cases where filters might be undefined (for backward compatibility)
       const filters = report.filters || {};
       const filteredExpenses = applyReportFilters(expenses, filters);
-      const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const totalAmount = filteredExpenses.reduce((sum, exp) => sum + countedAmount(exp), 0);
       stats.set(report.id, {
         count: filteredExpenses.length,
         totalAmount,

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DashboardPanel, Dashboard, Expense } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
-import { formatCurrency } from '../../utils';
+import { CountedAmount } from '../ui/CountedAmount';
 import { ITEMS_PER_PAGE } from '../../constants';
 import { Sheet } from '../ui/Sheet';
 
@@ -117,16 +117,7 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
                       <span className="truncate">{tx.category}</span>
                     </div>
                   </div>
-                  <div
-                    className={`text-sm font-semibold whitespace-nowrap ${
-                      tx.type === 'income'
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}
-                  >
-                    {tx.type === 'income' ? '+' : '-'}
-                    {formatCurrency(tx.amount)}
-                  </div>
+                  <CountedAmount expense={tx} className="whitespace-nowrap flex-shrink-0" />
                 </div>
               </li>
             ))}
@@ -160,15 +151,8 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
                     {tx.description}
                   </td>
                   <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{tx.category}</td>
-                  <td
-                    className={`px-6 py-3 text-right font-medium whitespace-nowrap ${
-                      tx.type === 'income'
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}
-                  >
-                    {tx.type === 'income' ? '+' : '-'}
-                    {formatCurrency(tx.amount)}
+                  <td className="px-6 py-3 text-right whitespace-nowrap">
+                    <CountedAmount expense={tx} />
                   </td>
                 </tr>
               ))}

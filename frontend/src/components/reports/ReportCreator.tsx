@@ -3,6 +3,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { Report, ReportFilter, Expense, DateRange, Source } from '../../types';
 import { createReport, applyReportFilters } from '../../utils/reportUtils';
 import { TransactionFiltersComponent } from '../transactions/TransactionFilters';
+import { countedAmount } from '../../utils/transferGroups';
 
 interface ReportCreatorProps {
   expenses: Expense[];
@@ -43,7 +44,7 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
   useEffect(() => {
     const filteredExpenses = applyReportFilters(expenses, filters);
     setPreviewCount(filteredExpenses.length);
-    setPreviewAmount(filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0));
+    setPreviewAmount(filteredExpenses.reduce((sum, exp) => sum + countedAmount(exp), 0));
   }, [filters, expenses]);
 
   const handleCreateReport = () => {

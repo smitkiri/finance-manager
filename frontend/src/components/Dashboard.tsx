@@ -3,8 +3,9 @@ import { StatsCard } from './ui/StatsCard';
 import { ListRow } from './ui/ListRow';
 import { Chart } from './charts/Chart';
 import { Expense, User, DashboardStats } from '../types';
-import { calculateStats, formatCurrency, formatDate } from '../utils';
-import { filterTransfersForCalculations } from '../utils/transferDetection';
+import { calculateStats, formatDate } from '../utils';
+import { countedExpenses } from '../utils/transferGroups';
+import { CountedAmount } from './ui/CountedAmount';
 import { Check } from 'lucide-react';
 
 interface DashboardProps {
@@ -29,8 +30,10 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
       }
     }, [categories, selectedCategories.length]);
 
+    // Fallback when stats aren't available from the API: amounts become counted
+    // amounts and fully offset transactions drop out.
     const filteredExpenses = useMemo(
-      () => filterTransfersForCalculations(expenses, selectedUserId),
+      () => countedExpenses(expenses, selectedUserId),
       [expenses, selectedUserId]
     );
 
@@ -508,9 +511,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
                             </span>
                           </div>
                         </div>
-                        <div className="text-sm font-bold text-red-600 dark:text-red-400 ml-4">
-                          -{formatCurrency(expense.amount)}
-                        </div>
+                        <CountedAmount expense={expense} className="ml-4 flex-shrink-0" />
                       </div>
                     </button>
                   ))}
@@ -553,9 +554,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
                             </span>
                           </div>
                         </div>
-                        <div className="text-sm font-bold text-green-600 dark:text-green-400 ml-4">
-                          +{formatCurrency(expense.amount)}
-                        </div>
+                        <CountedAmount expense={expense} className="ml-4 flex-shrink-0" />
                       </div>
                     </button>
                   ))}

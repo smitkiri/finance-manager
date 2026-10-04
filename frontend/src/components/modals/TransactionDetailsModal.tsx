@@ -11,37 +11,48 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import { Expense, Subscription } from '../../types';
+import { Expense, Subscription, TransferGroupDetail } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
-import { formatCurrency, formatDate } from '../../utils';
-import { getTransferPair } from '../../utils/transferDetection';
-import { TransferPairSelector } from './TransferPairSelector';
+import { formatDate } from '../../utils';
+import { countState } from '../../utils/transferGroups';
+import { TransferGroupSelector } from './TransferGroupSelector';
+import { TransferGroupSection } from './TransferGroupSection';
 import { Sheet } from '../ui/Sheet';
+import { CountedAmount } from '../ui/CountedAmount';
 
 interface TransactionDetailsModalProps {
   transaction: Expense | null;
   isOpen: boolean;
   onClose: () => void;
-  onTransferOverride?: (transactionId: string, includeInCalculations: boolean) => void;
   onExcludeToggle?: (transactionId: string, exclude: boolean) => void;
-  onMarkAsTransferRefund?: (transactionId: string, pairTransactionId: string) => void;
+  /** Create (no groupId) or replace the members of a transfer/refund group. */
+  onSaveTransferGroup?: (anchorId: string, memberIds: string[], groupId?: string) => void;
+  onUnlinkTransferGroup?: (groupId: string) => void;
+  onToggleTransferGroupInclude?: (groupId: string, include: boolean) => void;
+  onOpenTransaction?: (transaction: Expense) => void;
   onDuplicate?: (transaction: Expense) => void;
-  allTransactions?: Expense[];
   selectedUserId?: string | null;
+}
+
+interface SelectorState {
+  anchor: Expense;
+  memberIds?: string[];
+  groupId?: string;
 }
 
 export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   transaction,
   isOpen,
   onClose,
-  onTransferOverride,
   onExcludeToggle,
-  onMarkAsTransferRefund,
+  onSaveTransferGroup,
+  onUnlinkTransferGroup,
+  onToggleTransferGroupInclude,
+  onOpenTransaction,
   onDuplicate,
-  allTransactions = [],
-  selectedUserId,
+  selectedUserId = null,
 }) => {
-  const [isPairSelectorOpen, setIsPairSelectorOpen] = useState(false);
+  const [selector, setSelector] = useState<SelectorState | null>(null);
   const [subPicker, setSubPicker] = useState(false);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const navigate = useNavigate();
@@ -59,36 +70,10 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     return new Date(dateString).toLocaleString();
   };
 
-  const transferPair = transaction.transferInfo?.isTransfer
-    ? getTransferPair(transaction, allTransactions)
-    : null;
-  const isTransfer = transaction.transferInfo?.isTransfer;
-
-  const isExcludedFromCalculations = (() => {
-    if (transaction.excludedFromCalculations === true) return true;
-
-    if (transaction.transferInfo?.isTransfer) {
-      if (transaction.transferInfo.userOverride !== undefined) {
-        return transaction.transferInfo.excludedFromCalculations;
-      }
-
-      if (transaction.transferInfo.transferType === 'user') {
-        return selectedUserId === null;
-      } else if (transaction.transferInfo.transferType === 'self') {
-        return transaction.transferInfo.excludedFromCalculations;
-      }
-
-      return transaction.transferInfo.excludedFromCalculations;
-    }
-
-    return false;
-  })();
-
-  const handleTransferOverride = (includeInCalculations: boolean) => {
-    if (onTransferOverride) {
-      onTransferOverride(transaction.id, includeInCalculations);
-    }
-  };
+  const isTransfer = !!transaction.transferGroup;
+  const isExcludedFromCalculations =
+    transaction.excludedFromCalculations === true ||
+    countState(transaction, selectedUserId) === 'offset';
 
   const handleExcludeToggle = (exclude: boolean) => {
     if (onExcludeToggle) {
@@ -96,13 +81,12 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     }
   };
 
-  const handleMarkAsTransferRefund = (pairTransactionId: string) => {
-    if (onMarkAsTransferRefund) {
-      onMarkAsTransferRefund(transaction.id, pairTransactionId);
-    }
+  const openGroupEditor = (group: TransferGroupDetail) => {
+    const [anchor, ...members] = group.transactions;
+    setSelector({ anchor, memberIds: members.map((m) => m.id), groupId: group.id });
   };
 
-  const showInlineActions = !isTransfer && (onExcludeToggle || onMarkAsTransferRefund);
+  const showInlineActions = !isTransfer && (onExcludeToggle || onSaveTransferGroup);
 
   const footer = (
     <div className="flex flex-col gap-2">
@@ -119,10 +103,10 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           {isExcludedFromCalculations ? 'Include in Calculations' : 'Exclude from Calculations'}
         </button>
       )}
-      {showInlineActions && onMarkAsTransferRefund && (
+      {showInlineActions && onSaveTransferGroup && (
         <button
           type="button"
-          onClick={() => setIsPairSelectorOpen(true)}
+          onClick={() => setSelector({ anchor: transaction })}
           className="w-full py-3 min-h-[48px] flex items-center justify-center space-x-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
         >
           <ArrowRightLeft size={16} />
@@ -193,120 +177,14 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
       <Sheet isOpen={isOpen} onClose={onClose} title={title} footer={footer}>
         <div className="space-y-6">
           {isTransfer && (
-            <div
-              className={`${
-                transaction.transferInfo?.transferType === 'user'
-                  ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700'
-                  : 'bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700'
-              } rounded-lg p-4`}
-            >
-              <div className="flex items-start space-x-3">
-                <ArrowRightLeft
-                  size={20}
-                  className={`${
-                    transaction.transferInfo?.transferType === 'user'
-                      ? 'text-orange-600 dark:text-orange-400'
-                      : 'text-purple-600 dark:text-purple-400'
-                  } mt-0.5`}
-                />
-                <div className="flex-1">
-                  <h3
-                    className={`font-semibold mb-1 ${
-                      transaction.transferInfo?.transferType === 'user'
-                        ? 'text-orange-800 dark:text-orange-200'
-                        : 'text-purple-800 dark:text-purple-200'
-                    }`}
-                  >
-                    {transaction.transferInfo?.transferType === 'user'
-                      ? 'User Transfer'
-                      : 'Transfer/Refund'}{' '}
-                    Detected
-                  </h3>
-                  <p
-                    className={`text-sm mb-3 ${
-                      transaction.transferInfo?.transferType === 'user'
-                        ? 'text-orange-700 dark:text-orange-300'
-                        : 'text-purple-700 dark:text-purple-300'
-                    }`}
-                  >
-                    {transaction.transferInfo?.transferType === 'user'
-                      ? 'This transaction appears to be part of a transfer between different users. User transfers are included in calculations when a specific user is selected, but excluded when viewing "All users".'
-                      : 'This transaction appears to be part of a transfer within the same user account. Transfers/Refunds are excluded from calculations by default to avoid double-counting.'}
-                  </p>
-
-                  {transferPair && (
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        Transfer Pair:
-                      </p>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-gray-700 dark:text-gray-300 break-words">
-                            {transferPair.debit.description} (
-                            {transferPair.debit.metadata?.sourceName || 'Manual'}) -{' '}
-                            {transferPair.debit.user}
-                          </span>
-                          <span className="text-red-600 dark:text-red-400 font-medium flex-shrink-0">
-                            -{formatCurrency(transferPair.debit.amount)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-gray-700 dark:text-gray-300 break-words">
-                            {transferPair.credit.description} (
-                            {transferPair.credit.metadata?.sourceName || 'Manual'}) -{' '}
-                            {transferPair.credit.user}
-                          </span>
-                          <span className="text-green-600 dark:text-green-400 font-medium flex-shrink-0">
-                            +{formatCurrency(transferPair.credit.amount)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        isExcludedFromCalculations
-                          ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
-                          : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700'
-                      }`}
-                    >
-                      {isExcludedFromCalculations
-                        ? 'Excluded from calculations'
-                        : 'Included in calculations'}
-                    </span>
-                  </div>
-
-                  {onTransferOverride && (
-                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                      <button
-                        onClick={() => handleTransferOverride(true)}
-                        disabled={!isExcludedFromCalculations}
-                        className={`flex-1 px-3 py-2 min-h-[44px] text-xs font-medium rounded transition-colors ${
-                          !isExcludedFromCalculations
-                            ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700 cursor-not-allowed'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                      >
-                        Include in Calculations
-                      </button>
-                      <button
-                        onClick={() => handleTransferOverride(false)}
-                        disabled={isExcludedFromCalculations}
-                        className={`flex-1 px-3 py-2 min-h-[44px] text-xs font-medium rounded transition-colors ${
-                          isExcludedFromCalculations
-                            ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 cursor-not-allowed'
-                            : 'bg-red-600 text-white hover:bg-red-700'
-                        }`}
-                      >
-                        Exclude from Calculations
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <TransferGroupSection
+              transaction={transaction}
+              selectedUserId={selectedUserId}
+              onOpenTransaction={onOpenTransaction}
+              onEdit={onSaveTransferGroup ? openGroupEditor : undefined}
+              onUnlink={onUnlinkTransferGroup}
+              onToggleInclude={onToggleTransferGroupInclude}
+            />
           )}
 
           {!isTransfer && (
@@ -326,16 +204,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           )}
 
           <div className="text-center">
-            <div
-              className={`text-3xl font-bold ${
-                transaction.type === 'expense'
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-green-600 dark:text-green-400'
-              }`}
-            >
-              {transaction.type === 'expense' ? '-' : '+'}
-              {formatCurrency(transaction.amount)}
-            </div>
+            <CountedAmount expense={transaction} selectedUserId={selectedUserId} size="lg" />
           </div>
 
           <div>
@@ -506,12 +375,18 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         </div>
       </Sheet>
 
-      <TransferPairSelector
-        isOpen={isPairSelectorOpen}
-        onClose={() => setIsPairSelectorOpen(false)}
-        onSelect={handleMarkAsTransferRefund}
-        currentTransaction={transaction}
-      />
+      {selector && (
+        <TransferGroupSelector
+          isOpen
+          onClose={() => setSelector(null)}
+          anchor={selector.anchor}
+          initialMemberIds={selector.memberIds}
+          onConfirm={(memberIds) => {
+            onSaveTransferGroup?.(selector.anchor.id, memberIds, selector.groupId);
+            setSelector(null);
+          }}
+        />
+      )}
     </>
   );
 };
