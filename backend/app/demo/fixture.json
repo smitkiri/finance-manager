@@ -10,19 +10,19 @@
     {
       "id": "demo-user",
       "name": "Demo",
-      "email": "demo@tally.local",
+      "email": "demo@demo.tallyfinance.xyz",
       "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$esabfbTKNdXoPf3L35IbHQ$Fqd1ZaErhocYmf5G9LtX9Jh4kd66DGtUjEEzIr0/nAk"
     },
     {
       "id": "user-alice",
       "name": "Alice Chen",
-      "email": "alice@demo.tally.local",
+      "email": "alice@demo.tallyfinance.xyz",
       "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$esabfbTKNdXoPf3L35IbHQ$Fqd1ZaErhocYmf5G9LtX9Jh4kd66DGtUjEEzIr0/nAk"
     },
     {
       "id": "user-ben",
       "name": "Ben Reyes",
-      "email": "ben@demo.tally.local",
+      "email": "ben@demo.tallyfinance.xyz",
       "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$esabfbTKNdXoPf3L35IbHQ$Fqd1ZaErhocYmf5G9LtX9Jh4kd66DGtUjEEzIr0/nAk"
     }
   ],
@@ -87,11 +87,7 @@
   "metadata": [],
   "date_ranges": [
     {
-      "start_date": "2026-04-17",
-      "end_date": "2026-05-17"
-    },
-    {
-      "start_date": "2026-01-01",
+      "start_date": "2025-05-17",
       "end_date": "2026-05-17"
     }
   ],
