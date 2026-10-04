@@ -10,6 +10,7 @@ from app.models.source import Source
 from app.models.transaction import Transaction
 from app.schemas.data import DeleteSelectedRequest, UndoImportRequest
 from app.utils.subscription_utils import run_detection_bg
+from app.utils.transfer_groups import delete_household_groups, recompute_groups
 from app.utils.transfer_utils import run_detection
 
 router = APIRouter(prefix="/api", tags=["data"])
@@ -25,6 +26,7 @@ async def delete_all(
     await db.execute(
         delete(Transaction).where(Transaction.household_id == household_id)
     )
+    await delete_household_groups(db, household_id)
     await db.execute(delete(Source).where(Source.household_id == household_id))
     await db.commit()
     bg.add_task(run_detection_bg, household_id)
@@ -42,6 +44,7 @@ async def delete_selected(
         await db.execute(
             delete(Transaction).where(Transaction.household_id == household_id)
         )
+        await delete_household_groups(db, household_id)
 
     if body.deleteSources and body.sourceIds:
         await db.execute(
@@ -71,6 +74,7 @@ async def undo_import(
     )
     session_txns = result.scalars().all()
     removed = len(session_txns)
+    touched_groups = {t.transfer_group_id for t in session_txns}
 
     await db.execute(
         delete(Transaction).where(
@@ -78,6 +82,8 @@ async def undo_import(
             Transaction.household_id == household_id,
         )
     )
+    db.expunge_all()
+    await recompute_groups(db, touched_groups)
 
     # Delete the import session
     await db.execute(

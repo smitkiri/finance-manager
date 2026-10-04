@@ -15,7 +15,6 @@ from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.schemas.transaction import (
     ExpenseBulkSaveRequest,
-    TransactionOut,
     TransactionUpdate,
 )
 from app.utils.query_builder import (
@@ -25,6 +24,11 @@ from app.utils.query_builder import (
 )
 from app.utils.subscription_signature import normalize_signature
 from app.utils.subscription_utils import reconcile_signature_bg, run_detection_bg
+from app.utils.transfer_groups import (
+    recompute_group,
+    recompute_groups,
+    serialize_transactions,
+)
 
 router = APIRouter(prefix="/api", tags=["expenses"])
 
@@ -81,16 +85,11 @@ async def get_expenses(
         total = (await db.execute(count_stmt)).scalar()
 
         result = await db.execute(order.limit(limit).offset(offset))
-        expenses = [
-            TransactionOut.from_orm_model(t).model_dump()
-            for t in result.scalars().all()
-        ]
+        expenses = await serialize_transactions(db, result.scalars().all())
         return {"expenses": expenses, "total": total}
 
     result = await db.execute(order)
-    return [
-        TransactionOut.from_orm_model(t).model_dump() for t in result.scalars().all()
-    ]
+    return await serialize_transactions(db, result.scalars().all())
 
 
 @router.get("/stats")
@@ -329,6 +328,8 @@ async def update_expense(
         return JSONResponse(status_code=404, content={"error": "Transaction not found"})
 
     old_description = txn.description
+    old_group_id = txn.transfer_group_id
+    old_allocation_inputs = (txn.amount, txn.date, txn.type)
 
     updated = False
     if body.date is not None:
@@ -355,12 +356,18 @@ async def update_expense(
     if body.excludedFromCalculations is not None:
         txn.excluded_from_calculations = body.excludedFromCalculations
         updated = True
-    if body.transferInfo is not None:
-        txn.transfer_info = body.transferInfo
-        updated = True
 
     if not updated:
         return JSONResponse(status_code=400, content={"error": "No fields to update"})
+
+    if old_group_id and (txn.amount, txn.date, txn.type) != old_allocation_inputs:
+        if txn.type != old_allocation_inputs[2]:
+            # A type flip puts the row on the wrong side of its group.
+            txn.transfer_group_id = None
+            txn.transfer_role = None
+            txn.effective_amount = None
+        await db.flush()
+        await recompute_group(db, old_group_id)
 
     await db.commit()
     await db.refresh(txn)
@@ -371,7 +378,8 @@ async def update_expense(
     if old_sig and old_sig != new_sig:
         bg.add_task(reconcile_signature_bg, household_id, old_sig)
 
-    return TransactionOut.from_orm_model(txn).model_dump()
+    [out] = await serialize_transactions(db, [txn])
+    return out
 
 
 @router.post("/expenses")
@@ -388,6 +396,21 @@ async def bulk_save_expenses(
     )
     await assert_demo_not_mass_delete(db, Transaction, household_id, len(body.expenses))
 
+    # The frontend adds/deletes single transactions by replacing the whole
+    # household, so carry transfer group membership across the replace.
+    membership_rows = await db.execute(
+        select(
+            Transaction.id, Transaction.transfer_group_id, Transaction.transfer_role
+        ).where(
+            Transaction.household_id == household_id,
+            Transaction.transfer_group_id.is_not(None),
+        )
+    )
+    membership = {
+        row.id: (row.transfer_group_id, row.transfer_role)
+        for row in membership_rows.all()
+    }
+
     # Delete existing transactions for this household only.
     await db.execute(
         delete(Transaction).where(Transaction.household_id == household_id)
@@ -395,6 +418,7 @@ async def bulk_save_expenses(
 
     # Insert new transactions, attached to the requested household.
     for exp in body.expenses:
+        group_id, role = membership.get(exp.id, (None, None))
         txn = Transaction(
             id=exp.id,
             date=date_type.fromisoformat(str(exp.date)[:10]),
@@ -406,10 +430,13 @@ async def bulk_save_expenses(
             created_by_user_id=exp.user,
             labels=exp.labels or [],
             metadata_=exp.metadata or {},
-            transfer_info=exp.transferInfo,
             excluded_from_calculations=exp.excludedFromCalculations or False,
+            transfer_group_id=group_id,
+            transfer_role=role,
         )
         db.add(txn)
+    await db.flush()
+    await recompute_groups(db, (g for g, _ in membership.values()))
 
     # Store metadata if provided
     if body.metadata:

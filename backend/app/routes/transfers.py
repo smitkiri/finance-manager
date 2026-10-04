@@ -5,59 +5,113 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import get_current_household_id
-from app.models.transaction import Transaction
-from app.schemas.transfer import TransferOverrideRequest
+from app.models.transfer_group import TransferGroup
+from app.schemas.transfer import TransferGroupCreate, TransferGroupUpdate
+from app.utils.transfer_groups import (
+    GroupValidationError,
+    create_group,
+    dissolve_group,
+    group_out,
+    recompute_groups,
+    set_members,
+)
 from app.utils.transfer_utils import run_detection
 
 router = APIRouter(prefix="/api", tags=["transfers"])
 
 
-@router.post("/transfer-override")
-async def transfer_override(
-    body: TransferOverrideRequest,
+async def _get_group(
+    db: AsyncSession, group_id: str, household_id: str
+) -> TransferGroup | None:
+    result = await db.execute(
+        select(TransferGroup).where(
+            TransferGroup.id == group_id,
+            TransferGroup.household_id == household_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+def _not_found() -> JSONResponse:
+    return JSONResponse(status_code=404, content={"error": "Transfer group not found"})
+
+
+@router.post("/transfer-groups", status_code=201)
+async def create_transfer_group(
+    body: TransferGroupCreate,
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Transaction).where(
-            Transaction.id == body.transactionId,
-            Transaction.household_id == household_id,
-        )
-    )
-    txn = result.scalar_one_or_none()
-    if not txn:
-        return JSONResponse(status_code=404, content={"error": "Transaction not found"})
-
-    transfer_info = txn.transfer_info
-    if not transfer_info or not transfer_info.get("isTransfer"):
-        return JSONResponse(
-            status_code=400, content={"error": "Transaction is not a transfer"}
-        )
-
-    updated_info = {
-        **transfer_info,
-        "excludedFromCalculations": not body.includeInCalculations,
-        "userOverride": True,
-    }
-
-    txn.transfer_info = updated_info
-    await db.flush()
-
-    # Update all linked transactions in this household with same transferId
-    transfer_id = transfer_info.get("transferId")
-    if transfer_id:
-        linked = await db.execute(
-            select(Transaction).where(
-                Transaction.transfer_info["transferId"].astext == transfer_id,
-                Transaction.id != body.transactionId,
-                Transaction.household_id == household_id,
-            )
-        )
-        for linked_txn in linked.scalars().all():
-            linked_txn.transfer_info = updated_info
-
+    try:
+        group = await create_group(db, household_id, body.anchorId, body.memberIds)
+    except GroupValidationError as exc:
+        return JSONResponse(status_code=400, content={"error": str(exc)})
     await db.commit()
+    return await group_out(db, group)
 
+
+@router.post("/transfer-groups/recompute")
+async def recompute_transfer_groups(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recompute every group's allocation in this household (repair backstop)."""
+    result = await db.execute(
+        select(TransferGroup.id).where(TransferGroup.household_id == household_id)
+    )
+    group_ids = result.scalars().all()
+    await recompute_groups(db, group_ids)
+    await db.commit()
+    return {"success": True, "groups": len(group_ids)}
+
+
+@router.get("/transfer-groups/{group_id}")
+async def get_transfer_group(
+    group_id: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    group = await _get_group(db, group_id, household_id)
+    if group is None:
+        return _not_found()
+    return await group_out(db, group)
+
+
+@router.patch("/transfer-groups/{group_id}")
+async def update_transfer_group(
+    group_id: str,
+    body: TransferGroupUpdate,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    group = await _get_group(db, group_id, household_id)
+    if group is None:
+        return _not_found()
+    try:
+        if body.includeInCalculations is not None:
+            group.include_in_calculations = body.includeInCalculations
+        if body.memberIds is not None:
+            await set_members(db, group, body.memberIds)
+        else:
+            await recompute_groups(db, [group.id])
+    except GroupValidationError as exc:
+        return JSONResponse(status_code=400, content={"error": str(exc)})
+    await db.commit()
+    await db.refresh(group)
+    return await group_out(db, group)
+
+
+@router.delete("/transfer-groups/{group_id}")
+async def delete_transfer_group(
+    group_id: str,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    group = await _get_group(db, group_id, household_id)
+    if group is None:
+        return _not_found()
+    await dissolve_group(db, group.id)
+    await db.commit()
     return {"success": True}
 
 

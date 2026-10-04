@@ -318,26 +318,6 @@ async def test_patch_expense_update_labels(
 
 
 @pytest.mark.asyncio
-async def test_patch_expense_update_transfer_info(
-    client: AsyncClient, db_session: AsyncSession
-):
-    await _seed(db_session)
-    ti = {
-        "isTransfer": True,
-        "transferId": "tf1",
-        "transferType": "self",
-        "excludedFromCalculations": True,
-        "userOverride": False,
-    }
-    response = await client.patch(
-        "/api/expenses/t1",
-        json={"transferInfo": ti},
-    )
-    assert response.status_code == 200
-    assert response.json()["transferInfo"]["isTransfer"] is True
-
-
-@pytest.mark.asyncio
 async def test_patch_expense_update_excluded(
     client: AsyncClient, db_session: AsyncSession
 ):

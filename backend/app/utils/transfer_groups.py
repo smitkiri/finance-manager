@@ -69,8 +69,12 @@ def new_group_id() -> str:
 
 
 def _alloc_row(txn: Transaction) -> AllocRow:
+    # Freshly constructed rows may still hold the float they were built with.
     return AllocRow(
-        id=txn.id, amount=txn.amount, date=txn.date, created_at=txn.created_at
+        id=txn.id,
+        amount=Decimal(str(txn.amount)),
+        date=txn.date,
+        created_at=txn.created_at,
     )
 
 
@@ -288,3 +292,40 @@ async def adopt_legacy_transfer_info(db: AsyncSession, household_id: str) -> int
         )
         created += 1
     return created
+
+
+async def serialize_transactions(
+    db: AsyncSession, txns: Sequence[Transaction]
+) -> list[dict]:
+    """`TransactionOut` dicts with group refs, loading all groups in one query."""
+    from app.schemas.transaction import TransactionOut
+
+    group_ids = {t.transfer_group_id for t in txns if t.transfer_group_id}
+    groups: dict[str, TransferGroup] = {}
+    if group_ids:
+        result = await db.execute(
+            select(TransferGroup).where(TransferGroup.id.in_(group_ids))
+        )
+        groups = {g.id: g for g in result.scalars().all()}
+    return [
+        TransactionOut.from_orm_model(
+            t, groups.get(t.transfer_group_id) if t.transfer_group_id else None
+        ).model_dump()
+        for t in txns
+    ]
+
+
+async def group_out(db: AsyncSession, group: TransferGroup) -> dict:
+    """Group with its rows: anchor first, then members in allocation order."""
+    rows = await _group_rows(db, group.id)
+    ordered = sorted(
+        rows,
+        key=lambda t: (t.transfer_role != "anchor", _order_key(_alloc_row(t))),
+    )
+    return {
+        "id": group.id,
+        "kind": group.kind,
+        "source": group.source,
+        "includeInCalculations": group.include_in_calculations,
+        "transactions": await serialize_transactions(db, ordered),
+    }

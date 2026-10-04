@@ -10,6 +10,7 @@ from app.models.import_session import ImportSession
 from app.models.transaction import Transaction
 from app.schemas.import_session import ImportSessionOut
 from app.utils.subscription_utils import run_detection_bg
+from app.utils.transfer_groups import recompute_groups
 from app.utils.transfer_utils import run_detection
 
 router = APIRouter(prefix="/api", tags=["import_sessions"])
@@ -65,6 +66,7 @@ async def delete_import_session(
     )
     session_txns = result.scalars().all()
     removed = len(session_txns)
+    touched_groups = {t.transfer_group_id for t in session_txns}
 
     await db.execute(
         delete(Transaction).where(
@@ -72,6 +74,8 @@ async def delete_import_session(
             Transaction.household_id == household_id,
         )
     )
+    db.expunge_all()
+    await recompute_groups(db, touched_groups)
 
     # Delete the session itself
     await db.execute(

@@ -66,64 +66,6 @@ async def test_detect_transfers_no_transactions(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_transfer_override(client: AsyncClient, db_session: AsyncSession):
-    await _seed_transfer_transactions(db_session)
-    # First detect transfers
-    await client.post("/api/detect-transfers")
-
-    # Override: include in calculations
-    response = await client.post(
-        "/api/transfer-override",
-        json={"transactionId": "tf1", "includeInCalculations": True},
-    )
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-
-
-@pytest.mark.asyncio
-async def test_transfer_override_not_found(client: AsyncClient):
-    response = await client.post(
-        "/api/transfer-override",
-        json={"transactionId": "nonexistent", "includeInCalculations": True},
-    )
-    assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_transfer_override_not_a_transfer(
-    client: AsyncClient, db_session: AsyncSession
-):
-    await _seed_transfer_transactions(db_session)
-    # tf3 is not a transfer
-    response = await client.post(
-        "/api/transfer-override",
-        json={"transactionId": "tf3", "includeInCalculations": True},
-    )
-    assert response.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_transfer_override_updates_linked_transactions(
-    client: AsyncClient, db_session: AsyncSession
-):
-    await _seed_transfer_transactions(db_session)
-    await client.post("/api/detect-transfers")
-
-    # Override tf1 — tf2 (same transferId) should also be updated
-    await client.post(
-        "/api/transfer-override",
-        json={"transactionId": "tf1", "includeInCalculations": True},
-    )
-
-    # Fetch tf2 and check its transfer_info was updated
-    response = await client.get("/api/expenses")
-    data = response.json()
-    tf2 = next(t for t in data if t["id"] == "tf2")
-    assert tf2["transferInfo"]["userOverride"] is True
-    assert tf2["transferInfo"]["excludedFromCalculations"] is False
-
-
-@pytest.mark.asyncio
 async def test_rerun_transfer_detection(client: AsyncClient, db_session: AsyncSession):
     await _seed_transfer_transactions(db_session)
     response = await client.post("/api/rerun-transfer-detection")
