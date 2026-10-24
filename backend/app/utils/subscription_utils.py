@@ -16,7 +16,6 @@ from app.models.household import Household
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.utils.subscription_detection import DetectionResult, detect_subscriptions
-from app.utils.subscription_signature import normalize_signature
 
 _log = logging.getLogger(__name__)
 
@@ -115,39 +114,6 @@ async def run_detection(
     }
 
 
-async def reconcile_signature(
-    db: AsyncSession,
-    household_id: str,
-    signature: str,
-) -> None:
-    """Re-run detection scoped to a single signature's transactions."""
-    if not signature:
-        return
-
-    txns_result = await db.execute(
-        select(Transaction).where(Transaction.household_id == household_id)
-    )
-    all_txns = list(txns_result.scalars().all())
-    relevant = [t for t in all_txns if normalize_signature(t.description) == signature]
-
-    subs_result = await db.execute(
-        select(Subscription).where(
-            Subscription.household_id == household_id,
-            Subscription.detection_signature == signature,
-        )
-    )
-    existing = list(subs_result.scalars().all())
-
-    if not relevant and not existing:
-        return
-
-    result = detect_subscriptions(_txns_to_dicts(relevant), _subs_to_dicts(existing))
-    await _persist_result(
-        db, household_id=household_id, existing=existing, result=result
-    )
-    await db.commit()
-
-
 async def _persist_result(
     db: AsyncSession,
     *,
@@ -182,6 +148,7 @@ async def _persist_result(
             row.status = sub_dict["status"]
             row.first_seen = sub_dict["first_seen"]
             row.last_seen = sub_dict["last_seen"]
+            row.detection_signature = sub_dict.get("detection_signature")
             row.user_overrides = sub_dict["user_overrides"]
 
     if result["transaction_assignments"]:
@@ -197,6 +164,12 @@ async def _persist_result(
 
     await db.flush()
 
+    for sub_id in result["deleted_subscription_ids"]:
+        row = existing_by_id.get(sub_id)
+        if row is not None:
+            await db.delete(row)
+    await db.flush()
+
 
 async def run_detection_bg(household_id: str) -> None:
     """Background-task wrapper: opens its own session, holds household lock.
@@ -209,20 +182,6 @@ async def run_detection_bg(household_id: str) -> None:
             await run_detection(db, household_id=household_id)
     except Exception:
         _log.exception("Subscription detection failed for household %s", household_id)
-
-
-async def reconcile_signature_bg(household_id: str, signature: str) -> None:
-    try:
-        async with _lock_for(household_id), async_session_factory() as db:
-            await reconcile_signature(
-                db, household_id=household_id, signature=signature
-            )
-    except Exception:
-        _log.exception(
-            "Subscription signature reconcile failed for household %s sig=%s",
-            household_id,
-            signature,
-        )
 
 
 async def rerun_detection_bg(household_id: str) -> None:

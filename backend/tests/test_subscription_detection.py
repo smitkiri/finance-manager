@@ -373,7 +373,11 @@ def test_stale_sub_marked_possibly_cancelled(monkeypatch) -> None:
         "sub_existing",
         last_seen=date(2026, 4, 1),  # 61 days ago
     )
-    txns: list[dict] = []
+    old = [
+        _txn("t1", d=date(2026, 3, 1)),
+        _txn("t2", d=date(2026, 4, 1)),
+    ]
+    txns = [{**t, "subscriptionId": "sub_existing"} for t in old]
     result = detect_subscriptions(txns, existing_subscriptions=[existing])
     assert len(result["subscriptions"]) == 1
     assert result["subscriptions"][0]["status"] == "possibly_cancelled"
@@ -422,3 +426,155 @@ def test_manual_sub_not_auto_grown() -> None:
     manual_out = next(s for s in result["subscriptions"] if s["id"] == "sub_manual")
     assert manual_out["status"] == "manual"
     assert manual_out["detection_signature"] is None
+
+
+def test_descriptor_variants_merge_into_one_subscription() -> None:
+    txns = [
+        _txn(
+            "t1",
+            description="CLUB AT CHARLES BOSTON MA",
+            amount=95.0,
+            d=date(2025, 11, 1),
+        ),
+        _txn(
+            "t2",
+            description="CLUBS AT CHARLESBOSTON MA",
+            amount=95.0,
+            d=date(2025, 12, 1),
+        ),
+        _txn("t3", description="CLUB AT CHARLES RIV", amount=95.0, d=date(2026, 1, 1)),
+        _txn("t4", description="CLUBS AT CHARLES", amount=95.0, d=date(2026, 2, 1)),
+        _txn(
+            "t5",
+            description="CLUB AT CHARLES BOSTON MA",
+            amount=95.0,
+            d=date(2026, 3, 1),
+        ),
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sub["cadence"] == "monthly"
+    assert sorted(sub["member_txn_ids"]) == ["t1", "t2", "t3", "t4", "t5"]
+    assert sub["detection_signature"] == "club at charles boston"
+
+
+def test_prefix_variant_with_different_amount_not_merged() -> None:
+    # "amazon" retail purchases must not swallow the "amazon prime" sub.
+    prime = [
+        _txn(f"p{i}", description="AMAZON PRIME*X1", amount=14.99, d=date(2026, m, 3))
+        for i, m in enumerate([1, 2, 3])
+    ]
+    retail = [
+        _txn(f"r{i}", description="AMAZON", amount=amt, d=date(2026, 1, 1 + i * 5))
+        for i, amt in enumerate([42.10, 8.99, 120.0, 61.5, 33.0])
+    ]
+    result = detect_subscriptions(prime + retail, existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 1
+    assert result["subscriptions"][0]["member_txn_ids"] == ["p0", "p1", "p2"]
+
+
+def test_double_imported_charges_still_detect_cadence() -> None:
+    # Same charge imported twice (CSV + bank feed) with different descriptors.
+    txns = []
+    for m in [1, 2, 3]:
+        txns.append(
+            _txn(f"a{m}", description="CLUB AT CHARLES BOSTON MA", d=date(2026, m, 1))
+        )
+        txns.append(
+            _txn(f"b{m}", description="CLUBS AT CHARLESBOSTON MA", d=date(2026, m, 2))
+        )
+    result = detect_subscriptions(txns, existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 1
+    assert result["subscriptions"][0]["cadence"] == "monthly"
+    assert len(result["subscriptions"][0]["member_txn_ids"]) == 6
+
+
+def test_existing_duplicate_subs_collapse_into_one() -> None:
+    """Subs created by older detection runs for each descriptor variant are
+    folded into the one that owns the most charges; the rest are deleted."""
+    a = _existing("sub_a", signature="club at charles boston ma", expected_amount=95.0)
+    b = _existing("sub_b", signature="clubs at charlesboston ma", expected_amount=95.0)
+    txns = [
+        {
+            **_txn(
+                "t1",
+                description="CLUB AT CHARLES BOSTON MA",
+                amount=95.0,
+                d=date(2025, 12, 1),
+            ),
+            "subscriptionId": "sub_a",
+        },
+        {
+            **_txn(
+                "t2",
+                description="CLUB AT CHARLES BOSTON MA",
+                amount=95.0,
+                d=date(2026, 1, 1),
+            ),
+            "subscriptionId": "sub_a",
+        },
+        {
+            **_txn(
+                "t3",
+                description="CLUBS AT CHARLESBOSTON MA",
+                amount=95.0,
+                d=date(2026, 2, 1),
+            ),
+            "subscriptionId": "sub_b",
+        },
+        {
+            **_txn(
+                "t4",
+                description="CLUB AT CHARLES BOSTON MA",
+                amount=95.0,
+                d=date(2026, 3, 1),
+            ),
+            "subscriptionId": "sub_a",
+        },
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[a, b])
+    assert [s["id"] for s in result["subscriptions"]] == ["sub_a"]
+    assert result["deleted_subscription_ids"] == ["sub_b"]
+    assert sorted(result["subscriptions"][0]["member_txn_ids"]) == [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+    ]
+    assert set(result["transaction_assignments"].values()) == {"sub_a"}
+    assert result["subscriptions"][0]["detection_signature"] == "club at charles boston"
+
+
+def test_existing_sub_matched_by_membership_after_signature_change() -> None:
+    # Stored signature predates current normalization; ownership still matches.
+    existing = _existing("sub_old", signature="netflix com ca")
+    txns = [
+        {
+            **_txn(
+                f"t{m}", description="NETFLIX.COM 866-579-7172 CA", d=date(2026, m, 5)
+            ),
+            "subscriptionId": "sub_old",
+        }
+        for m in [1, 2, 3]
+    ]
+    result = detect_subscriptions(txns, existing_subscriptions=[existing])
+    assert [s["id"] for s in result["subscriptions"]] == ["sub_old"]
+    assert result["subscriptions"][0]["detection_signature"] == "netflix"
+    assert result["deleted_subscription_ids"] == []
+
+
+def test_orphaned_sub_with_user_overrides_is_kept() -> None:
+    existing = _existing(
+        "sub_named",
+        overrides={
+            "excludedTxnIds": [],
+            "includedTxnIds": [],
+            "lockName": True,
+            "lockAmount": False,
+            "lockCadence": False,
+        },
+    )
+    result = detect_subscriptions([], existing_subscriptions=[existing])
+    assert [s["id"] for s in result["subscriptions"]] == ["sub_named"]
+    assert result["deleted_subscription_ids"] == []

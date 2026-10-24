@@ -1,8 +1,9 @@
 """Pure subscription detection algorithm.
 
-Groups expense transactions by normalized signature, then checks whether each
-group forms a regular cadence (weekly/biweekly/monthly/quarterly/annual) with
-consistent amount. Mirrors the structure of transfer_detection.py.
+Groups expense transactions by normalized signature, clusters descriptor
+variants of the same merchant, then checks whether each cluster forms a regular
+cadence (weekly/biweekly/monthly/quarterly/annual) with consistent amount.
+Mirrors the structure of transfer_detection.py.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import time
 from datetime import date as date_type
 from typing import Any, TypedDict
 
-from app.utils.subscription_signature import normalize_signature
+from app.utils.subscription_signature import merge_key, normalize_signature
 
 
 def _today() -> date_type:
@@ -45,10 +46,26 @@ INTERVAL_MATCH_RATIO = 0.7  # >=70% of consecutive intervals must match cadence
 AMOUNT_ABS_TOLERANCE = 0.50  # dollars
 AMOUNT_REL_TOLERANCE = 0.01  # 1%
 
+# Descriptor variants of one merchant are merged only when their typical
+# amounts agree this closely, so "amazon" retail never swallows "amazon prime".
+CLUSTER_AMOUNT_REL_TOLERANCE = 0.10
+# A signature shorter than this never absorbs longer ones by prefix.
+CLUSTER_MIN_PREFIX_LEN = 6
+# Same-amount charges this close together count once when inferring cadence
+# (e.g. the same charge imported from both CSV and a bank feed).
+DUPLICATE_CHARGE_DAYS = 3
+
 
 class DetectionResult(TypedDict):
     subscriptions: list[dict[str, Any]]
     transaction_assignments: dict[str, str | None]
+    deleted_subscription_ids: list[str]
+
+
+class _Cluster(TypedDict):
+    signature: str
+    signatures: set[str]
+    members: list[dict]
 
 
 def detect_subscriptions(
@@ -61,26 +78,24 @@ def detect_subscriptions(
     map of `{txn_id: subscription_id_or_None}` reflecting the full target state.
     """
     eligible = _filter_eligible(transactions, existing_subscriptions)
-    groups = _group_by_signature(eligible)
+    clusters = _cluster_groups(_group_by_signature(eligible))
 
     txn_by_id = {t["id"]: t for t in transactions}
 
     # Manual subs never auto-match. Cancelled subs DO match (so the user's
     # explicit "cancelled" decision sticks across re-detections) — but they
     # adopt new transactions without changing status.
-    existing_by_sig: dict[str, dict] = {}
-    for sub in existing_subscriptions:
-        if sub["status"] == "manual":
-            continue
-        sig = sub.get("detection_signature")
-        if sig:
-            existing_by_sig[sig] = sub
+    matchable = {
+        sub["id"]: sub for sub in existing_subscriptions if sub["status"] != "manual"
+    }
 
     out_subs: list[dict[str, Any]] = []
     assignments: dict[str, str | None] = {t["id"]: None for t in transactions}
     handled_ids: set[str] = set()
+    claimed_txn_ids: set[str] = set()
 
-    for signature, members in groups.items():
+    for cluster in clusters:
+        members = cluster["members"]
         if len(members) < MIN_OCCURRENCES:
             continue
         pruned = _prune_amount_outliers(members)
@@ -91,12 +106,13 @@ def detect_subscriptions(
         if cadence is None:
             continue
 
-        existing = existing_by_sig.get(signature)
+        signature = cluster["signature"]
+        existing = _match_existing(cluster, matchable, handled_ids)
         if existing is not None:
             if existing["status"] == "cancelled":
-                sub = _adopt_into_cancelled(existing, pruned, txn_by_id)
+                sub = _adopt_into_cancelled(existing, pruned, txn_by_id, signature)
             else:
-                sub = _update_existing(existing, pruned, cadence, txn_by_id)
+                sub = _update_existing(existing, pruned, cadence, txn_by_id, signature)
             handled_ids.add(existing["id"])
         else:
             sub = _build_subscription(signature, cadence, pruned)
@@ -104,23 +120,74 @@ def detect_subscriptions(
         out_subs.append(sub)
         for tid in sub["member_txn_ids"]:
             assignments[tid] = sub["id"]
+            claimed_txn_ids.add(tid)
 
-    # Carry over existing subs that didn't get a detected match.
+    # Carry over existing subs that didn't get a detected match. Auto-detected
+    # subs left with no members (their charges were claimed by a merged
+    # cluster, or no longer exist) are deleted instead of lingering.
+    deleted_ids: list[str] = []
     for sub in existing_subscriptions:
         if sub["id"] in handled_ids:
             continue
-        carried = _carry_forward(sub, txn_by_id)
+        carried = _carry_forward(sub, txn_by_id, claimed_txn_ids)
+        if _is_orphaned_auto_sub(carried):
+            deleted_ids.append(carried["id"])
+            continue
         out_subs.append(carried)
         for tid in carried["member_txn_ids"]:
             assignments[tid] = carried["id"]
 
-    return {"subscriptions": out_subs, "transaction_assignments": assignments}
+    return {
+        "subscriptions": out_subs,
+        "transaction_assignments": assignments,
+        "deleted_subscription_ids": deleted_ids,
+    }
+
+
+def _match_existing(
+    cluster: _Cluster,
+    matchable: dict[str, dict],
+    handled_ids: set[str],
+) -> dict | None:
+    """Pick the existing sub a detected cluster continues: the one that
+    already owns the most of its charges, else one whose stored signature is
+    among the cluster's variants. Ownership wins so a sub survives changes to
+    signature normalization or a merchant's descriptor."""
+    owned: dict[str, int] = {}
+    for m in cluster["members"]:
+        sid = m.get("subscriptionId")
+        if sid in matchable and sid not in handled_ids:
+            owned[sid] = owned.get(sid, 0) + 1
+    if owned:
+        best = max(sorted(owned), key=lambda sid: owned[sid])
+        return matchable[best]
+    for sid in sorted(matchable):
+        sub = matchable[sid]
+        if sid in handled_ids:
+            continue
+        if sub.get("detection_signature") in cluster["signatures"]:
+            return sub
+    return None
+
+
+def _is_orphaned_auto_sub(sub: dict) -> bool:
+    if sub["member_txn_ids"] or sub["status"] not in {"active", "possibly_cancelled"}:
+        return False
+    overrides = sub.get("user_overrides") or {}
+    return not (
+        overrides.get("includedTxnIds")
+        or overrides.get("excludedTxnIds")
+        or overrides.get("lockName")
+        or overrides.get("lockAmount")
+        or overrides.get("lockCadence")
+    )
 
 
 def _adopt_into_cancelled(
     existing: dict,
     pruned: list[dict],
     txn_by_id: dict[str, dict],
+    signature: str,
 ) -> dict[str, Any]:
     """Adopt newly-detected matching txns into a cancelled sub without
     changing its user-set status, name, cadence, or amount. Prevents a
@@ -149,7 +216,7 @@ def _adopt_into_cancelled(
         "status": "cancelled",
         "first_seen": first_seen,
         "last_seen": last_seen,
-        "detection_signature": existing.get("detection_signature"),
+        "detection_signature": signature,
         "user_overrides": overrides,
         "metadata": existing.get("metadata") or {},
         "member_txn_ids": member_ids,
@@ -161,6 +228,7 @@ def _update_existing(
     pruned: list[dict],
     cadence: str,
     txn_by_id: dict[str, dict],
+    signature: str,
 ) -> dict[str, Any]:
     overrides = existing["user_overrides"] or {}
     excluded = set(overrides.get("excludedTxnIds") or [])
@@ -180,9 +248,7 @@ def _update_existing(
     median = sorted(amounts)[len(amounts) // 2]
 
     name = (
-        existing["name"]
-        if overrides.get("lockName")
-        else _signature_to_name(existing.get("detection_signature") or "")
+        existing["name"] if overrides.get("lockName") else _signature_to_name(signature)
     )
     amount = (
         float(existing["expected_amount"]) if overrides.get("lockAmount") else median
@@ -208,23 +274,30 @@ def _update_existing(
         "status": "active",
         "first_seen": first_seen,
         "last_seen": last_seen,
-        "detection_signature": existing.get("detection_signature"),
+        "detection_signature": signature,
         "user_overrides": overrides,
         "metadata": existing.get("metadata") or {},
         "member_txn_ids": member_ids,
     }
 
 
-def _carry_forward(existing: dict, txn_by_id: dict[str, dict]) -> dict[str, Any]:
+def _carry_forward(
+    existing: dict,
+    txn_by_id: dict[str, dict],
+    claimed_txn_ids: set[str],
+) -> dict[str, Any]:
     overrides = existing["user_overrides"] or {}
     excluded = set(overrides.get("excludedTxnIds") or [])
     included = list(overrides.get("includedTxnIds") or [])
 
-    # Existing members come from the FK column on the transactions input.
+    # Existing members come from the FK column on the transactions input,
+    # minus any a detected subscription claimed in this run.
     member_ids = [
         t["id"]
         for t in txn_by_id.values()
-        if t.get("subscriptionId") == existing["id"] and t["id"] not in excluded
+        if t.get("subscriptionId") == existing["id"]
+        and t["id"] not in excluded
+        and t["id"] not in claimed_txn_ids
     ]
     for tid in included:
         if tid in txn_by_id and tid not in member_ids and tid not in excluded:
@@ -295,6 +368,74 @@ def _group_by_signature(transactions: list[dict]) -> dict[str, list[dict]]:
     return groups
 
 
+def _median(values: list[float]) -> float:
+    ordered = sorted(values)
+    n = len(ordered)
+    return ordered[n // 2] if n % 2 else (ordered[n // 2 - 1] + ordered[n // 2]) / 2
+
+
+def _amounts_compatible(a: float, b: float) -> bool:
+    tolerance = max(AMOUNT_ABS_TOLERANCE, CLUSTER_AMOUNT_REL_TOLERANCE * max(a, b))
+    return abs(a - b) <= tolerance
+
+
+def _cluster_groups(groups: dict[str, list[dict]]) -> list[_Cluster]:
+    """Merge signature groups that are descriptor variants of one merchant.
+
+    Two groups merge when one's merge key is a prefix of the other's (or they
+    are equal) and their median amounts agree. Processors truncate and re-space
+    descriptors ("CLUB AT CHARLES RIV", "CLUBS AT CHARLESBOSTON MA"), so an
+    exact-match grouping splits one subscription into several.
+    """
+    sigs = sorted(groups, key=lambda sig: (merge_key(sig), sig))
+    keys = [merge_key(sig) for sig in sigs]
+    medians = [_median([abs(float(m["amount"])) for m in groups[s]]) for s in sigs]
+
+    parent = list(range(len(sigs)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    # Keys sharing a prefix sit contiguously after it in sorted order.
+    for i, key in enumerate(keys):
+        if len(key) < CLUSTER_MIN_PREFIX_LEN:
+            continue
+        j = i + 1
+        while j < len(keys) and keys[j].startswith(key):
+            if _amounts_compatible(medians[i], medians[j]):
+                parent[find(j)] = find(i)
+            j += 1
+    # Identical keys shorter than the prefix minimum still merge.
+    for i in range(1, len(keys)):
+        if keys[i] == keys[i - 1] and _amounts_compatible(medians[i], medians[i - 1]):
+            parent[find(i)] = find(i - 1)
+
+    by_root: dict[int, list[int]] = {}
+    for i in range(len(sigs)):
+        by_root.setdefault(find(i), []).append(i)
+
+    clusters: list[_Cluster] = []
+    for indices in by_root.values():
+        members = [m for i in indices for m in groups[sigs[i]]]
+        # Most frequent variant names the subscription; shorter wins ties.
+        canonical = min(
+            (sigs[i] for i in indices),
+            key=lambda sig: (-len(groups[sig]), len(sig), sig),
+        )
+        clusters.append(
+            {
+                "signature": canonical,
+                "signatures": {sigs[i] for i in indices},
+                "members": members,
+            }
+        )
+    clusters.sort(key=lambda c: c["signature"])
+    return clusters
+
+
 def _prune_amount_outliers(members: list[dict]) -> list[dict]:
     amounts = sorted(abs(float(m["amount"])) for m in members)
     n = len(amounts)
@@ -323,10 +464,28 @@ def _prune_amount_outliers(members: list[dict]) -> list[dict]:
     return in_band
 
 
+def _collapse_duplicate_charges(sorted_members: list[dict]) -> list[dict]:
+    kept: list[dict] = []
+    for m in sorted_members:
+        if kept:
+            prev = kept[-1]
+            close = (m["date"] - prev["date"]).days <= DUPLICATE_CHARGE_DAYS
+            same = abs(abs(float(m["amount"])) - abs(float(prev["amount"]))) <= (
+                AMOUNT_ABS_TOLERANCE
+            )
+            if close and same:
+                continue
+        kept.append(m)
+    return kept
+
+
 def _infer_cadence(sorted_members: list[dict]) -> str | None:
+    charges = _collapse_duplicate_charges(sorted_members)
+    if len(charges) < MIN_OCCURRENCES:
+        return None
     intervals = [
-        (sorted_members[i + 1]["date"] - sorted_members[i]["date"]).days
-        for i in range(len(sorted_members) - 1)
+        (charges[i + 1]["date"] - charges[i]["date"]).days
+        for i in range(len(charges) - 1)
     ]
     if not intervals:
         return None
