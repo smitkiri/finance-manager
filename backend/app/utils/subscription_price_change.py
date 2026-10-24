@@ -19,6 +19,13 @@ PERIOD_LABEL: dict[str, str] = {
 
 SKIPPED_STATUSES: frozenset[str] = frozenset({"cancelled", "manual"})
 
+# Baseline is the median of this many charges before the latest one, so an
+# old price from long ago doesn't keep the banner alive.
+BASELINE_WINDOW = 3
+# Same-amount charges this close together are one charge imported twice;
+# matches DUPLICATE_CHARGE_DAYS in subscription_detection.py.
+DUPLICATE_CHARGE_DAYS = 3
+
 
 def _median(values: list[float]) -> float:
     s = sorted(values)
@@ -35,23 +42,39 @@ def compute_price_change(
     """Compute a price-change record from a subscription's member transactions.
 
     `members_by_date` must be sorted ascending by date. Amounts may be signed;
-    we compare absolute values. Returns None when no increase is detected,
-    when the subscription is cancelled/manual, or when there are fewer than
-    3 members to compare.
+    we compare absolute values. Returns None when the latest charge isn't an
+    increase over the charges just before it, when the previous charge was
+    already at the new price, when the subscription is cancelled/manual, or
+    when there are fewer than 3 distinct charges to compare.
     """
     if status in SKIPPED_STATUSES:
         return None
     if len(members_by_date) < 3:
         return None
 
-    amounts = [abs(a) for _, a in members_by_date]
+    charges: list[tuple[date, float]] = []
+    for d, a in members_by_date:
+        if (
+            charges
+            and (d - charges[-1][0]).days <= DUPLICATE_CHARGE_DAYS
+            and abs(abs(a) - charges[-1][1]) <= AMOUNT_ABS_TOLERANCE
+        ):
+            continue
+        charges.append((d, abs(a)))
+    if len(charges) < 3:
+        return None
+
+    amounts = [a for _, a in charges]
     current = amounts[-1]
-    prior = amounts[:-1]
-    prior_median = _median(prior)
+    prior_median = _median(amounts[-1 - BASELINE_WINDOW : -1])
     delta = current - prior_median
 
     tolerance = max(AMOUNT_ABS_TOLERANCE, AMOUNT_REL_TOLERANCE * prior_median)
     if delta <= tolerance:
+        return None
+    # Only report the change at the charge where it happened; once the
+    # previous charge is already at the new price it's old news.
+    if abs(current - amounts[-2]) <= tolerance:
         return None
 
     previous_rounded = round(prior_median, 2)

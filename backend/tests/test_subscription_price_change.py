@@ -107,3 +107,30 @@ class TestMedianCalculation:
         assert info.previous_amount == 10.0
         assert info.current_amount == 12.99
         assert info.delta_amount == 2.99
+
+
+class TestOnlyRecentIncreases:
+    def test_old_increase_not_reported(self) -> None:
+        # Price rose several charges ago; the latest charge matches the one
+        # before it, so there's nothing new to report.
+        members = _members([22.99] * 5 + [26.99] * 5)
+        assert compute_price_change("monthly", "active", members) is None
+
+    def test_long_history_increase_at_latest_charge_reported(self) -> None:
+        members = _members([22.99] * 9 + [26.99])
+        info = compute_price_change("monthly", "active", members)
+        assert info is not None
+        assert info.previous_amount == 22.99
+        assert info.current_amount == 26.99
+
+    def test_double_imported_latest_charge_still_reported(self) -> None:
+        members = [
+            (date(2026, 1, 5), 10.0),
+            (date(2026, 2, 5), 10.0),
+            (date(2026, 3, 5), 10.0),
+            (date(2026, 4, 5), 12.99),
+            (date(2026, 4, 6), 12.99),
+        ]
+        info = compute_price_change("monthly", "active", members)
+        assert info is not None
+        assert info.current_amount == 12.99

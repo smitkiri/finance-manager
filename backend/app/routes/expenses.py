@@ -23,7 +23,7 @@ from app.utils.query_builder import (
     counted_amount,
 )
 from app.utils.subscription_signature import normalize_signature
-from app.utils.subscription_utils import reconcile_signature_bg, run_detection_bg
+from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_groups import (
     recompute_group,
     recompute_groups,
@@ -372,11 +372,10 @@ async def update_expense(
     await db.commit()
     await db.refresh(txn)
 
-    old_sig = normalize_signature(old_description)
-    new_sig = normalize_signature(txn.description)
-    bg.add_task(reconcile_signature_bg, household_id, new_sig)
-    if old_sig and old_sig != new_sig:
-        bg.add_task(reconcile_signature_bg, household_id, old_sig)
+    # Full detection, not a per-signature pass: the edit may move the txn
+    # into or out of a cluster of descriptor variants.
+    if normalize_signature(old_description) or normalize_signature(txn.description):
+        bg.add_task(run_detection_bg, household_id)
 
     [out] = await serialize_transactions(db, [txn])
     return out

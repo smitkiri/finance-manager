@@ -31,11 +31,13 @@ async def household(db_session) -> Household:
     return h
 
 
-def _make_txn(id_: str, *, d: date, amount: float = 15.99) -> Transaction:
+def _make_txn(
+    id_: str, *, d: date, amount: float = 15.99, description: str = "Netflix"
+) -> Transaction:
     return Transaction(
         id=id_,
         date=d,
-        description="Netflix",
+        description=description,
         category="Entertainment",
         amount=Decimal(str(amount)),
         type="expense",
@@ -100,3 +102,54 @@ async def test_run_detection_idempotent(db_session, household) -> None:
     await run_detection(db_session, household_id="hh1")
     sub_id_2 = (await db_session.execute(select(Subscription.id))).scalar_one()
     assert sub_id_1 == sub_id_2  # same subscription preserved
+
+
+async def test_run_detection_deletes_duplicate_variant_subs(
+    db_session, household
+) -> None:
+    """Older runs left one sub per descriptor variant; a new run folds them
+    into one and deletes the empties."""
+    for sid, sig in [
+        ("sub_a", "club at charles boston ma"),
+        ("sub_b", "clubs at charlesboston ma"),
+    ]:
+        db_session.add(
+            Subscription(
+                id=sid,
+                household_id="hh1",
+                name=sig.title(),
+                cadence="monthly",
+                expected_amount=Decimal("95.00"),
+                status="active",
+                detection_signature=sig,
+                user_overrides={
+                    "excludedTxnIds": [],
+                    "includedTxnIds": [],
+                    "lockName": False,
+                    "lockAmount": False,
+                    "lockCadence": False,
+                },
+                metadata_={},
+            )
+        )
+    await db_session.flush()
+    rows = [
+        ("t1", date(2025, 12, 1), "CLUB AT CHARLES BOSTON MA", "sub_a"),
+        ("t2", date(2026, 1, 1), "CLUB AT CHARLES BOSTON MA", "sub_a"),
+        ("t3", date(2026, 2, 1), "CLUBS AT CHARLESBOSTON MA", "sub_b"),
+        ("t4", date(2026, 3, 1), "CLUBS AT CHARLESBOSTON MA", "sub_b"),
+        ("t5", date(2026, 3, 2), "CLUB AT CHARLES BOSTON MA", "sub_a"),
+    ]
+    for tid, d, desc, sid in rows:
+        t = _make_txn(tid, d=d, amount=95.0, description=desc)
+        t.subscription_id = sid
+        db_session.add(t)
+    await db_session.commit()
+
+    await run_detection(db_session, household_id="hh1")
+
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert [s.id for s in subs] == ["sub_a"]
+    assert subs[0].detection_signature == "club at charles boston"
+    txns = (await db_session.execute(select(Transaction))).scalars().all()
+    assert {t.subscription_id for t in txns} == {"sub_a"}
