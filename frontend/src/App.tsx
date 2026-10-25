@@ -62,6 +62,7 @@ function AppContent() {
   const location = useLocation();
   const isSettingsRoute = location.pathname === '/settings';
   const [categories, setCategories] = useState<string[]>([]);
+  const [everydayCategories, setEverydayCategories] = useState<string[]>([]);
   const [allLabels, setAllLabels] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sources, setSources] = useState<Source[]>([]);
@@ -116,6 +117,7 @@ function AppContent() {
           tellerConfig,
           loadedLabels,
           demoConfig,
+          loadedEverydayCategories,
         ] = await Promise.all([
           ApiClient.loadSources(),
           ApiClient.loadDateRange(),
@@ -125,9 +127,11 @@ function AppContent() {
           ApiClient.getTellerConfig(),
           ApiClient.loadLabels(),
           ApiClient.getDemoConfig(),
+          ApiClient.loadEverydayCategories(),
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
+        setEverydayCategories(loadedEverydayCategories);
         setAllLabels(loadedLabels);
         setUsers(loadedUsers);
         setAccounts(loadedAccounts);
@@ -144,6 +148,11 @@ function AppContent() {
     };
     loadData();
   }, [currentUser]);
+
+  const handleChangeEverydayCategories = useCallback((next: string[]) => {
+    setEverydayCategories(next);
+    ApiClient.saveEverydayCategories(next);
+  }, []);
 
   // Load dashboard stats from API (aggregates only) when user visits Dashboard
   useEffect(() => {
@@ -1220,6 +1229,9 @@ function AppContent() {
                 onViewDetails={handleViewTransactionDetails}
                 isLoading={dashboardStatsLoading}
                 statsFromApi={dashboardStats}
+                dateRange={dateRange}
+                everydayCategories={everydayCategories}
+                onChangeEverydayCategories={handleChangeEverydayCategories}
               />
             }
           />

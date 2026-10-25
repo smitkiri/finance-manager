@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { ListRow } from './ui/ListRow';
 import { Chart } from './charts/Chart';
-import type { Expense, User, DashboardStats } from '../types';
+import type { Expense, User, DashboardStats, DateRange } from '../types';
 import { calculateStats, formatDate } from '../utils';
 import { countedExpenses } from '../utils/transferGroups';
 import { CountedAmount } from './ui/CountedAmount';
 import { Check } from 'lucide-react';
+import { EverydaySpendingCard } from './EverydaySpendingCard';
+import { summarizeEverydaySpending } from '../utils/everydaySpending';
 
 interface DashboardProps {
   expenses: Expense[];
@@ -16,10 +18,24 @@ interface DashboardProps {
   onViewDetails?: (expense: Expense) => void;
   isLoading?: boolean;
   statsFromApi?: DashboardStats | null;
+  dateRange: DateRange;
+  everydayCategories: string[];
+  onChangeEverydayCategories: (next: string[]) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = React.memo(
-  ({ expenses, categories, selectedUserId, users, onViewDetails, isLoading, statsFromApi }) => {
+  ({
+    expenses,
+    categories,
+    selectedUserId,
+    users,
+    onViewDetails,
+    isLoading,
+    statsFromApi,
+    dateRange,
+    everydayCategories,
+    onChangeEverydayCategories,
+  }) => {
     const [selectedCategories, setSelectedCategories] = useState<string[]>(categories);
     const [topTransactionCount, setTopTransactionCount] = useState<number>(10);
 
@@ -121,6 +137,27 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
       }
       return prepareCategoryLineData(filteredExpenses, categoriesToShow);
     }, [statsFromApi?.monthlyCategoryData, filteredExpenses, categoriesToShow]);
+
+    const everydaySummary = useMemo(
+      () =>
+        summarizeEverydaySpending({
+          monthlyCategoryData:
+            statsFromApi?.monthlyCategoryData && statsFromApi.monthlyCategoryData.length > 0
+              ? statsFromApi.monthlyCategoryData
+              : prepareCategoryLineData(filteredExpenses, everydayCategories),
+          pinned: everydayCategories,
+          knownCategories: categories,
+          range: dateRange,
+          today: new Date(),
+        }),
+      [
+        statsFromApi?.monthlyCategoryData,
+        filteredExpenses,
+        everydayCategories,
+        categories,
+        dateRange,
+      ]
+    );
 
     const avgIncomePerMonth = useMemo(() => {
       const monthsWithIncome = stats.monthlyData.filter((m) => m.income > 0).length;
@@ -271,6 +308,13 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
           <StatsCard title="Avg. Income / Month" value={avgIncomePerMonth} type="income" />
           <StatsCard title="Avg. Expense / Month" value={avgExpensePerMonth} type="expense" />
         </div>
+
+        <EverydaySpendingCard
+          summary={everydaySummary}
+          pinned={everydayCategories}
+          categories={categories}
+          onChangePinned={onChangeEverydayCategories}
+        />
 
         {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
