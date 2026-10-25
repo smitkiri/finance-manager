@@ -227,15 +227,6 @@ PostgreSQL is **not** in this compose file — it is provisioned as a separate C
 5.  **Attach a domain** to the `nginx` service. Coolify auto-issues SSL via Traefik / Let's Encrypt.
 6.  **Deploy.** Coolify builds both images, runs `backend-migrate` to completion, then starts `backend`. Once `backend` passes its healthcheck (`/api/health`, which also round-trips to Postgres), `nginx` starts. Both services declare compose healthchecks, so Coolify shows their health status and Traefik only routes to a healthy `nginx`.
 
-### Internet-facing deployments
-
-The prod nginx rate-limits `/api/*` (20 req/s per client, burst 60) and `/api/auth/login` + `/api/auth/signup` (10 req/min, burst 10), keyed on Cloudflare's `CF-Connecting-IP` header when present. That header can be forged by anyone who reaches nginx directly, so when you put the app behind Cloudflare (proxy or Tunnel):
-
-- Don't expose the nginx port publicly. Set `NGINX_HOST_IP=127.0.0.1` (or don't port-forward it) so traffic can only arrive through Cloudflare / Traefik.
-- Point every hostname in the zone at the tunnel (CNAME to `<tunnel-id>.cfargotunnel.com`), not at an `A` record with your home IP.
-- Enable **Always Use HTTPS** in Cloudflare (SSL/TLS → Edge Certificates).
-- Consider a Cloudflare rate-limiting rule on `/api/` as an extra layer in front of the origin.
-
 ### Subsequent deploys
 
 `git push` triggers a Coolify rebuild. Migrations are auto-applied via the `backend-migrate` service on each deploy.
