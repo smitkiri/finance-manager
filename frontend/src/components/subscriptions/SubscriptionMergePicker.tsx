@@ -125,7 +125,7 @@ export const SubscriptionMergePicker: React.FC<Props> = ({ target, onMerge, onCa
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search subscriptions"
-            className="flex-1 bg-transparent outline-none text-sm md:text-base"
+            className="flex-1 bg-transparent outline-hidden text-sm md:text-base"
           />
         </div>
       </div>

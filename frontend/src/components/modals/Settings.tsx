@@ -666,7 +666,7 @@ export const Settings: React.FC<SettingsProps> = ({
     <div
       className={
         asPage
-          ? 'bg-white dark:bg-gray-900 rounded-lg shadow-sm max-w-3xl w-full min-h-[60vh] border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row'
+          ? 'bg-white dark:bg-gray-900 rounded-lg shadow-xs max-w-3xl w-full min-h-[60vh] border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row'
           : 'bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-slide-up border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row'
       }
     >
@@ -763,12 +763,12 @@ export const Settings: React.FC<SettingsProps> = ({
                               onKeyDown={handleEditKeyDown}
                               onBlur={handleSaveEdit}
                               autoFocus
-                              className="flex-1 px-3 py-2 min-h-[48px] border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              className="flex-1 px-3 py-2 min-h-[48px] border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-sm"
                             />
                             <button
                               onClick={handleSaveEdit}
                               aria-label="Save"
-                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                             >
                               <svg
                                 className="w-5 h-5"
@@ -787,7 +787,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             <button
                               onClick={handleCancelEdit}
                               aria-label="Cancel"
-                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             >
                               <X size={18} />
                             </button>
@@ -809,7 +809,7 @@ export const Settings: React.FC<SettingsProps> = ({
                               <button
                                 onClick={() => handleStartEdit(category)}
                                 aria-label={`Edit ${category}`}
-                                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                               >
                                 <Edit size={16} />
                               </button>
@@ -817,7 +817,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <button
                                   onClick={() => handleDeleteCategory(category)}
                                   aria-label={`Delete ${category}`}
-                                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                 >
                                   <Trash2 size={16} />
                                 </button>
@@ -844,7 +844,7 @@ export const Settings: React.FC<SettingsProps> = ({
                               onKeyDown={handleEditKeyDown}
                               onBlur={handleSaveEdit}
                               autoFocus
-                              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-sm"
                             />
                             <button
                               onClick={handleSaveEdit}
@@ -881,7 +881,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() => handleStartEdit(category)}
-                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-sm transition-colors"
                                 title="Edit category"
                               >
                                 <Edit size={12} />
@@ -889,7 +889,7 @@ export const Settings: React.FC<SettingsProps> = ({
                               {category !== 'Uncategorized' && (
                                 <button
                                   onClick={() => handleDeleteCategory(category)}
-                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm transition-colors"
                                   title="Delete category"
                                 >
                                   <Trash2 size={12} />
@@ -958,13 +958,13 @@ export const Settings: React.FC<SettingsProps> = ({
                                     className="flex flex-col gap-2 md:flex-row md:items-center md:space-x-3 md:gap-0 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                                   >
                                     <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-medium text-gray-900 dark:text-white break-words">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-white wrap-break-word">
                                         {mapping.csvColumn}
                                       </span>
                                     </div>
                                     <ArrowRight
                                       size={16}
-                                      className="text-gray-400 hidden md:block flex-shrink-0"
+                                      className="text-gray-400 hidden md:block shrink-0"
                                     />
                                     <select
                                       value={mapping.standardColumn}
@@ -974,7 +974,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                           e.target.value as StandardizedColumn | 'Ignore'
                                         )
                                       }
-                                      className="w-full md:w-auto px-3 py-2 md:py-1 min-h-[44px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
+                                      className="w-full md:w-auto px-3 py-2 md:py-1 min-h-[44px] md:min-h-0 border border-gray-300 dark:border-gray-600 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
                                     >
                                       <option value="Ignore">Ignore</option>
                                       {getAvailableStandardColumns(mapping).map((col) => (
@@ -1010,7 +1010,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     onChange={(e) =>
                                       setEditSourceFlipIncomeExpense(e.target.checked)
                                     }
-                                    className="w-5 h-5 md:w-4 md:h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    className="w-5 h-5 md:w-4 md:h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                   />
                                   <label
                                     htmlFor={`flipIncomeExpense-${source.id}`}
@@ -1047,7 +1047,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           <div className="p-4 bg-gray-50 dark:bg-gray-700">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <span className="font-medium text-gray-900 dark:text-white text-sm break-words">
+                                <span className="font-medium text-gray-900 dark:text-white text-sm wrap-break-word">
                                   {source.name}
                                 </span>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1078,7 +1078,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <button
                                   onClick={() => handleStartEditSource(source)}
                                   aria-label={`Edit ${source.name}`}
-                                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-sm transition-colors"
                                   title="Edit source"
                                 >
                                   <Edit className="w-4 h-4 md:w-3 md:h-3" />
@@ -1136,7 +1136,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div className="flex items-center gap-2">
                           <LinkIcon
                             size={16}
-                            className="text-blue-600 dark:text-blue-400 flex-shrink-0"
+                            className="text-blue-600 dark:text-blue-400 shrink-0"
                           />
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
                             Connected Banks
@@ -1361,7 +1361,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     if (e.key === 'Escape') handleCancelEditAccount();
                                   }}
                                   autoFocus
-                                  className="flex-1 min-w-0 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                  className="flex-1 min-w-0 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-sm"
                                 />
                                 <div className="flex gap-1">
                                   <button
@@ -1446,14 +1446,14 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <div className="flex items-center gap-1 ml-2">
                                   <button
                                     onClick={() => handleStartEditAccount(account)}
-                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-sm transition-colors"
                                     title="Edit account"
                                   >
                                     <Edit size={12} />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteAccount(account)}
-                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm transition-colors"
                                     title="Delete account"
                                   >
                                     <Trash2 size={12} />
@@ -1501,7 +1501,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                       [m.tellerCategory]: e.target.value,
                                     }))
                                   }
-                                  className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                 >
                                   <option value="Uncategorized">Uncategorized</option>
                                   {categories
@@ -1663,7 +1663,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           <span>Sources</span>
                         </label>
                         {deleteSources && (
-                          <div className="ml-6 my-2 max-h-40 overflow-y-auto border rounded p-2 bg-gray-50 dark:bg-gray-900">
+                          <div className="ml-6 my-2 max-h-40 overflow-y-auto border rounded-sm p-2 bg-gray-50 dark:bg-gray-900">
                             {sources.length === 0 && (
                               <div className="text-gray-500 text-sm">No sources available.</div>
                             )}
@@ -1839,7 +1839,7 @@ export const Settings: React.FC<SettingsProps> = ({
                               {session.transactionCount !== 1 ? 's' : ''} added
                             </p>
                           </div>
-                          <div className="flex-shrink-0">
+                          <div className="shrink-0">
                             {confirmUndoSessionId === session.id ? (
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -1848,13 +1848,13 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <button
                                   onClick={() => handleUndoImportSession(session.id)}
                                   disabled={undoingSessionId === session.id}
-                                  className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                                  className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-sm hover:bg-red-700 transition-colors disabled:opacity-50"
                                 >
                                   {undoingSessionId === session.id ? 'Undoing...' : 'Yes, Undo'}
                                 </button>
                                 <button
                                   onClick={() => setConfirmUndoSessionId(null)}
-                                  className="px-3 py-1.5 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                  className="px-3 py-1.5 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                                 >
                                   Cancel
                                 </button>
@@ -1862,7 +1862,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             ) : (
                               <button
                                 onClick={() => setConfirmUndoSessionId(session.id)}
-                                className="px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                                className="px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 rounded-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                               >
                                 Undo
                               </button>
@@ -1883,7 +1883,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // Teller account selection modal — shown after Teller Connect succeeds and accounts are loaded
   const tellerAccountModal = (pendingTellerEnrollment || tellerPreviewLoading) && (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-60 p-4">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-800 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
@@ -1969,7 +1969,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           [acct.id]: { ...prev[acct.id], selected: e.target.checked },
                         }))
                       }
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 rounded-sm focus:ring-blue-500"
                     />
                     <label htmlFor={`teller-acct-${acct.id}`} className="flex-1 cursor-pointer">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">

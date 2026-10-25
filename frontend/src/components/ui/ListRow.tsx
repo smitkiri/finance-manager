@@ -44,13 +44,13 @@ export const ListRow: React.FC<ListRowProps> = ({
         <div className="min-w-0 flex-1 font-medium text-gray-900 dark:text-white truncate">
           {primary}
         </div>
-        <div className="flex-shrink-0 font-semibold tabular-nums">{amount}</div>
+        <div className="shrink-0 font-semibold tabular-nums">{amount}</div>
       </div>
       <div className="mt-1 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1 text-xs md:text-[11px] text-gray-500 dark:text-gray-400 truncate">
           {meta}
         </div>
-        {trailing && <div className="flex-shrink-0">{trailing}</div>}
+        {trailing && <div className="shrink-0">{trailing}</div>}
       </div>
     </div>
   );

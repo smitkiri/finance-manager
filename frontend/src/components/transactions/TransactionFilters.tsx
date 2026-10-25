@@ -107,7 +107,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
 
   if (isCompact) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-xs overflow-hidden">
         {/* Header */}
         <div className="bg-gray-50 dark:bg-gray-900 px-5 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
@@ -145,7 +145,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   Transaction Type
                 </span>
                 {filters.types?.length ? (
-                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-sm">
                     {filters.types.length}
                   </span>
                 ) : null}
@@ -194,7 +194,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   Categories
                 </span>
                 {filters.categories?.length ? (
-                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-sm">
                     {filters.categories.length}
                   </span>
                 ) : null}
@@ -239,7 +239,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   <Tag size={16} className="text-blue-600 dark:text-blue-400" />
                   <span className="text-sm font-medium text-gray-900 dark:text-white">Labels</span>
                   {filters.labels?.length ? (
-                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-sm">
                       {filters.labels.length}
                     </span>
                   ) : null}
@@ -283,7 +283,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   <Filter size={16} className="text-blue-600 dark:text-blue-400" />
                   <span className="text-sm font-medium text-gray-900 dark:text-white">Sources</span>
                   {filters.sources?.length ? (
-                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-sm">
                       {filters.sources.length}
                     </span>
                   ) : null}
@@ -330,7 +330,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   Amount Range
                 </span>
                 {(filters.minAmount !== undefined || filters.maxAmount !== undefined) && (
-                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-sm">
                     Set
                   </span>
                 )}
@@ -395,7 +395,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                 type="checkbox"
                 checked={filters.categories?.includes(category) || false}
                 onChange={(e) => handleCategoryChange(category, e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">{category}</span>
             </label>
@@ -417,7 +417,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   type="checkbox"
                   checked={filters.labels?.includes(label) || false}
                   onChange={(e) => handleLabelChange(label, e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
               </label>
@@ -438,7 +438,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               type="checkbox"
               checked={filters.types?.includes('expense') || false}
               onChange={(e) => handleTypeChange('expense', e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Expenses</span>
           </label>
@@ -447,7 +447,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
               type="checkbox"
               checked={filters.types?.includes('income') || false}
               onChange={(e) => handleTypeChange('income', e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Income</span>
           </label>
@@ -468,7 +468,7 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
                   type="checkbox"
                   checked={filters.sources?.includes(source.id) || false}
                   onChange={(e) => handleSourceChange(source.id, e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">{source.name}</span>
               </label>

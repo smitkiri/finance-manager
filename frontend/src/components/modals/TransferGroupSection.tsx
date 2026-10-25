@@ -75,7 +75,7 @@ export const TransferGroupSection: React.FC<TransferGroupSectionProps> = ({
   return (
     <section className={`border rounded-lg p-4 ${accent.box}`}>
       <div className="flex items-start gap-3">
-        <ArrowRightLeft size={20} className={`${accent.icon} mt-0.5 flex-shrink-0`} />
+        <ArrowRightLeft size={20} className={`${accent.icon} mt-0.5 shrink-0`} />
         <div className="flex-1 min-w-0">
           <h3 className={`font-semibold ${accent.title}`}>
             {isUserKind ? 'User Transfer' : 'Transfer/Refund'} group
@@ -123,7 +123,7 @@ export const TransferGroupSection: React.FC<TransferGroupSectionProps> = ({
                             {t.description}
                           </span>
                           {t.transferGroup?.role === 'anchor' && (
-                            <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200">
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-sm text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200">
                               Anchor
                             </span>
                           )}
@@ -135,7 +135,7 @@ export const TransferGroupSection: React.FC<TransferGroupSectionProps> = ({
                       <CountedAmount
                         expense={t}
                         selectedUserId={selectedUserId}
-                        className="flex-shrink-0"
+                        className="shrink-0"
                       />
                     </button>
                   </li>

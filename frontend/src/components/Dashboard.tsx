@@ -286,13 +286,13 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleSelectAll}
-                  className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors"
+                  className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-sm hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors"
                 >
                   Select All
                 </button>
                 <button
                   onClick={handleClearAll}
-                  className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   Clear All
                 </button>
@@ -511,7 +511,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
                             </span>
                           </div>
                         </div>
-                        <CountedAmount expense={expense} className="ml-4 flex-shrink-0" />
+                        <CountedAmount expense={expense} className="ml-4 shrink-0" />
                       </div>
                     </button>
                   ))}
@@ -554,7 +554,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
                             </span>
                           </div>
                         </div>
-                        <CountedAmount expense={expense} className="ml-4 flex-shrink-0" />
+                        <CountedAmount expense={expense} className="ml-4 shrink-0" />
                       </div>
                     </button>
                   ))}

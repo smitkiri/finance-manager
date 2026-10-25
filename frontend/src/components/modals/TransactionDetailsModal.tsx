@@ -101,7 +101,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           onClick={() => setSelector({ anchor: transaction })}
           className={actionBtnCls}
         >
-          <ArrowRightLeft size={16} className="flex-shrink-0" />
+          <ArrowRightLeft size={16} className="shrink-0" />
           <span className="md:hidden">Transfer</span>
           <span className="hidden md:inline">Mark as Transfer/Refund</span>
         </button>
@@ -113,14 +113,14 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           aria-expanded={subPicker}
           className={actionBtnCls}
         >
-          <Repeat size={16} className="flex-shrink-0" />
+          <Repeat size={16} className="shrink-0" />
           <span className="md:hidden">Subscription</span>
           <span className="hidden md:inline">Add to Subscription</span>
         </button>
       )}
       {onDuplicate && (
         <button type="button" onClick={() => onDuplicate(transaction)} className={actionBtnCls}>
-          <Copy size={16} className="flex-shrink-0" />
+          <Copy size={16} className="shrink-0" />
           <span>Duplicate</span>
         </button>
       )}
@@ -193,7 +193,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     aria-checked={!isExcludedFromCalculations}
                     aria-label="Count in calculations"
                     onClick={() => handleExcludeToggle(!isExcludedFromCalculations)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                       isExcludedFromCalculations ? 'bg-gray-300 dark:bg-gray-600' : 'bg-green-600'
                     }`}
                   >
@@ -216,7 +216,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Description
             </h3>
-            <p className="text-gray-700 dark:text-gray-300 break-words">
+            <p className="text-gray-700 dark:text-gray-300 wrap-break-word">
               {transaction.description}
             </p>
           </div>
@@ -263,7 +263,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <Calendar size={16} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <Calendar size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Transaction Date</p>
                 <p className="font-medium text-gray-900 dark:text-white">
@@ -273,7 +273,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             </div>
 
             <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <Tag size={16} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <Tag size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Category</p>
                 <p className="font-medium text-gray-900 dark:text-white truncate">
@@ -283,7 +283,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             </div>
 
             <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
                 <span className="text-xs text-white font-medium">
                   {transaction.user.charAt(0).toUpperCase()}
                 </span>
@@ -297,7 +297,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             </div>
 
             <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <Database size={16} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <Database size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Source</p>
                 <p className="font-medium text-gray-900 dark:text-white truncate">
@@ -307,7 +307,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             </div>
 
             <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <Clock size={16} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <Clock size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Created At</p>
                 <p className="font-medium text-gray-900 dark:text-white">
@@ -340,7 +340,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Creation Details
               </h3>
-              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 break-words">
+              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 wrap-break-word">
                 {transaction.metadata.sourceId && (
                   <p>
                     <span className="font-medium">Source ID:</span> {transaction.metadata.sourceId}

@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onToggle} />}
+      {isOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={onToggle} />}
       <div
         className={`fixed left-0 top-0 h-full w-[85vw] max-w-[320px] lg:w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ease-in-out z-50 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'

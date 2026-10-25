@@ -74,7 +74,7 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
             aria-label="Previous page"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-sm"
           >
             <ChevronLeft size={16} />
           </button>
@@ -82,7 +82,7 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
             aria-label="Next page"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-sm"
           >
             <ChevronRight size={16} />
           </button>
@@ -117,7 +117,7 @@ export const PanelTransactionsModal: React.FC<PanelTransactionsModalProps> = ({
                       <span className="truncate">{tx.category}</span>
                     </div>
                   </div>
-                  <CountedAmount expense={tx} className="whitespace-nowrap flex-shrink-0" />
+                  <CountedAmount expense={tx} className="whitespace-nowrap shrink-0" />
                 </div>
               </li>
             ))}

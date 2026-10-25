@@ -47,7 +47,7 @@ export const Sheet: React.FC<SheetProps> = ({
         aria-hidden="true"
       />
       <div role="dialog" aria-modal="true" className={`${containerCls} z-50`}>
-        <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+        <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 shrink-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{title}</h2>
           <button
             type="button"
@@ -60,7 +60,7 @@ export const Sheet: React.FC<SheetProps> = ({
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
         {footer && (
-          <footer className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex-shrink-0 safe-bottom">
+          <footer className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 shrink-0 safe-bottom">
             {footer}
           </footer>
         )}

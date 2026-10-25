@@ -115,7 +115,7 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
             value={displayBalance}
             onChange={handleBalanceChange}
             placeholder="0.00"
-            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             autoFocus
           />
         </div>
@@ -127,7 +127,7 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
@@ -139,7 +139,7 @@ const BalanceModal: React.FC<BalanceModalProps> = ({ account, onClose, onSave })
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. Monthly snapshot"
-            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </form>
@@ -222,7 +222,7 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
         value={balances[account.id] ?? ''}
         onChange={(e) => handleBalanceChange(account.id, e.target.value)}
         placeholder="skip"
-        className="w-32 sm:w-36 px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-32 sm:w-36 px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-right text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
       />
     </div>
   );
@@ -265,7 +265,7 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div className="flex-1">
@@ -277,7 +277,7 @@ const BulkBalanceModal: React.FC<BulkBalanceModalProps> = ({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="optional"
-              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-3 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>

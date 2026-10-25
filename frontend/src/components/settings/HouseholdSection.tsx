@@ -56,14 +56,14 @@ const RenameBlock: React.FC<RenameBlockProps> = ({ household, onSaved, disabled 
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Household name</h3>
         <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <span className="text-gray-900 dark:text-white break-words min-w-0">
+          <span className="text-gray-900 dark:text-white wrap-break-word min-w-0">
             {household.name}
           </span>
           <button
             type="button"
             onClick={() => setEditing(true)}
             disabled={disabled}
-            className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-3 py-2 sm:py-1 text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-3 py-2 sm:py-1 text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           >
             Edit
           </button>
@@ -246,14 +246,14 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
                     }}
                     onBlur={() => void saveEdit()}
                     autoFocus
-                    className="w-full px-3 py-2 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 min-h-[48px] border border-gray-300 dark:border-gray-700 rounded-sm bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
                   />
                 ) : (
                   <>
-                    <div className="font-medium text-gray-900 dark:text-white break-words">
+                    <div className="font-medium text-gray-900 dark:text-white wrap-break-word">
                       {m.name}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 wrap-break-word">
                       {m.email}
                     </div>
                     <div className="mt-3 flex gap-2">
@@ -306,7 +306,7 @@ const MembersBlock: React.FC<MembersBlockProps> = ({
                         }}
                         onBlur={() => void saveEdit()}
                         autoFocus
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
+                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded-sm bg-white dark:bg-gray-950 text-gray-900 dark:text-white"
                       />
                     ) : (
                       m.name
@@ -447,7 +447,7 @@ const InvitationsBlock: React.FC<InvitationsBlockProps> = ({ disabled }) => {
                 key={inv.id}
                 className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3"
               >
-                <div className="font-medium text-gray-900 dark:text-white break-words">
+                <div className="font-medium text-gray-900 dark:text-white wrap-break-word">
                   {inv.email}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -579,7 +579,7 @@ const ShareLinkModal: React.FC<{
           Share this link with <strong>{invite.email}</strong>. It expires on{' '}
           {new Date(invite.expiresAt).toLocaleDateString()}.
         </p>
-        <code className="block px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded text-xs text-gray-900 dark:text-gray-100 break-all mb-4">
+        <code className="block px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-sm text-xs text-gray-900 dark:text-gray-100 break-all mb-4">
           {link}
         </code>
         <div className="flex gap-2 justify-end">
