@@ -23,7 +23,7 @@ interface PanelChartProps {
   netOrientation?: 'income_positive' | 'expense_positive' | null;
   loading?: boolean;
   emptyMessage?: string;
-  height?: number | string;
+  height?: number | `${number}%`;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {

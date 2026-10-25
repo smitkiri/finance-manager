@@ -159,8 +159,8 @@ export const Chart: React.FC<ChartProps> = ({
               labelLine={false}
               label={({ name, percent }) =>
                 isMobile
-                  ? `${(percent * 100).toFixed(0)}%`
-                  : `${name} ${(percent * 100).toFixed(0)}%`
+                  ? `${((percent ?? 0) * 100).toFixed(0)}%`
+                  : `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
               }
               outerRadius={isMobile ? 60 : 80}
               innerRadius={isMobile ? 30 : 40}
