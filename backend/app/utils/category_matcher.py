@@ -105,15 +105,15 @@ def find_similar_category(
     for t in candidates:
         similarity = calculate_description_similarity(description, t["description"])
         if similarity > 0.3:
-            matches.append({"category": t["category"], "similarity": similarity})
+            matches.append((t["category"], similarity))
 
     if not matches:
         return None
 
     # Group by category, score by (avg_similarity * 0.7 + max_similarity * 0.3)
     category_scores: dict[str, list[float]] = {}
-    for m in matches:
-        category_scores.setdefault(m["category"], []).append(m["similarity"])
+    for category, similarity in matches:
+        category_scores.setdefault(category, []).append(similarity)
 
     best_category = None
     best_score = 0.0

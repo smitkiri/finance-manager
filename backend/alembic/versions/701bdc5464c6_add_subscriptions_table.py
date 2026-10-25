@@ -9,6 +9,7 @@ Create Date: 2026-06-06 22:15:44.434732
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -34,7 +35,7 @@ def upgrade() -> None:
         sa.Column("detection_signature", sa.Text(), nullable=True),
         sa.Column(
             "user_overrides",
-            sa.dialects.postgresql.JSONB(),
+            postgresql.JSONB(),
             nullable=False,
             server_default=sa.text(
                 """'{"excludedTxnIds": [], "includedTxnIds": [], """
@@ -44,7 +45,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "metadata",
-            sa.dialects.postgresql.JSONB(),
+            postgresql.JSONB(),
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),
