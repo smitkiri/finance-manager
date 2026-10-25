@@ -12,6 +12,7 @@ from app.routes.dashboards import router as dashboards_router
 from app.routes.data import router as data_router
 from app.routes.date_range import router as date_range_router
 from app.routes.demo import router as demo_router
+from app.routes.everyday_categories import router as everyday_categories_router
 from app.routes.expenses import router as expenses_router
 from app.routes.health import router as health_router
 from app.routes.households import router as households_router
@@ -69,6 +70,7 @@ app.include_router(households_router)
 app.include_router(categories_router)
 app.include_router(net_worth_router)
 app.include_router(date_range_router)
+app.include_router(everyday_categories_router)
 app.include_router(expenses_router)
 app.include_router(reports_router)
 app.include_router(sources_router)

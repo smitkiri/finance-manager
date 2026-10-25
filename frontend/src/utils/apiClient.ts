@@ -715,6 +715,46 @@ export class ApiClient {
     }
   }
 
+  // Everyday Categories Persistence Methods
+  static async saveEverydayCategories(categories: string[]): Promise<void> {
+    try {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/everyday-categories`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ categories }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save everyday categories');
+      }
+    } catch (error) {
+      console.error('Error saving everyday categories:', error);
+      // Fallback to localStorage
+      localStorage.setItem('everydayCategories', JSON.stringify(categories));
+    }
+  }
+
+  static async loadEverydayCategories(): Promise<string[]> {
+    const loadStored = (): string[] => {
+      try {
+        const stored = localStorage.getItem('everydayCategories');
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    };
+    try {
+      const response = await ApiClient.apiFetch(`${this.API_BASE}/everyday-categories`);
+      if (!response.ok) return loadStored();
+      const data = await response.json();
+      return data.categories ?? [];
+    } catch {
+      return loadStored();
+    }
+  }
+
   // Category Management Methods
   static async saveCategories(categories: string[]): Promise<void> {
     try {

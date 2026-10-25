@@ -210,3 +210,40 @@ describe('ApiClient invitation methods', () => {
     expect(init.credentials).toBe('include');
   });
 });
+
+describe('ApiClient everyday categories', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    localStorage.removeItem('everydayCategories');
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('loadEverydayCategories returns the saved list', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ categories: ['Groceries'] })));
+    expect(await ApiClient.loadEverydayCategories()).toEqual(['Groceries']);
+  });
+
+  it('loadEverydayCategories falls back to localStorage when the request fails', async () => {
+    localStorage.setItem('everydayCategories', JSON.stringify(['Gas']));
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline'));
+    expect(await ApiClient.loadEverydayCategories()).toEqual(['Gas']);
+  });
+
+  it('saveEverydayCategories PUTs the list', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ categories: ['Gas'] })));
+    await ApiClient.saveEverydayCategories(['Gas']);
+    const [url, init] = (globalThis.fetch as Mock).mock.calls[0];
+    expect(url).toMatch('/api/everyday-categories');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({ categories: ['Gas'] });
+  });
+});

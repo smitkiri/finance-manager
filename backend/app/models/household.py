@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import String, func
+from sqlalchemy import String, func, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -16,4 +17,7 @@ class Household(Base):
     )
     last_subscription_detection_at: Mapped[datetime | None] = mapped_column(
         nullable=True
+    )
+    everyday_categories: Mapped[list[str]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb"), default=list
     )

@@ -16,6 +16,7 @@ import {
 import { formatCurrency, formatAxisCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { CHART_COLORS as COLORS } from './colors';
 
 interface ChartProps {
   data: any[];
@@ -24,17 +25,6 @@ interface ChartProps {
   height?: number;
   categoryMode?: boolean;
 }
-
-const COLORS = [
-  '#3b82f6',
-  '#ef4444',
-  '#22c55e',
-  '#f59e0b',
-  '#8b5cf6',
-  '#ec4899',
-  '#06b6d4',
-  '#84cc16',
-];
 
 export const Chart: React.FC<ChartProps> = ({
   data,
