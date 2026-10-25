@@ -13,6 +13,7 @@ from app.routes.data import router as data_router
 from app.routes.date_range import router as date_range_router
 from app.routes.demo import router as demo_router
 from app.routes.expenses import router as expenses_router
+from app.routes.health import router as health_router
 from app.routes.households import router as households_router
 from app.routes.import_sessions import router as import_sessions_router
 from app.routes.imports import router as imports_router
@@ -62,6 +63,7 @@ else:
     )
 
 
+app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(households_router)
 app.include_router(categories_router)
@@ -81,8 +83,3 @@ app.include_router(dashboards_router)
 app.include_router(teller_router)
 app.include_router(invitations_router)
 app.include_router(subscriptions_router)
-
-
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}

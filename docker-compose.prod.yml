@@ -65,6 +65,22 @@ services:
           - backend-${COOLIFY_RESOURCE_UUID:-local}
     expose:
       - '8000'
+    # Declared here rather than as a Dockerfile HEALTHCHECK because the image
+    # is shared with the one-shot backend-migrate service. The slim image has
+    # no curl, so probe with the stdlib; /api/health returns 503 (→ urlopen
+    # raises → exit 1) when Postgres is unreachable.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
 
   nginx:
@@ -74,7 +90,8 @@ services:
       args:
         VITE_API_BASE_URL: /api
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       # Stack-unique upstream target rendered into the nginx conf at boot.
       # Must match the `backend-<uuid>` alias on the backend service above.
@@ -98,6 +115,16 @@ services:
       # your LAN IP) so the port isn't reachable on every interface.
       # Defaults to 0.0.0.0 (all interfaces).
       - '${NGINX_HOST_IP:-0.0.0.0}:${NGINX_PORT:-80}:80'
+    # Probes nginx itself (the SPA index), not /api/health: Traefik drops
+    # unhealthy containers from routing, and a backend/DB blip shouldn't take
+    # the static frontend offline too. 127.0.0.1, not localhost — busybox
+    # wget may resolve localhost to ::1, and nginx only listens on IPv4.
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
 networks:

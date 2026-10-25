@@ -223,7 +223,7 @@ PostgreSQL is **not** in this compose file — it is provisioned as a separate C
 
 4.  **Place the Teller secrets on the Coolify host.** SSH into the server, create a folder (e.g., `/opt/finance-manager/teller/`), and copy `private_key.pem` and `certificate.pem` into it. Set `TELLER_SECRETS_PATH` to that absolute path — compose bind-mounts it read-only at `/secrets/teller/`. (Skip this step if Teller integration is disabled; the default `./teller_secrets` relative path will be used and the backend will simply not find the files.)
 5.  **Attach a domain** to the `nginx` service. Coolify auto-issues SSL via Traefik / Let's Encrypt.
-6.  **Deploy.** Coolify builds both images, runs `backend-migrate` to completion, then starts `backend` and `nginx`.
+6.  **Deploy.** Coolify builds both images, runs `backend-migrate` to completion, then starts `backend`. Once `backend` passes its healthcheck (`/api/health`, which also round-trips to Postgres), `nginx` starts. Both services declare compose healthchecks, so Coolify shows their health status and Traefik only routes to a healthy `nginx`.
 
 ### Subsequent deploys
 
@@ -246,7 +246,7 @@ docker compose -f docker-compose.prod.yml up --build
 
 # In another shell:
 curl http://localhost:8083/api/health
-# → {"status":"ok"}
+# → {"status":"ok","database":"ok"}  (503 if Postgres is unreachable)
 ```
 
 ### Setting initial passwords after the A2 migration
