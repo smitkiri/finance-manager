@@ -309,13 +309,6 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
           <StatsCard title="Avg. Expense / Month" value={avgExpensePerMonth} type="expense" />
         </div>
 
-        <EverydaySpendingCard
-          summary={everydaySummary}
-          pinned={everydayCategories}
-          categories={categories}
-          onChangePinned={onChangeEverydayCategories}
-        />
-
         {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Chart data={stats.monthlyData} type="line" title="Monthly Overview" />
@@ -374,6 +367,13 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(
 
           <Chart data={donutData} type="donut" title="Savings vs Expenses" />
         </div>
+
+        <EverydaySpendingCard
+          summary={everydaySummary}
+          pinned={everydayCategories}
+          categories={categories}
+          onChangePinned={onChangeEverydayCategories}
+        />
 
         {/* Category Breakdown Tables */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
