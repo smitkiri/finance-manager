@@ -7,7 +7,7 @@ interface Props {
   onClick: () => void;
 }
 
-const STATUS_LABEL: Record<Subscription['status'], string> = {
+export const STATUS_LABEL: Record<Subscription['status'], string> = {
   active: 'Active',
   possibly_cancelled: 'Possibly cancelled',
   cancelled: 'Cancelled',

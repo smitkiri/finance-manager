@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Lock, Plus, Trash2, X as XIcon } from 'lucide-react';
+import { Lock, Merge, Plus, Trash2, X as XIcon } from 'lucide-react';
 import { Sheet } from '../ui/Sheet';
 import type { SubscriptionCadence, SubscriptionDetail } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { TransactionPicker } from './TransactionPicker';
+import { SubscriptionMergePicker } from './SubscriptionMergePicker';
 
 interface Props {
   subscriptionId: string;
@@ -21,6 +22,7 @@ export const SubscriptionDetailSheet: React.FC<Props> = ({
 }) => {
   const [sub, setSub] = useState<SubscriptionDetail | null>(null);
   const [picker, setPicker] = useState(false);
+  const [merging, setMerging] = useState(false);
   const [name, setName] = useState('');
   const [cadence, setCadence] = useState<SubscriptionCadence>('monthly');
   const [amount, setAmount] = useState('');
@@ -66,6 +68,22 @@ export const SubscriptionDetailSheet: React.FC<Props> = ({
     toast.success(`Added ${ids.length} transaction${ids.length === 1 ? '' : 's'}`);
   };
 
+  const mergeSubs = async (sourceIds: string[], mergedName: string) => {
+    try {
+      await ApiClient.mergeSubscriptions(sub.id, sourceIds, mergedName);
+    } catch {
+      toast.error('Failed to merge subscriptions');
+      return;
+    }
+    setMerging(false);
+    const fresh = await ApiClient.getSubscription(sub.id);
+    setSub(fresh);
+    setName(fresh.name);
+    setAmount(String(fresh.expected_amount));
+    onChanged();
+    toast.success(`Merged ${sourceIds.length + 1} subscriptions`);
+  };
+
   const toggleCancelled = async () => {
     const newStatus = sub.status === 'cancelled' ? 'active' : 'cancelled';
     const updated = await ApiClient.patchSubscription(sub.id, { status: newStatus });
@@ -92,8 +110,26 @@ export const SubscriptionDetailSheet: React.FC<Props> = ({
     );
   }
 
+  if (merging) {
+    return (
+      <Sheet isOpen onClose={onClose} title={`Merge with ${sub.name}`}>
+        <SubscriptionMergePicker
+          target={sub}
+          onMerge={(ids, mergedName) => void mergeSubs(ids, mergedName)}
+          onCancel={() => setMerging(false)}
+        />
+      </Sheet>
+    );
+  }
+
   const footer = (
     <div className="space-y-2">
+      <button
+        onClick={() => setMerging(true)}
+        className="w-full py-3 min-h-[48px] rounded-lg border border-gray-300 dark:border-gray-700 flex items-center justify-center gap-2"
+      >
+        <Merge size={16} /> Merge with…
+      </button>
       <button
         onClick={toggleCancelled}
         className="w-full py-3 min-h-[48px] rounded-lg border border-gray-300 dark:border-gray-700"

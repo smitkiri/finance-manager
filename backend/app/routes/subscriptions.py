@@ -28,12 +28,18 @@ from app.schemas.subscription import (
     SubscriptionListResponse,
     SubscriptionMemberOut,
     SubscriptionMembersBody,
+    SubscriptionMergeBody,
     SubscriptionOut,
     SubscriptionPatch,
 )
 from app.utils.subscription_price_change import compute_price_change
 from app.utils.subscription_signature import normalize_signature
-from app.utils.subscription_utils import rerun_detection_bg, run_detection_bg
+from app.utils.subscription_utils import (
+    SubscriptionNotFoundError,
+    merge_subscriptions,
+    rerun_detection_bg,
+    run_detection_bg,
+)
 
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
@@ -500,6 +506,31 @@ async def remove_member(
     ).scalar_one_or_none()
     if txn and txn.subscription_id == sub_id:
         txn.subscription_id = None
+
+    await db.commit()
+    member_count = await _member_count(db, sub.id)
+    members_for_price = await _members_for_price_change(db, sub.id)
+    price_change = compute_price_change(sub.cadence, sub.status, members_for_price)
+    return _to_out(sub, member_count, price_change)
+
+
+@router.post("/{sub_id}/merge", response_model=SubscriptionOut)
+async def merge_subscription(
+    sub_id: str,
+    body: SubscriptionMergeBody,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        sub = await merge_subscriptions(
+            db, household_id, sub_id, body.sourceIds, body.name
+        )
+    except SubscriptionNotFoundError:
+        return JSONResponse(
+            status_code=404, content={"error": "Subscription not found"}
+        )
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
 
     await db.commit()
     member_count = await _member_count(db, sub.id)

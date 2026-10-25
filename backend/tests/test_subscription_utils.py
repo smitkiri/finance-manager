@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import Household, Subscription, Transaction
-from app.utils.subscription_utils import run_detection
+from app.utils.subscription_utils import merge_subscriptions, run_detection
 
 pytestmark = pytest.mark.asyncio
 
@@ -153,3 +153,38 @@ async def test_run_detection_deletes_duplicate_variant_subs(
     assert subs[0].detection_signature == "club at charles boston"
     txns = (await db_session.execute(select(Transaction))).scalars().all()
     assert {t.subscription_id for t in txns} == {"sub_a"}
+
+
+async def test_merge_survives_rerun_detection(db_session) -> None:
+    db_session.add(Household(id="hh1", name="Test"))
+    await db_session.commit()
+    db_session.add_all(
+        [
+            _make_txn(f"a{i}", d=d, amount=17.0, description="CLAUDE.AI SUBSCRIPTION")
+            for i, d in enumerate(
+                [date(2025, 10, 2), date(2025, 11, 2), date(2025, 12, 2)]
+            )
+        ]
+        + [
+            _make_txn(f"b{i}", d=d, amount=20.0, description="ANTHROPIC CLAUDE SUB")
+            for i, d in enumerate(
+                [date(2026, 1, 2), date(2026, 2, 2), date(2026, 3, 2)]
+            )
+        ]
+    )
+    await db_session.commit()
+    await run_detection(db_session, household_id="hh1")
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert len(subs) == 2
+    target, source = sorted(subs, key=lambda s: s.detection_signature or "")
+
+    await merge_subscriptions(db_session, "hh1", target.id, [source.id], "Claude")
+    await db_session.commit()
+    await run_detection(db_session, household_id="hh1", strip_existing=True)
+
+    db_session.expire_all()
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert [s.id for s in subs] == [target.id]
+    assert subs[0].name == "Claude"
+    owners = (await db_session.execute(select(Transaction.subscription_id))).scalars()
+    assert set(owners) == {target.id}

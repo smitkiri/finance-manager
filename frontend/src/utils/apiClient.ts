@@ -1725,6 +1725,20 @@ export class ApiClient {
     return res.json();
   }
 
+  static async mergeSubscriptions(
+    targetId: string,
+    sourceIds: string[],
+    name?: string
+  ): Promise<Subscription> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/subscriptions/${targetId}/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceIds, name }),
+    });
+    if (!res.ok) throw new Error(`Failed to merge subscriptions: ${res.status}`);
+    return res.json();
+  }
+
   static async triggerSubscriptionDetection(): Promise<{
     queued: boolean;
     last_detected_at: string | null;
