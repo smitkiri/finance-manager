@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
+import 'react-day-picker/style.css';
 import { ApiClient } from '../../utils/apiClient';
 
 type Notification = {
