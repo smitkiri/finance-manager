@@ -28,26 +28,30 @@ export interface EverydaySummary {
 const monthLabel = (year: number, month: number): string =>
   new Date(year, month, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-const dayKey = (d: Date): number => d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
+const dayKey = (year: number, month: number, day: number): number =>
+  year * 10000 + month * 100 + day;
+
+// Range edges are read as the ISO (UTC) date, the same day ApiClient.loadStats
+// sends to /api/stats via toISOString(), so the counted months match the data.
+const apiDayKey = (d: Date): number => dayKey(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 
 /**
  * Full calendar months inside the range, oldest first, excluding the current
- * month. All comparisons use local dates so a range picked in the browser's
- * timezone is not shifted by UTC conversion.
+ * (local) month.
  */
 export function getCountedMonths(range: DateRange, today: Date): string[] {
-  const startKey = dayKey(range.start);
-  const endKey = dayKey(range.end);
+  const startKey = apiDayKey(range.start);
+  const endKey = apiDayKey(range.end);
   const currentMonthIndex = today.getFullYear() * 12 + today.getMonth();
 
   const months: string[] = [];
-  let year = range.start.getFullYear();
-  let month = range.start.getMonth();
+  let year = range.start.getUTCFullYear();
+  let month = range.start.getUTCMonth();
   while (year * 12 + month < currentMonthIndex) {
-    const first = new Date(year, month, 1);
-    const last = new Date(year, month + 1, 0);
-    if (dayKey(first) > endKey) break;
-    if (dayKey(first) >= startKey && dayKey(last) <= endKey) {
+    const firstKey = dayKey(year, month, 1);
+    const lastKey = dayKey(year, month, new Date(year, month + 1, 0).getDate());
+    if (firstKey > endKey) break;
+    if (firstKey >= startKey && lastKey <= endKey) {
       months.push(monthLabel(year, month));
     }
     month += 1;

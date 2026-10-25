@@ -36,9 +36,18 @@ describe('getCountedMonths', () => {
     expect(getCountedMonths(range, today)).toEqual([]);
   });
 
-  it('uses local dates, not UTC, at month boundaries', () => {
+  it('counts a range picked in the browser (local start of day to end of day)', () => {
     // Late-evening local times that would roll into the next/previous day in UTC
     const range = { start: new Date(2026, 3, 1, 0, 0, 0), end: new Date(2026, 8, 30, 23, 59, 59) };
+    expect(getCountedMonths(range, today)).toEqual(MONTHS);
+  });
+});
+
+describe('getCountedMonths with a reloaded date range', () => {
+  it('reads a range loaded from the API the same way /api/stats does', () => {
+    // ApiClient.loadDateRange parses "YYYY-MM-DD" (UTC midnight); west of UTC
+    // that is the previous local day, but the stats query still uses the ISO date.
+    const range = { start: new Date('2026-04-01'), end: new Date('2026-09-30') };
     expect(getCountedMonths(range, today)).toEqual(MONTHS);
   });
 });
