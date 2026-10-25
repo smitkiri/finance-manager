@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tag, Filter, DollarSign, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { Source } from '../../types';
+import type { Source } from '../../types';
 
 export interface TransactionFilters {
   categories?: string[];

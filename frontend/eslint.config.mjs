@@ -23,6 +23,12 @@ export default tseslint.config(
         'error',
         { args: 'none', ignoreRestSiblings: true, caughtErrors: 'none' },
       ],
+      // Required by verbatimModuleSyntax in tsconfig.json. `typeof import()`
+      // stays allowed for vi.importActual<typeof import('...')>() in mocks.
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { disallowTypeAnnotations: false },
+      ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
       'no-alert': 'off',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, FileText, Calendar, DollarSign, Tag, Filter } from 'lucide-react';
-import { Report, Expense, DateRange, Source } from '../../types';
+import type { Report, Expense, DateRange, Source } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { ReportCreator } from './ReportCreator';
 import { ReportViewer } from './ReportViewer';

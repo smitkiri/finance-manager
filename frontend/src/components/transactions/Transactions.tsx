@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { TransactionList } from './TransactionList';
-import { Expense, Source } from '../../types';
+import type { Expense, Source } from '../../types';
 import { Search, Filter as FilterIcon } from 'lucide-react';
-import {
-  TransactionFilters as FilterType,
-  TransactionFiltersComponent,
-} from './TransactionFilters';
+import type { TransactionFilters as FilterType } from './TransactionFilters';
+import { TransactionFiltersComponent } from './TransactionFilters';
 import { Sheet } from '../ui/Sheet';
 
 interface TransactionsProps {

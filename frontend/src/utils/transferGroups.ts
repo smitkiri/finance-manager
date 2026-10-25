@@ -1,4 +1,4 @@
-import { Expense } from '../types';
+import type { Expense } from '../types';
 
 /**
  * Transfer/refund group helpers. Counted amounts come from the API

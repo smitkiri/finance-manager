@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { PanelEditor } from './PanelEditor';
 import { ApiClient } from '../../utils/apiClient';
-import { Dashboard, DashboardPanel } from '../../types';
+import type { Dashboard, DashboardPanel } from '../../types';
 import type { Mock } from 'vitest';
 
 vi.mock('../../utils/apiClient', () => ({

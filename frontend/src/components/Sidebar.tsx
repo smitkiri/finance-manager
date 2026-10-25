@@ -13,7 +13,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { UserFilter } from './UserFilter';
-import { User } from '../types';
+import type { User } from '../types';
 
 interface SidebarTriggerProps {
   isOpen: boolean;

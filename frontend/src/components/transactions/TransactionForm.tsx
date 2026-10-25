@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TransactionFormData, Expense } from '../../types';
+import type { TransactionFormData, Expense } from '../../types';
 import { Sheet } from '../ui/Sheet';
 
 interface TransactionFormProps {

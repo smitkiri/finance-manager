@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pencil, Trash2, List } from 'lucide-react';
-import { DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
+import type { DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
 import { PanelChart } from './PanelChart';
 import { ChartLegend } from './ChartLegend';
 

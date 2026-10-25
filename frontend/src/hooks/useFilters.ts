@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Expense, DateRange } from '../types';
+import type { Expense, DateRange } from '../types';
 import { filterExpensesByDateRange } from '../utils';
 
 export const useFilters = (expenses: Expense[]) => {

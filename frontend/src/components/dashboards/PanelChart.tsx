@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { PanelMonthData } from '../../types';
+import type { PanelMonthData } from '../../types';
 import { formatCurrency, formatAxisCurrency } from '../../utils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';

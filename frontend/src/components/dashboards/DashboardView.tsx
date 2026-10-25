@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus } from 'lucide-react';
+import type { DragEndEvent } from '@dnd-kit/core';
 import {
   DndContext,
   closestCenter,
@@ -7,7 +8,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -17,7 +17,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Dashboard, DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
+import type { Dashboard, DashboardPanel as DashboardPanelType, PanelMonthData } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { DashboardPanel } from './DashboardPanel';
 import { PanelEditor } from './PanelEditor';

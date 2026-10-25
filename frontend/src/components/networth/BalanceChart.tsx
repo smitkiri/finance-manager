@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { NetWorthHistory } from '../../types';
+import type { NetWorthHistory } from '../../types';
 import { formatAxisCurrency } from '../../utils';
 
 interface BalanceChartProps {

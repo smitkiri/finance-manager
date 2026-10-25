@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TransactionForm } from './TransactionForm';
-import { Expense } from '../../types';
+import type { Expense } from '../../types';
 import type { Mock } from 'vitest';
 
 // --- Factory helpers ---

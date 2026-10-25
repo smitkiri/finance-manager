@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SubscriptionMergePicker } from './SubscriptionMergePicker';
 import { ApiClient } from '../../utils/apiClient';
-import { Subscription } from '../../types';
+import type { Subscription } from '../../types';
 import type { Mock } from 'vitest';
 
 vi.mock('../../utils/apiClient', () => ({

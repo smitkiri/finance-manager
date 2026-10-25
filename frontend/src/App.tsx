@@ -9,7 +9,7 @@ import { Plus, Upload, Sun, Moon, Building2 } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import {
+import type {
   Expense,
   TransactionFormData,
   DateRange,
@@ -21,10 +21,8 @@ import {
 } from './types';
 import { NetWorth } from './components/networth/NetWorth';
 import { TransactionForm } from './components/transactions/TransactionForm';
-import {
-  TransactionFiltersComponent,
-  TransactionFilters as FilterType,
-} from './components/transactions/TransactionFilters';
+import type { TransactionFilters as FilterType } from './components/transactions/TransactionFilters';
+import { TransactionFiltersComponent } from './components/transactions/TransactionFilters';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Sidebar, SidebarTrigger } from './components/Sidebar';
 import { OverflowMenu } from './components/ui/OverflowMenu';

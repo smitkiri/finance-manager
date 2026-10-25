@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Building2, Loader2, CheckCircle2 } from 'lucide-react';
-import { Account, User, TellerImportPreviewAccount, TellerImportResult } from '../../types';
+import type { Account, User, TellerImportPreviewAccount, TellerImportResult } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { Sheet } from '../ui/Sheet';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Expense } from '../../types';
+import type { Expense } from '../../types';
 import { formatCurrency } from '../../utils';
 import { countedAmount, countState } from '../../utils/transferGroups';
 

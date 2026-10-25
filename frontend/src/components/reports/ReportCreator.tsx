@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { Report, ReportFilter, Expense, DateRange, Source } from '../../types';
+import type { Report, ReportFilter, Expense, DateRange, Source } from '../../types';
 import { createReport, applyReportFilters } from '../../utils/reportUtils';
 import { TransactionFiltersComponent } from '../transactions/TransactionFilters';
 import { countedAmount } from '../../utils/transferGroups';

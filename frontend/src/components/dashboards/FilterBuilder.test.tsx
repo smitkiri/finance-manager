@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FilterBuilder } from './FilterBuilder';
-import { FilterGroup } from '../../types';
+import type { FilterGroup } from '../../types';
 import type { Mock } from 'vitest';
 
 const defaultCategories = ['Food', 'Transport', 'Entertainment'];

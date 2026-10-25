@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Plus } from 'lucide-react';
-import { FilterCondition, FilterGroup } from '../../types';
+import type { FilterCondition, FilterGroup } from '../../types';
 
 interface FilterBuilderProps {
   filterGroups: FilterGroup[];

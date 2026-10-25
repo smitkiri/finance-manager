@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, User } from 'lucide-react';
-import { User as UserType } from '../types';
+import type { User as UserType } from '../types';
 
 interface UserFilterProps {
   users: UserType[];

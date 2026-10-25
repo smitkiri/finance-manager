@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Star, Trash2, Pencil, Plus, LayoutDashboard } from 'lucide-react';
-import { Dashboard } from '../../types';
+import type { Dashboard } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { DashboardView } from './DashboardView';
 import { generateId } from '../../utils';

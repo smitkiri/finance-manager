@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthContext';
-import { AuthUser, AuthHousehold } from '../utils/apiClient';
+import type { AuthUser, AuthHousehold } from '../utils/apiClient';
 
 const fakeUser: AuthUser = {
   id: 'u1',

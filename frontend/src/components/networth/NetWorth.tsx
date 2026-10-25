@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
+import type { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { Sheet } from '../ui/Sheet';
 import { NetWorthKpis } from './NetWorthKpis';
-import { AccountList, UserGroup } from './AccountList';
+import type { UserGroup } from './AccountList';
+import { AccountList } from './AccountList';
 import { BalanceChart } from './BalanceChart';
 
 interface NetWorthProps {

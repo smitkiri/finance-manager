@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { ApiClient, AuthHousehold } from '../../utils/apiClient';
+import type { AuthHousehold } from '../../utils/apiClient';
+import { ApiClient } from '../../utils/apiClient';
 import type { Invitation, InvitationCreated, User as ApiUser } from '../../types';
 
 interface HouseholdSectionProps {

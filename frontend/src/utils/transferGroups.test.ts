@@ -1,4 +1,4 @@
-import { Expense } from '../types';
+import type { Expense } from '../types';
 import { allocate, countedAmount, countedExpenses, countState } from './transferGroups';
 
 const tx = (id: string, amount: number, type: Expense['type'], extra: Partial<Expense> = {}) =>
