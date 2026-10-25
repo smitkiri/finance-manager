@@ -192,7 +192,7 @@ async def create_panel(
     count_result = await db.execute(
         select(func.count()).where(DashboardPanel.dashboard_id == dashboard_id)
     )
-    if count_result.scalar() >= 15:
+    if count_result.scalar_one() >= 15:
         return JSONResponse(
             status_code=400,
             content={"error": "Dashboard has reached the 15-panel limit"},

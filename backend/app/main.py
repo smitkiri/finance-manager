@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -28,7 +28,7 @@ from app.routes.users import router as users_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     _check_teller_credentials()
     if not settings.finance_manager_demo_mode and not settings.jwt_signing_secret:
         raise RuntimeError(

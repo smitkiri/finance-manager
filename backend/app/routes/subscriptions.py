@@ -164,7 +164,7 @@ async def list_subscriptions(
             )
         ).all()
         for sid, d, amt in rows:
-            members_by_sub[sid].append((d, float(amt)))
+            members_by_sub[cast(str, sid)].append((d, float(amt)))
 
     out = [
         _to_out(
