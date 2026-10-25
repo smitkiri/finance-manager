@@ -41,6 +41,8 @@ async def delete_selected(
     db: AsyncSession = Depends(get_db),
 ):
     if body.deleteTransactions:
+        # Wipes the whole household, same as /delete-all.
+        refuse_in_demo_mode()
         await db.execute(
             delete(Transaction).where(Transaction.household_id == household_id)
         )

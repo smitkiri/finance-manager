@@ -9,6 +9,9 @@ engine = create_async_engine(
     pool_size=20,
     pool_timeout=30,
     echo=False,
+    connect_args={
+        "server_settings": {"statement_timeout": str(settings.db_statement_timeout_ms)}
+    },
 )
 
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)

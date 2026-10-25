@@ -90,6 +90,11 @@ export const SignupPage: React.FC = () => {
         setSubmitting(false);
         return;
       }
+      if (msg.includes('Signups are disabled')) {
+        setError('Signups are closed on this server. Ask a household member for an invite.');
+        setSubmitting(false);
+        return;
+      }
       if (status === 403 || msg.includes('different email')) {
         setError('This invite is for a different email address.');
         setSubmitting(false);

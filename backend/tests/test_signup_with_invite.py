@@ -122,3 +122,52 @@ async def test_signup_without_invite_unchanged(raw_client: AsyncClient):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["household"]["name"] == "Solo's Household"
+
+
+@pytest.mark.asyncio
+async def test_signup_without_invite_refused_when_signups_disabled(
+    raw_client: AsyncClient, signed_in_user, monkeypatch
+):
+    monkeypatch.setattr(settings, "finance_manager_signup_enabled", False)
+    r = await raw_client.post(
+        "/api/auth/signup",
+        json={"email": "stranger@example.com", "password": "supersecret", "name": "S"},
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "Signups are disabled on this server"
+
+
+@pytest.mark.asyncio
+async def test_signup_with_invite_allowed_when_signups_disabled(
+    raw_client: AsyncClient, signed_in_user, monkeypatch
+):
+    monkeypatch.setattr(settings, "finance_manager_signup_enabled", False)
+    _user, _household, token = signed_in_user
+    r = await raw_client.post(
+        "/api/invitations",
+        headers=auth_headers(token),
+        json={"email": "new@example.com"},
+    )
+    r2 = await raw_client.post(
+        "/api/auth/signup",
+        json={
+            "email": "new@example.com",
+            "password": "supersecret",
+            "name": "New User",
+            "invite_token": r.json()["token"],
+        },
+    )
+    assert r2.status_code == 200, r2.text
+
+
+@pytest.mark.asyncio
+async def test_first_signup_allowed_when_signups_disabled(
+    raw_client: AsyncClient, monkeypatch
+):
+    # A fresh install with signups disabled must still be able to bootstrap.
+    monkeypatch.setattr(settings, "finance_manager_signup_enabled", False)
+    r = await raw_client.post(
+        "/api/auth/signup",
+        json={"email": "owner@example.com", "password": "supersecret", "name": "O"},
+    )
+    assert r.status_code == 200, r.text

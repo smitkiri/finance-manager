@@ -7,6 +7,19 @@ upstream backend {
     server ${BACKEND_UPSTREAM};
 }
 
+# Per-client rate limits. Behind a Cloudflare Tunnel / Traefik, $remote_addr
+# is the proxy hop, so key on CF-Connecting-IP when present and fall back to
+# $remote_addr for direct (e.g. LAN) traffic. The header is client-spoofable
+# if nginx is reachable without going through Cloudflare — keep the published
+# port off the public internet (see NGINX_HOST_IP in docker-compose.prod.yml).
+map $http_cf_connecting_ip $rate_limit_key {
+    ""      $binary_remote_addr;
+    default $http_cf_connecting_ip;
+}
+limit_req_zone $rate_limit_key zone=api:10m rate=20r/s;
+limit_req_zone $rate_limit_key zone=auth:10m rate=10r/m;
+limit_req_status 429;
+
 server {
     listen 80;
     server_name _;
@@ -21,8 +34,19 @@ server {
     add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
 
+    # Credential endpoints: slow down password guessing and signup spam.
+    location ~ ^/api/auth/(login|signup)$ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # Backup restore endpoint accepts larger uploads
     location = /api/restore {
+        limit_req zone=api burst=60 nodelay;
         proxy_pass http://backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -33,6 +57,7 @@ server {
 
     # All other API traffic proxied to FastAPI
     location /api/ {
+        limit_req zone=api burst=60 nodelay;
         proxy_pass http://backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

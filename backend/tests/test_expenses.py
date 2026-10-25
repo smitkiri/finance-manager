@@ -362,7 +362,7 @@ async def test_post_expenses_bulk_save(client: AsyncClient, db_session: AsyncSes
                 "category": "Food",
                 "amount": 10.0,
                 "type": "expense",
-                "user": "alice",
+                "user": "default-user",
             },
             {
                 "id": "new2",
@@ -371,7 +371,7 @@ async def test_post_expenses_bulk_save(client: AsyncClient, db_session: AsyncSes
                 "category": "Food",
                 "amount": 20.0,
                 "type": "expense",
-                "user": "alice",
+                "user": "default-user",
             },
         ]
     }
@@ -397,7 +397,7 @@ async def test_post_expenses_replaces_existing(
                 "category": "Food",
                 "amount": 10.0,
                 "type": "expense",
-                "user": "alice",
+                "user": "default-user",
             },
         ]
     }
@@ -422,7 +422,7 @@ async def test_post_expenses_with_metadata(
                 "category": "Food",
                 "amount": 10.0,
                 "type": "expense",
-                "user": "alice",
+                "user": "default-user",
             },
         ],
         "metadata": {"lastImport": "2024-06-01"},

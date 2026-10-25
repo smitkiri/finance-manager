@@ -17,6 +17,7 @@ from app.schemas.transaction import (
     ExpenseBulkSaveRequest,
     TransactionUpdate,
 )
+from app.utils.household_members import assert_users_in_household
 from app.utils.query_builder import (
     build_expenses_filter,
     build_stats_filter,
@@ -348,6 +349,9 @@ async def update_expense(
         txn.type = body.type
         updated = True
     if body.user is not None:
+        await assert_users_in_household(
+            db, household_id, [body.user], also_allowed=[txn.created_by_user_id]
+        )
         txn.created_by_user_id = body.user
         updated = True
     if body.labels is not None:
@@ -394,6 +398,18 @@ async def bulk_save_expenses(
         entity="transactions",
     )
     await assert_demo_not_mass_delete(db, Transaction, household_id, len(body.expenses))
+
+    existing_users = await db.execute(
+        select(Transaction.created_by_user_id)
+        .where(Transaction.household_id == household_id)
+        .distinct()
+    )
+    await assert_users_in_household(
+        db,
+        household_id,
+        (exp.user for exp in body.expenses),
+        also_allowed=existing_users.scalars().all(),
+    )
 
     # The frontend adds/deletes single transactions by replacing the whole
     # household, so carry transfer group membership across the replace.

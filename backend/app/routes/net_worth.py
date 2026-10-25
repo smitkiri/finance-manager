@@ -18,6 +18,7 @@ from app.schemas.net_worth import (
     NetWorthHistoryPoint,
     NetWorthSummary,
 )
+from app.utils.household_members import assert_users_in_household
 
 router = APIRouter(prefix="/api", tags=["net_worth"])
 
@@ -57,6 +58,7 @@ async def create_account(
     db: AsyncSession = Depends(get_db),
 ):
     await assert_demo_can_add_entity(db, Account, household_id)
+    await assert_users_in_household(db, household_id, [body.userId])
     if body.type not in ("asset", "liability"):
         return JSONResponse(
             status_code=400,

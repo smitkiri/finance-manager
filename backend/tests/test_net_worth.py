@@ -55,12 +55,17 @@ async def test_get_accounts_filtered_by_user(
 async def test_create_account(client: AsyncClient):
     response = await client.post(
         "/api/accounts",
-        json={"id": "a1", "userId": "u1", "name": "Checking", "type": "asset"},
+        json={
+            "id": "a1",
+            "userId": "default-user",
+            "name": "Checking",
+            "type": "asset",
+        },
     )
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == "a1"
-    assert data["userId"] == "u1"
+    assert data["userId"] == "default-user"
     assert data["name"] == "Checking"
     assert data["type"] == "asset"
     assert "createdAt" in data
