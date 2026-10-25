@@ -6,17 +6,19 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AcceptInvitePage } from './AcceptInvitePage';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import { ApiClient } from '../../utils/apiClient';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => {
-  const actual = jest.requireActual('../../utils/apiClient');
+vi.mock('../../utils/apiClient', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/apiClient')>('../../utils/apiClient');
   return {
     ...actual,
     ApiClient: {
       ...actual.ApiClient,
-      lookupInvitation: jest.fn(),
-      acceptInvitation: jest.fn(),
-      getHouseholdSummary: jest.fn(),
-      logout: jest.fn().mockResolvedValue(undefined),
+      lookupInvitation: vi.fn(),
+      acceptInvitation: vi.fn(),
+      getHouseholdSummary: vi.fn(),
+      logout: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
@@ -76,16 +78,16 @@ function renderSignedIn(
 }
 
 describe('AcceptInvitePage', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders invalid-link copy on 404', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockRejectedValue({ status: 404 });
+    (ApiClient.lookupInvitation as Mock).mockRejectedValue({ status: 404 });
     renderAt('/accept-invite?token=nope');
     expect(await screen.findByRole('heading', { name: /Invite invalid/i })).toBeInTheDocument();
   });
 
   it('renders expired-specific copy on 410 expired', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockRejectedValue({
+    (ApiClient.lookupInvitation as Mock).mockRejectedValue({
       status: 410,
       body: { status: 'expired' },
     });
@@ -94,7 +96,7 @@ describe('AcceptInvitePage', () => {
   });
 
   it('signed-out: shows Create-account and Sign-in CTAs with token in URL', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.lookupInvitation as Mock).mockResolvedValue({
       householdName: 'Smith Family',
       inviterName: 'Alice',
       email: 'bob@x.com',
@@ -115,14 +117,14 @@ describe('AcceptInvitePage', () => {
   });
 
   it('signed-in matching email: confirms with summary then accepts', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.lookupInvitation as Mock).mockResolvedValue({
       householdName: 'Smith Family',
       inviterName: 'Alice',
       email: 'bob@x.com',
       status: 'pending',
       expiresAt: '2026-12-01',
     });
-    (ApiClient.getHouseholdSummary as jest.Mock).mockResolvedValue({
+    (ApiClient.getHouseholdSummary as Mock).mockResolvedValue({
       transactions: 5,
       accounts: 1,
       categories: 2,
@@ -130,7 +132,7 @@ describe('AcceptInvitePage', () => {
       dashboards: 1,
       reports: 0,
     });
-    (ApiClient.acceptInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.acceptInvitation as Mock).mockResolvedValue({
       user: { id: 'u', name: 'Bob', email: 'bob@x.com', householdId: 'h-new' },
       household: { id: 'h-new', name: 'Smith Family' },
     });
@@ -148,7 +150,7 @@ describe('AcceptInvitePage', () => {
   });
 
   it('signed-in different email: shows mismatch and sign-out CTA', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.lookupInvitation as Mock).mockResolvedValue({
       householdName: 'Smith Family',
       inviterName: 'Alice',
       email: 'bob@x.com',

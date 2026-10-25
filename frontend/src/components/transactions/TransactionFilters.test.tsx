@@ -28,7 +28,7 @@ const emptyFilters: TransactionFilters = {};
 
 const defaultProps = {
   filters: emptyFilters,
-  onFiltersChange: jest.fn(),
+  onFiltersChange: vi.fn(),
   categories: mockCategories,
   sources: mockSources,
   allLabels: mockLabels,
@@ -36,7 +36,7 @@ const defaultProps = {
 
 describe('TransactionFiltersComponent', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Compact mode (isCompact=true)', () => {
@@ -73,7 +73,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('clicking type buttons toggles expense/income filters', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -92,7 +92,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('clicking category buttons toggles category filters', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -120,7 +120,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('shows clear button when filters active and onClearFilters provided', () => {
-      const onClearFilters = jest.fn();
+      const onClearFilters = vi.fn();
       const activeFilters: TransactionFilters = { types: ['expense'] };
 
       render(
@@ -140,7 +140,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('does not show clear button when no active filters', () => {
-      const onClearFilters = jest.fn();
+      const onClearFilters = vi.fn();
       render(
         <TransactionFiltersComponent {...defaultProps} onClearFilters={onClearFilters} isCompact />
       );
@@ -170,7 +170,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('checkbox toggles call onFiltersChange correctly for categories', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -186,7 +186,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('checkbox toggles call onFiltersChange correctly for types', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -211,7 +211,7 @@ describe('TransactionFiltersComponent', () => {
 
   describe('Amount range', () => {
     it('entering values calls onFiltersChange with parsed numbers', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -232,7 +232,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('clearing input sets undefined', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       const filtersWithAmount: TransactionFilters = { minAmount: 50 };
 
       render(
@@ -251,7 +251,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('amount range works in compact mode after expanding section', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -315,7 +315,7 @@ describe('TransactionFiltersComponent', () => {
 
   describe('Category filter add/remove', () => {
     it('adds category to filters when not present', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -329,7 +329,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('removes category from filters when already present', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       const filtersWithCategory: TransactionFilters = {
         categories: ['Food', 'Transport'],
       };
@@ -351,7 +351,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('sets categories to undefined when last category is removed', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       const filtersWithOneCategory: TransactionFilters = {
         categories: ['Food'],
       };
@@ -374,7 +374,7 @@ describe('TransactionFiltersComponent', () => {
 
   describe('Type filter add/remove', () => {
     it('adds type to filters when not present', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       render(
         <TransactionFiltersComponent
           {...defaultProps}
@@ -388,7 +388,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('removes type from filters when already present', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       const filtersWithTypes: TransactionFilters = {
         types: ['expense', 'income'],
       };
@@ -409,7 +409,7 @@ describe('TransactionFiltersComponent', () => {
     });
 
     it('sets types to undefined when last type is removed', () => {
-      const onFiltersChange = jest.fn();
+      const onFiltersChange = vi.fn();
       const filtersWithOneType: TransactionFilters = {
         types: ['expense'],
       };

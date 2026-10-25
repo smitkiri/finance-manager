@@ -6,7 +6,7 @@ describe('authNavigation', () => {
   });
 
   it('calls the registered navigator with /login?next=<encoded path>', () => {
-    const navigate = jest.fn();
+    const navigate = vi.fn();
     setAuthNavigator(navigate);
     navigateToLogin('/transactions?search=foo');
     expect(navigate).toHaveBeenCalledWith('/login?next=%2Ftransactions%3Fsearch%3Dfoo');
@@ -17,7 +17,7 @@ describe('authNavigation', () => {
   });
 
   it('only triggers once until reset (guards against parallel 401 bursts)', () => {
-    const navigate = jest.fn();
+    const navigate = vi.fn();
     setAuthNavigator(navigate);
     navigateToLogin('/a');
     navigateToLogin('/b');
@@ -26,7 +26,7 @@ describe('authNavigation', () => {
   });
 
   it('allows a second navigation after reset (e.g., after the user signs back in)', () => {
-    const navigate = jest.fn();
+    const navigate = vi.fn();
     setAuthNavigator(navigate);
     navigateToLogin('/a');
     resetAuthNavigatorForTests(); // simulates remounting AuthGuard after sign-in

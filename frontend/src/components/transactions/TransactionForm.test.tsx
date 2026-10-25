@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TransactionForm } from './TransactionForm';
 import { Expense } from '../../types';
+import type { Mock } from 'vitest';
 
 // --- Factory helpers ---
 
@@ -15,8 +16,8 @@ const defaultUsers = [
 
 function createDefaultProps(overrides: Partial<React.ComponentProps<typeof TransactionForm>> = {}) {
   return {
-    onSubmit: jest.fn(),
-    onCancel: jest.fn(),
+    onSubmit: vi.fn(),
+    onCancel: vi.fn(),
     isOpen: true,
     categories: defaultCategories,
     users: defaultUsers,
@@ -131,7 +132,7 @@ describe('TransactionForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
 
       expect(props.onSubmit).toHaveBeenCalledTimes(1);
-      expect((props.onSubmit as jest.Mock).mock.calls[0][0]).toEqual({
+      expect((props.onSubmit as Mock).mock.calls[0][0]).toEqual({
         date: '2026-03-10',
         description: 'Gym membership',
         category: 'Entertainment',
@@ -260,7 +261,7 @@ describe('TransactionForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add Transaction/i }));
 
     expect(props.onSubmit).toHaveBeenCalledTimes(1);
-    const submittedData = (props.onSubmit as jest.Mock).mock.calls[0][0];
+    const submittedData = (props.onSubmit as Mock).mock.calls[0][0];
     expect(submittedData).toMatchObject({
       description: 'Coffee',
       amount: '4.5',

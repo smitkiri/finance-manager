@@ -58,10 +58,10 @@ function makeCsvPreviewWithCategory(): CSVPreview {
 
 const defaultProps = () => ({
   isOpen: true,
-  onClose: jest.fn(),
+  onClose: vi.fn(),
   csvPreview: makeCSVPreview(),
   source: makeSource(),
-  onImport: jest.fn(),
+  onImport: vi.fn(),
 });
 
 // ---------- Tests ----------
@@ -201,8 +201,8 @@ describe('CSVPreviewEditor', () => {
 
   // 11. Import: calls onImport with only valid, non-deleted rows
   test('import calls onImport with only valid non-deleted rows', () => {
-    const onImport = jest.fn();
-    const onClose = jest.fn();
+    const onImport = vi.fn();
+    const onClose = vi.fn();
 
     const csvPreview = makeCSVPreview({
       sampleRows: [
@@ -246,8 +246,8 @@ describe('CSVPreviewEditor', () => {
 
   // 12. Import: applies category overrides to imported data
   test('import applies category overrides to imported data', () => {
-    const onImport = jest.fn();
-    const onClose = jest.fn();
+    const onImport = vi.fn();
+    const onClose = vi.fn();
 
     render(<CSVPreviewEditor {...defaultProps()} onImport={onImport} onClose={onClose} />);
 
@@ -287,7 +287,7 @@ describe('CSVPreviewEditor', () => {
 
   // 14. Close button (X) calls onClose
   test('close button (X icon) calls onClose', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     render(<CSVPreviewEditor {...defaultProps()} onClose={onClose} />);
 
     const closeButton = screen.getByRole('button', { name: 'Close' });
@@ -298,7 +298,7 @@ describe('CSVPreviewEditor', () => {
 
   // 15. Cancel button calls onClose
   test('cancel button calls onClose', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     render(<CSVPreviewEditor {...defaultProps()} onClose={onClose} />);
 
     const cancelButton = screen.getByText('Cancel');

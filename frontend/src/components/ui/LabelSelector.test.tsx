@@ -4,8 +4,8 @@ import { LabelSelector } from './LabelSelector';
 
 const defaultProps = {
   isOpen: true,
-  onClose: jest.fn(),
-  onAddLabel: jest.fn(),
+  onClose: vi.fn(),
+  onAddLabel: vi.fn(),
   existingLabels: [] as string[],
   allLabels: ['Food', 'Travel', 'Shopping', 'Entertainment', 'Utilities', 'Health', 'Rent'],
   maxLabels: 5,
@@ -18,7 +18,7 @@ function renderSelector(overrides: Partial<typeof defaultProps> = {}) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('LabelSelector', () => {
@@ -102,8 +102,8 @@ describe('LabelSelector', () => {
 
   // 8. Clicking a label calls onAddLabel and onClose
   test('clicking a label calls onAddLabel and onClose', () => {
-    const onAddLabel = jest.fn();
-    const onClose = jest.fn();
+    const onAddLabel = vi.fn();
+    const onClose = vi.fn();
     renderSelector({ onAddLabel, onClose });
     fireEvent.click(screen.getByText('Food'));
     expect(onAddLabel).toHaveBeenCalledWith('Food');
@@ -112,8 +112,8 @@ describe('LabelSelector', () => {
 
   // 9. Pressing Enter creates a new label
   test('pressing Enter creates a new label from search term', () => {
-    const onAddLabel = jest.fn();
-    const onClose = jest.fn();
+    const onAddLabel = vi.fn();
+    const onClose = vi.fn();
     renderSelector({ onAddLabel, onClose });
     const input = screen.getByPlaceholderText('Type to search or create new label...');
     fireEvent.change(input, { target: { value: 'NewLabel' } });
@@ -123,7 +123,7 @@ describe('LabelSelector', () => {
   });
 
   test('pressing Enter trims whitespace from search term', () => {
-    const onAddLabel = jest.fn();
+    const onAddLabel = vi.fn();
     renderSelector({ onAddLabel });
     const input = screen.getByPlaceholderText('Type to search or create new label...');
     fireEvent.change(input, { target: { value: '  Trimmed  ' } });
@@ -132,8 +132,8 @@ describe('LabelSelector', () => {
   });
 
   test('pressing Enter with empty input does nothing', () => {
-    const onAddLabel = jest.fn();
-    const onClose = jest.fn();
+    const onAddLabel = vi.fn();
+    const onClose = vi.fn();
     renderSelector({ onAddLabel, onClose });
     const input = screen.getByPlaceholderText('Type to search or create new label...');
     fireEvent.submit(input.closest('form')!);
@@ -143,8 +143,8 @@ describe('LabelSelector', () => {
 
   // 10. Does not add duplicate labels (already in existingLabels)
   test('does not add duplicate label via Enter if already in existingLabels', () => {
-    const onAddLabel = jest.fn();
-    const onClose = jest.fn();
+    const onAddLabel = vi.fn();
+    const onClose = vi.fn();
     renderSelector({ onAddLabel, onClose, existingLabels: ['Food'] });
     const input = screen.getByPlaceholderText('Type to search or create new label...');
     fireEvent.change(input, { target: { value: 'Food' } });
@@ -163,7 +163,7 @@ describe('LabelSelector', () => {
 
   // 11. Pressing Escape calls onClose
   test('pressing Escape calls onClose', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     renderSelector({ onClose });
     const input = screen.getByPlaceholderText('Type to search or create new label...');
     fireEvent.keyDown(input, { key: 'Escape' });
@@ -172,7 +172,7 @@ describe('LabelSelector', () => {
 
   // 12. Clicking backdrop calls onClose
   test('clicking the backdrop calls onClose', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     renderSelector({ onClose });
     // The backdrop is the first child div with class "fixed inset-0 z-40"
     const backdrop = document.querySelector('.fixed.inset-0.z-40') as HTMLElement;

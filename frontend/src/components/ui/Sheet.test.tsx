@@ -23,7 +23,7 @@ describe('Sheet', () => {
   });
 
   test('calls onClose when close button clicked', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     render(
       <Sheet isOpen={true} onClose={onClose} title="Edit">
         body
@@ -34,7 +34,7 @@ describe('Sheet', () => {
   });
 
   test('calls onClose on Escape', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     render(
       <Sheet isOpen={true} onClose={onClose} title="Edit">
         body

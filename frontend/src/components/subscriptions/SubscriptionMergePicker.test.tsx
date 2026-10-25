@@ -3,9 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SubscriptionMergePicker } from './SubscriptionMergePicker';
 import { ApiClient } from '../../utils/apiClient';
 import { Subscription } from '../../types';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => ({
-  ApiClient: { listSubscriptions: jest.fn() },
+vi.mock('../../utils/apiClient', () => ({
+  ApiClient: { listSubscriptions: vi.fn() },
 }));
 
 const sub = (id: string, name: string): Subscription => ({
@@ -33,13 +34,13 @@ const target = sub('a', 'Claude Ai Subscription');
 const other = sub('b', 'Anthropic Claude Sub');
 
 const setup = async () => {
-  (ApiClient.listSubscriptions as jest.Mock).mockResolvedValue({
+  (ApiClient.listSubscriptions as Mock).mockResolvedValue({
     subscriptions: [target, other, sub('c', 'Netflix')],
     last_detected_at: null,
     total: 3,
   });
-  const onMerge = jest.fn();
-  render(<SubscriptionMergePicker target={target} onMerge={onMerge} onCancel={jest.fn()} />);
+  const onMerge = vi.fn();
+  render(<SubscriptionMergePicker target={target} onMerge={onMerge} onCancel={vi.fn()} />);
   await screen.findByText('Anthropic Claude Sub');
   return { onMerge };
 };

@@ -10,8 +10,9 @@ Full-stack expense tracking application with a React/TypeScript frontend and Pyt
 
 ```
 finance-manager/
-├── frontend/          # React/TypeScript frontend (CRA)
+├── frontend/          # React/TypeScript frontend (Vite)
 │   ├── src/           # Source code
+│   ├── index.html     # Vite entry HTML
 │   ├── public/        # Static assets
 │   └── package.json   # Frontend dependencies
 ├── backend/           # FastAPI backend (all API routes)
@@ -53,7 +54,7 @@ npm run fastapi        # FastAPI backend only (port 8000, via uvicorn)
 
 # Build & test
 npm run build          # Production build (cd frontend && npm run build)
-npm test               # Frontend tests (cd frontend && npm test)
+npm test               # Frontend tests, single run (cd frontend && npm test → vitest run)
 npm run test:backend   # Python backend tests (cd backend && uv run pytest)
 
 # Database
@@ -63,11 +64,11 @@ npm run docker:down    # Stop all Docker containers
 
 ## Architecture
 
-**Frontend** (`frontend/src/`): React 18 + TypeScript, built with Create React App (react-scripts). Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
+**Frontend** (`frontend/src/`): React 18 + TypeScript, built with Vite (`frontend/vite.config.ts`); tests run on Vitest + jsdom. Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
 
 **FastAPI Backend** (`backend/app/`): Python 3.12+ with FastAPI, async SQLAlchemy ORM, Pydantic v2 schemas. Managed by uv. Serves all API routes including Teller bank integration.
 
-**nginx** (`nginx.conf`): Reverse proxy on port 3002. Routes all API traffic to FastAPI (port 8000). Frontend points at nginx via `REACT_APP_API_BASE_URL`.
+**nginx** (`nginx.conf`): Reverse proxy on port 3002. Routes all API traffic to FastAPI (port 8000). Frontend points at nginx via `VITE_API_BASE_URL`.
 
 **Database**: PostgreSQL 15 via Docker Compose. Migrations managed by Alembic (`backend/alembic/`).
 
@@ -79,7 +80,7 @@ Browser → Frontend (3000) → nginx (3002) → FastAPI (8000) → PostgreSQL (
 
 ### Key data flow
 
-1. Frontend `LocalStorage` class (`frontend/src/utils/storage.ts`) wraps all API calls via configurable `REACT_APP_API_BASE_URL` (default: `http://localhost:3002/api`)
+1. Frontend `ApiClient` class (`frontend/src/utils/apiClient.ts`) wraps all API calls via configurable `VITE_API_BASE_URL` (default: `http://localhost:3002/api`)
 2. Falls back to browser localStorage if backend is unavailable
 3. nginx routes all API traffic to FastAPI
 4. FastAPI uses SQLAlchemy ORM for all database access
@@ -94,12 +95,12 @@ Local dev (`make up`, `docker-compose.yml`) and production (`docker-compose.prod
 
 Prod-specific files: `docker-compose.prod.yml`, `backend/Dockerfile`, `nginx/Dockerfile`, `nginx/prod.conf`, `.dockerignore`.
 
-In prod, nginx is the only exposed service. It serves the built React app as static files and proxies `/api/*` to `http://backend:8000`. Same-origin, so `REACT_APP_API_BASE_URL=/api`. Teller cert/key files live on a Coolify-managed `teller_secrets` volume mounted read-only at `/secrets/teller/`. See `README.md` § "Deploying to Coolify" for env vars and first-deploy steps.
+In prod, nginx is the only exposed service. It serves the built React app as static files and proxies `/api/*` to `http://backend:8000`. Same-origin, so `VITE_API_BASE_URL=/api`. Teller cert/key files live on a Coolify-managed `teller_secrets` volume mounted read-only at `/secrets/teller/`. See `README.md` § "Deploying to Coolify" for env vars and first-deploy steps.
 
 When making changes that affect prod, remember:
 
 - The backend `Dockerfile` is shared between `backend` and `backend-migrate` services (same image, different commands). Both services declare the identical `build:` block on purpose — Coolify pre-pulls with `docker compose pull --ignore-buildable`, which only skips services that declare `build:`, so an `image:`-only service is pulled from Docker Hub and the deploy fails.
-- `REACT_APP_*` vars are **build args** for the nginx Dockerfile, not runtime env vars (CRA bakes them into the JS bundle at build time).
+- `VITE_*` vars are **build args** for the nginx Dockerfile, not runtime env vars (Vite bakes them into the JS bundle at build time via `import.meta.env`).
 - Compose service DNS: nginx talks to backend at `backend:8000` (not `localhost:8000`, not `host.docker.internal`).
 
 ## Conventions

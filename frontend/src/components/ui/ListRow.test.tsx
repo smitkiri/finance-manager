@@ -19,7 +19,7 @@ describe('ListRow', () => {
   });
 
   test('fires onClick when clicked', () => {
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     render(<ListRow primary="Coffee" amount="$4.50" meta="May 30" onClick={onClick} />);
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledTimes(1);
@@ -39,7 +39,7 @@ describe('ListRow', () => {
   });
 
   test('activates on Enter', () => {
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     render(<ListRow primary="Coffee" amount="$4.50" meta="May 30" onClick={onClick} />);
     fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
     expect(onClick).toHaveBeenCalledTimes(1);

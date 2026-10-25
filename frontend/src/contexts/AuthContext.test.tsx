@@ -60,7 +60,7 @@ describe('AuthContext', () => {
 
   it('throws when useAuth is called outside the provider', () => {
     // suppress React's console.error for this expected throw
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => render(<Probe />)).toThrow(/useAuth must be used within an AuthProvider/);
     spy.mockRestore();
   });

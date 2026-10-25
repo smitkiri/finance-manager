@@ -87,7 +87,7 @@ Once the dependencies are installed and the database is set up, you can start th
     npm run dev
     ```
 
-    This command uses `concurrently` to run `node server.js` (backend) and `react-scripts start` (frontend) simultaneously.
+    This command uses `concurrently` to run the FastAPI backend (uvicorn) and the Vite dev server (frontend) simultaneously.
 
 2.  **Access the application:**
 

@@ -3,27 +3,28 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { PanelEditor } from './PanelEditor';
 import { ApiClient } from '../../utils/apiClient';
 import { Dashboard, DashboardPanel } from '../../types';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => ({
+vi.mock('../../utils/apiClient', () => ({
   ApiClient: {
-    previewPanelTransactions: jest.fn().mockResolvedValue({ transactions: [], total: 0 }),
-    chartPreview: jest.fn().mockResolvedValue({ rows: [], monthMap: {} }),
-    createPanel: jest.fn().mockResolvedValue({}),
-    updatePanel: jest.fn().mockResolvedValue({}),
+    previewPanelTransactions: vi.fn().mockResolvedValue({ transactions: [], total: 0 }),
+    chartPreview: vi.fn().mockResolvedValue({ rows: [], monthMap: {} }),
+    createPanel: vi.fn().mockResolvedValue({}),
+    updatePanel: vi.fn().mockResolvedValue({}),
   },
 }));
 
 // Mock child components to simplify testing
-jest.mock('./PanelChart', () => ({
+vi.mock('./PanelChart', () => ({
   PanelChart: () => <div data-testid="panel-chart" />,
 }));
-jest.mock('./ChartLegend', () => ({
+vi.mock('./ChartLegend', () => ({
   ChartLegend: () => <div data-testid="chart-legend" />,
 }));
-jest.mock('./TransactionPreview', () => ({
+vi.mock('./TransactionPreview', () => ({
   TransactionPreview: () => <div data-testid="transaction-preview" />,
 }));
-jest.mock('./FilterBuilder', () => ({
+vi.mock('./FilterBuilder', () => ({
   FilterBuilder: () => <div data-testid="filter-builder" />,
 }));
 
@@ -59,17 +60,19 @@ const defaultProps = {
   allLabels: ['label1', 'label2'],
   selectedUserId: 'user-1',
   dateRange: { start: new Date('2025-01-01'), end: new Date('2025-12-31') },
-  onSave: jest.fn(),
-  onCancel: jest.fn(),
+  onSave: vi.fn(),
+  onCancel: vi.fn(),
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  jest.useFakeTimers();
+  vi.clearAllMocks();
+  // RTL's waitFor only auto-advances Jest's fake timers, so let Vitest's
+  // fake clock follow real time or waitFor polls would never fire.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
 });
 
 afterEach(() => {
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 describe('PanelEditor', () => {
@@ -241,7 +244,7 @@ describe('PanelEditor', () => {
 
   // 8. Save calls createPanel in create mode
   test('save button calls ApiClient.createPanel in create mode', async () => {
-    const onSave = jest.fn();
+    const onSave = vi.fn();
     const savedPanel = {
       id: 'test-id',
       dashboardId: 'dash-1',
@@ -255,7 +258,7 @@ describe('PanelEditor', () => {
       createdAt: '2025-01-01T00:00:00Z',
       updatedAt: '2025-01-01T00:00:00Z',
     };
-    (ApiClient.createPanel as jest.Mock).mockResolvedValueOnce(savedPanel);
+    (ApiClient.createPanel as Mock).mockResolvedValueOnce(savedPanel);
 
     await act(async () => {
       render(<PanelEditor {...defaultProps} onSave={onSave} />);
@@ -294,9 +297,9 @@ describe('PanelEditor', () => {
 
   // 9. Save calls updatePanel in edit mode
   test('save button calls ApiClient.updatePanel in edit mode', async () => {
-    const onSave = jest.fn();
+    const onSave = vi.fn();
     const updatedPanel = { ...mockPanel, title: 'Updated Panel' };
-    (ApiClient.updatePanel as jest.Mock).mockResolvedValueOnce(updatedPanel);
+    (ApiClient.updatePanel as Mock).mockResolvedValueOnce(updatedPanel);
 
     await act(async () => {
       render(<PanelEditor {...defaultProps} panel={mockPanel} onSave={onSave} />);
@@ -326,7 +329,7 @@ describe('PanelEditor', () => {
 
   // 10. Back button calls onCancel
   test('back button calls onCancel', async () => {
-    const onCancel = jest.fn();
+    const onCancel = vi.fn();
 
     await act(async () => {
       render(<PanelEditor {...defaultProps} onCancel={onCancel} />);
@@ -340,7 +343,7 @@ describe('PanelEditor', () => {
 
   // 11. Cancel button calls onCancel
   test('cancel button calls onCancel', async () => {
-    const onCancel = jest.fn();
+    const onCancel = vi.fn();
 
     await act(async () => {
       render(<PanelEditor {...defaultProps} onCancel={onCancel} />);
