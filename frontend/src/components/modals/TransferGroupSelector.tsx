@@ -135,7 +135,7 @@ export const TransferGroupSelector: React.FC<TransferGroupSelectorProps> = ({
 
   const title = (
     <div className="flex items-center space-x-3">
-      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/30 flex-shrink-0">
+      <div className="w-9 h-9 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/30 shrink-0">
         <ArrowRightLeft size={18} className="text-purple-600 dark:text-purple-400" />
       </div>
       <div className="min-w-0">
@@ -205,7 +205,7 @@ export const TransferGroupSelector: React.FC<TransferGroupSelectorProps> = ({
               </p>
             </div>
             <div
-              className={`text-lg font-bold flex-shrink-0 ${
+              className={`text-lg font-bold shrink-0 ${
                 anchor.type === 'expense'
                   ? 'text-red-600 dark:text-red-400'
                   : 'text-green-600 dark:text-green-400'
@@ -262,7 +262,7 @@ export const TransferGroupSelector: React.FC<TransferGroupSelectorProps> = ({
                     <div className="flex items-center gap-2 min-w-0">
                       <span
                         aria-hidden="true"
-                        className={`w-5 h-5 flex-shrink-0 rounded border flex items-center justify-center ${
+                        className={`w-5 h-5 shrink-0 rounded border flex items-center justify-center ${
                           isSelected
                             ? 'bg-purple-600 border-purple-600 text-white'
                             : 'border-gray-300 dark:border-gray-600'
@@ -272,7 +272,7 @@ export const TransferGroupSelector: React.FC<TransferGroupSelectorProps> = ({
                       </span>
                       <span className="truncate">{transaction.description}</span>
                       {isExactMatch && (
-                        <span className="inline-flex flex-shrink-0 items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
+                        <span className="inline-flex shrink-0 items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
                           Exact Match
                         </span>
                       )}

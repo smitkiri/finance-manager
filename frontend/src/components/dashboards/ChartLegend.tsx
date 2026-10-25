@@ -61,7 +61,7 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({ data, legendOptions, s
       {seriesList.map((series) => (
         <div key={series.label} className="flex items-center gap-1.5">
           <span
-            className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+            className="inline-block w-2.5 h-2.5 rounded-xs shrink-0"
             style={{ backgroundColor: series.color }}
           />
           <span className="text-gray-700 dark:text-gray-300 font-medium">{series.label}</span>

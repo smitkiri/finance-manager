@@ -574,7 +574,7 @@ function AppContent() {
             <div>Successfully imported {result.imported} transactions</div>
             <button
               onClick={() => handleUndoImport(sessionId)}
-              className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
+              className="mt-2 px-3 py-1 bg-red-500 text-white rounded-sm text-sm hover:bg-red-600 transition-colors"
             >
               Undo Import
             </button>
@@ -657,7 +657,7 @@ function AppContent() {
           <div>Successfully imported {result.imported} transactions</div>
           <button
             onClick={() => handleUndoImport(sessionId)}
-            className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
+            className="mt-2 px-3 py-1 bg-red-500 text-white rounded-sm text-sm hover:bg-red-600 transition-colors"
           >
             Undo Import
           </button>

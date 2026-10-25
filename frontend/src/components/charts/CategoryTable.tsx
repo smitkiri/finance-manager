@@ -45,7 +45,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
             primary={
               <div className="flex items-center">
                 <div
-                  className="w-3 h-3 rounded-full mr-3 flex-shrink-0"
+                  className="w-3 h-3 rounded-full mr-3 shrink-0"
                   style={{
                     backgroundColor: `hsl(${(index * 137.5) % 360}, 70%, 60%)`,
                   }}

@@ -190,9 +190,9 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-60 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0 px-4 md:px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0 px-4 md:px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onCancel}
@@ -205,7 +205,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Untitled Panel"
-            className="flex-1 md:flex-none px-3 min-h-[44px] md:min-h-0 md:py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 md:w-64"
+            className="flex-1 md:flex-none px-3 min-h-[44px] md:min-h-0 md:py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 md:w-64"
           />
         </div>
         <div className="flex gap-2">
@@ -226,10 +226,10 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       </div>
 
       {/* Chart settings toolbar */}
-      <div className="flex flex-wrap items-center gap-3 md:gap-4 px-4 md:px-5 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-3 md:gap-4 px-4 md:px-5 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Chart</span>
-          <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+          <div className="flex border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden">
             {(['bar', 'line'] as const).map((t) => (
               <button
                 key={t}
@@ -248,7 +248,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
         <div className="hidden md:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 uppercase tracking-wide">Series</span>
-          <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+          <div className="flex border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden">
             {(
               [
                 { value: 'two_series', label: 'Two Series' },
@@ -274,7 +274,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             <div className="hidden md:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500 uppercase tracking-wide">Orientation</span>
-              <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+              <div className="flex border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden">
                 {(
                   [
                     { value: 'income_positive', label: 'Income \u2191' },
@@ -311,7 +311,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             {legendOptions.show ? 'On' : 'Off'}
           </button>
           {legendOptions.show && (
-            <div className="flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+            <div className="flex border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden">
               {(['min', 'max', 'avg', 'total'] as const).map((stat) => (
                 <button
                   key={stat}
@@ -332,7 +332,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
       {/* Chart area */}
       <div
-        className="px-4 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+        className="px-4 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0"
         style={{ height: isMobile ? 220 : legendOptions.show ? 310 : 280 }}
       >
         <PanelChart

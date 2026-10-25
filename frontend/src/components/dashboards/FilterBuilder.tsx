@@ -60,7 +60,7 @@ const ConditionValueInput: React.FC<{
       <select
         value={(value as string) || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
       >
         <option value="">Select...</option>
         <option value="expense">Expense</option>
@@ -72,7 +72,7 @@ const ConditionValueInput: React.FC<{
   if (field === 'category') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
-      <div className="w-full flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded min-h-[48px] md:min-h-[34px] max-h-24 overflow-y-auto">
+      <div className="w-full flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm min-h-[48px] md:min-h-[34px] max-h-24 overflow-y-auto">
         {categories.map((cat) => (
           <button
             key={cat}
@@ -99,7 +99,7 @@ const ConditionValueInput: React.FC<{
   if (field === 'labels') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
-      <div className="w-full flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded min-h-[48px] md:min-h-[34px] max-h-24 overflow-y-auto">
+      <div className="w-full flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm min-h-[48px] md:min-h-[34px] max-h-24 overflow-y-auto">
         {allLabels.map((label) => (
           <button
             key={label}
@@ -133,7 +133,7 @@ const ConditionValueInput: React.FC<{
         value={value as number | string}
         onChange={(e) => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
         placeholder="0.00"
-        className="w-full min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -145,7 +145,7 @@ const ConditionValueInput: React.FC<{
       value={(value as string) || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder="regex pattern (e.g. uber|lyft)"
-      className="w-full min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+      className="w-full min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
     />
   );
 };
@@ -253,7 +253,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({
                     onChange={(e) =>
                       handleFieldChange(gi, ci, e.target.value as FilterCondition['field'])
                     }
-                    className="w-full md:min-w-[100px] min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full md:min-w-[100px] min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                   >
                     {FIELD_OPTIONS.map((f) => (
                       <option key={f.value} value={f.value}>
@@ -266,7 +266,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   <select
                     value={cond.operator}
                     onChange={(e) => updateCondition(gi, ci, { operator: e.target.value })}
-                    className="w-full md:w-auto md:min-w-[70px] min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full md:w-auto md:min-w-[70px] min-h-[48px] md:min-h-0 px-2 md:py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                   >
                     {OPERATORS_BY_FIELD[cond.field].map((op) => (
                       <option key={op.value} value={op.value}>
@@ -287,7 +287,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   <button
                     type="button"
                     onClick={() => removeCondition(gi, ci)}
-                    className="text-red-400 hover:text-red-300 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center justify-self-end md:justify-self-auto flex-shrink-0"
+                    className="text-red-400 hover:text-red-300 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center justify-self-end md:justify-self-auto shrink-0"
                   >
                     <X size={14} />
                   </button>

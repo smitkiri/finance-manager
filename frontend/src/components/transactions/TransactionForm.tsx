@@ -76,7 +76,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   const inputCls =
-    'w-full px-3 py-3 min-h-[48px] text-base md:text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500';
+    'w-full px-3 py-3 min-h-[48px] text-base md:text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500';
 
   return (
     <Sheet

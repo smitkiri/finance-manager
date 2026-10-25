@@ -121,7 +121,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <button
             onClick={onBack}
             aria-label="Back"
-            className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
+            className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
@@ -210,11 +210,11 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className="text-sm text-gray-600 dark:text-gray-400">
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
               <div className="flex items-center space-x-1">
-                <Calendar size={14} className="flex-shrink-0" />
+                <Calendar size={14} className="shrink-0" />
                 <span>Created: {formatDate(report.createdAt)}</span>
               </div>
               <div className="flex items-center space-x-1 min-w-0">
-                <Tag size={14} className="flex-shrink-0" />
+                <Tag size={14} className="shrink-0" />
                 <span className="truncate">Filters: {getFilterSummary()}</span>
               </div>
             </div>

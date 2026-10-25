@@ -192,10 +192,7 @@ export const Reports: React.FC<ReportsProps> = ({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-3 mb-2">
-                    <FileText
-                      size={20}
-                      className="text-blue-600 dark:text-blue-400 flex-shrink-0"
-                    />
+                    <FileText size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                       {report.name}
                     </h3>
@@ -221,7 +218,7 @@ export const Reports: React.FC<ReportsProps> = ({
                   </div>
 
                   <div className="mt-3 flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
-                    <Filter size={12} className="flex-shrink-0" />
+                    <Filter size={12} className="shrink-0" />
                     <span className="truncate">{getFilterSummary(report)}</span>
                   </div>
                 </div>
@@ -231,7 +228,7 @@ export const Reports: React.FC<ReportsProps> = ({
                     e.stopPropagation();
                     handleDeleteReport(report.id);
                   }}
-                  className="flex-shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors p-1"
+                  className="shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors p-1"
                   title="Delete report"
                   aria-label="Delete report"
                 >

@@ -129,7 +129,7 @@ describe('FilterBuilder', () => {
     // Find condition remove buttons (the ones inside condition rows)
     const xButtons = screen
       .getAllByRole('button')
-      .filter((btn) => btn.querySelector('svg') && btn.classList.contains('flex-shrink-0'));
+      .filter((btn) => btn.querySelector('svg') && btn.classList.contains('shrink-0'));
     // Remove the second condition (amount)
     fireEvent.click(xButtons[1]);
     expect(onChange).toHaveBeenCalledWith([
@@ -146,7 +146,7 @@ describe('FilterBuilder', () => {
     // The condition remove button (flex-shrink-0)
     const conditionRemoveBtn = screen
       .getAllByRole('button')
-      .filter((btn) => btn.classList.contains('flex-shrink-0'));
+      .filter((btn) => btn.classList.contains('shrink-0'));
     fireEvent.click(conditionRemoveBtn[0]);
     expect(onChange).toHaveBeenCalledWith([]);
   });
@@ -397,7 +397,7 @@ describe('FilterBuilder', () => {
     const { onChange } = renderFilterBuilder(groups);
     const conditionRemoveButtons = screen
       .getAllByRole('button')
-      .filter((btn) => btn.classList.contains('flex-shrink-0'));
+      .filter((btn) => btn.classList.contains('shrink-0'));
     // Click the first condition's remove button
     fireEvent.click(conditionRemoveButtons[0]);
     expect(onChange).toHaveBeenCalledWith([

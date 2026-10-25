@@ -195,7 +195,7 @@ export function TellerImportModal({
                       type="checkbox"
                       checked={selectedIds.has(account.id)}
                       onChange={() => toggleAccount(account.id)}
-                      className="w-5 h-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 flex-shrink-0"
+                      className="w-5 h-5 text-blue-600 rounded-sm border-gray-300 dark:border-gray-600 shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
@@ -302,7 +302,7 @@ export function TellerImportModal({
                   key={cat}
                   className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2"
                 >
-                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200 break-words">
+                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200 wrap-break-word">
                     {cat}
                   </div>
                   <select
@@ -356,7 +356,7 @@ export function TellerImportModal({
                   key={a.accountId}
                   className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
                 >
-                  <div className="text-sm text-gray-800 dark:text-gray-200 font-medium break-words">
+                  <div className="text-sm text-gray-800 dark:text-gray-200 font-medium wrap-break-word">
                     {a.accountName}
                   </div>
                   <div className="flex items-center justify-between mt-1 text-sm">
@@ -411,7 +411,7 @@ export function TellerImportModal({
         {step === 'done' && (
           <>
             <div className="flex items-center space-x-2 mb-4">
-              <CheckCircle2 size={20} className="text-green-500 flex-shrink-0" />
+              <CheckCircle2 size={20} className="text-green-500 shrink-0" />
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                 Import complete
               </p>
@@ -422,7 +422,7 @@ export function TellerImportModal({
                   key={s.sessionId}
                   className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
                 >
-                  <div className="text-sm text-gray-800 dark:text-gray-200 font-medium break-words">
+                  <div className="text-sm text-gray-800 dark:text-gray-200 font-medium wrap-break-word">
                     {s.accountName}
                   </div>
                   <div className="flex items-center justify-between mt-1 text-sm">

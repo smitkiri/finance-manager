@@ -135,7 +135,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
           <select
             value={selectedId || ''}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="text-sm font-medium bg-transparent text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-3 min-h-[44px] md:min-h-0 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-sm font-medium bg-transparent text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-3 min-h-[44px] md:min-h-0 md:py-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             {dashboards.map((d) => (
               <option key={d.id} value={d.id}>
@@ -156,12 +156,12 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
                   if (e.key === 'Enter') handleRenameSubmit(selectedDashboard.id);
                   if (e.key === 'Escape') setRenamingId(null);
                 }}
-                className="text-sm border border-blue-400 rounded px-2 min-h-[44px] md:min-h-0 md:py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
+                className="text-sm border border-blue-400 rounded-sm px-2 min-h-[44px] md:min-h-0 md:py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden"
               />
             ) : (
               <button
                 onClick={() => handleStartRename(selectedDashboard)}
-                className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+                className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-sm"
                 title="Rename dashboard"
               >
                 <Pencil size={14} />
@@ -187,7 +187,7 @@ export const PersonalDashboards: React.FC<PersonalDashboardsProps> = ({
           {selectedDashboard && (
             <button
               onClick={() => handleDelete(selectedDashboard.id)}
-              className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-red-500 rounded transition-colors"
+              className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-sm transition-colors"
               title="Delete dashboard"
             >
               <Trash2 size={14} />

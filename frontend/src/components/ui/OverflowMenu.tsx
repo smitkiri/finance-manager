@@ -75,7 +75,7 @@ export const OverflowMenu: React.FC<OverflowMenuProps> = ({
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
+              {item.icon && <span className="shrink-0">{item.icon}</span>}
               <span className="text-sm font-medium">{item.label}</span>
             </button>
           ))}

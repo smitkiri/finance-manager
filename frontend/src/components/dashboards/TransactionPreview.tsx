@@ -19,7 +19,7 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
         <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Loading preview...</div>
         <div className="space-y-1">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-8 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
+            <div key={i} className="h-8 bg-gray-100 dark:bg-gray-700 rounded-sm animate-pulse" />
           ))}
         </div>
       </div>

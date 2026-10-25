@@ -206,7 +206,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
               className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg"
             >
               <div className="flex-1 min-w-0">
-                <span className="font-medium text-gray-900 dark:text-white break-words">
+                <span className="font-medium text-gray-900 dark:text-white wrap-break-word">
                   {mapping.csvColumn}
                 </span>
               </div>
@@ -249,7 +249,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                 id="flipIncomeExpense"
                 checked={flipIncomeExpense}
                 onChange={(e) => setFlipIncomeExpense(e.target.checked)}
-                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
               />
               <label
                 htmlFor="flipIncomeExpense"
@@ -432,7 +432,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                           Created: {new Date(source.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="hidden sm:inline text-sm text-gray-500 dark:text-gray-400">
                           {
                             source.mappings.filter(
@@ -443,7 +443,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                           columns mapped
                         </span>
                         <button
-                          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm"
                           title="Delete source"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -493,7 +493,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
       </Sheet>
 
       {confirmDeleteId && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-60 p-4">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-sm w-full">
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               Delete Source?
