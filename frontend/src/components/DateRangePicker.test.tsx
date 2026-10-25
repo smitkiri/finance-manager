@@ -7,12 +7,12 @@ import { subMonths, subYears, startOfDay, endOfDay, startOfMonth, endOfMonth } f
 const FIXED_NOW = new Date(2026, 2, 23, 12, 0, 0);
 
 beforeEach(() => {
-  jest.useFakeTimers();
-  jest.setSystemTime(FIXED_NOW);
+  vi.useFakeTimers();
+  vi.setSystemTime(FIXED_NOW);
 });
 
 afterEach(() => {
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 function makeRange(start: Date, end: Date) {
@@ -30,51 +30,51 @@ describe('DateRangePicker', () => {
   describe('renders button with formatted date range', () => {
     it('displays "Since the Beginning" for epoch start', () => {
       const range = makeRange(new Date(0), endOfDay(FIXED_NOW));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Since the Beginning')).toBeInTheDocument();
     });
 
     it('displays "Last 1 month" for matching quick range', () => {
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Last 1 month')).toBeInTheDocument();
     });
 
     it('displays "Last 3 months" for matching quick range', () => {
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 3)), endOfDay(FIXED_NOW));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Last 3 months')).toBeInTheDocument();
     });
 
     it('displays "Last 6 months" for matching quick range', () => {
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 6)), endOfDay(FIXED_NOW));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Last 6 months')).toBeInTheDocument();
     });
 
     it('displays "Last 1 year" for matching quick range', () => {
       const range = makeRange(startOfDay(subYears(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Last 1 year')).toBeInTheDocument();
     });
 
     it('displays month name for a full-month range', () => {
       const feb2026 = new Date(2026, 1, 1);
       const range = makeRange(startOfMonth(feb2026), endOfMonth(feb2026));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('February 2026')).toBeInTheDocument();
     });
 
     it('displays a single date when start and end are the same day', () => {
       const day = new Date(2026, 2, 15);
       const range = makeRange(startOfDay(day), startOfDay(day));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Mar 15, 2026')).toBeInTheDocument();
     });
 
     it('displays "start - end" for arbitrary ranges', () => {
       const range = makeRange(new Date(2026, 0, 5), new Date(2026, 2, 10));
-      render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+      render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
       expect(screen.getByText('Jan 5, 2026 - Mar 10, 2026')).toBeInTheDocument();
     });
   });
@@ -82,7 +82,7 @@ describe('DateRangePicker', () => {
   // ---- 2. Clicking button opens the popover ----
   it('opens the popover when the button is clicked', () => {
     const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-    render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+    render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
 
     expect(screen.queryByText('Date Range')).not.toBeInTheDocument();
     fireEvent.click(getTriggerButton());
@@ -92,7 +92,7 @@ describe('DateRangePicker', () => {
   // ---- 3. Clicking X closes the popover ----
   it('closes the popover when the X button is clicked', () => {
     const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-    render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+    render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
 
     fireEvent.click(getTriggerButton());
     expect(screen.getByText('Date Range')).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe('DateRangePicker', () => {
   // ---- 4 & 5. Quick range buttons call onDateRangeChange with correct ranges and close popover ----
   describe('quick range buttons', () => {
     it('1M calls onDateRangeChange with last 1 month and closes popover', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -125,7 +125,7 @@ describe('DateRangePicker', () => {
     });
 
     it('3M calls onDateRangeChange with last 3 months and closes popover', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -140,7 +140,7 @@ describe('DateRangePicker', () => {
     });
 
     it('6M calls onDateRangeChange with last 6 months and closes popover', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -155,7 +155,7 @@ describe('DateRangePicker', () => {
     });
 
     it('1Y calls onDateRangeChange with last 1 year and closes popover', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -173,7 +173,7 @@ describe('DateRangePicker', () => {
   // ---- 6. Month selection calls onDateRangeChange with correct month bounds ----
   describe('month selection', () => {
     it('selecting a month calls onDateRangeChange with startOfMonth and endOfMonth', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -193,7 +193,7 @@ describe('DateRangePicker', () => {
     });
 
     it('selecting the current month (offset 0) gives correct bounds', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -212,7 +212,7 @@ describe('DateRangePicker', () => {
   // ---- 7. Custom range: entering dates and clicking Apply calls onDateRangeChange ----
   describe('custom range', () => {
     it('applies custom date range when Apply button is clicked', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const range = makeRange(new Date(2026, 0, 1), new Date(2026, 0, 31));
       render(<DateRangePicker currentRange={range} onDateRangeChange={onChange} />);
 
@@ -236,7 +236,7 @@ describe('DateRangePicker', () => {
     });
 
     it('uses existing currentRange dates when Apply is clicked without changes', () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const start = new Date(2026, 0, 10);
       const end = new Date(2026, 0, 20);
       const range = makeRange(start, end);
@@ -255,7 +255,7 @@ describe('DateRangePicker', () => {
   // ---- 8. formatDateRange displays "Since the Beginning" for epoch start ----
   it('displays "Since the Beginning" when start is epoch (timestamp 0)', () => {
     const range = makeRange(new Date(0), new Date(2026, 2, 23));
-    render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+    render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
     expect(screen.getByText('Since the Beginning')).toBeInTheDocument();
   });
 
@@ -265,7 +265,7 @@ describe('DateRangePicker', () => {
     render(
       <div>
         <div data-testid="outside">Outside area</div>
-        <DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />
+        <DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />
       </div>
     );
 
@@ -280,7 +280,7 @@ describe('DateRangePicker', () => {
   // ---- 10. Popover shows quick ranges, month selector, and custom range sections ----
   it('shows all sections in the popover', () => {
     const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-    render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+    render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
 
     fireEvent.click(getTriggerButton());
 
@@ -310,7 +310,7 @@ describe('DateRangePicker', () => {
   // ---- Additional edge cases ----
   it('toggles the popover open and closed on repeated trigger clicks', () => {
     const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-    render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+    render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
 
     fireEvent.click(getTriggerButton());
     expect(screen.getByText('Date Range')).toBeInTheDocument();
@@ -323,7 +323,7 @@ describe('DateRangePicker', () => {
   });
 
   it('does not update temp date when invalid date string is entered', () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     const start = new Date(2026, 0, 10);
     const end = new Date(2026, 0, 20);
     const range = makeRange(start, end);
@@ -344,7 +344,7 @@ describe('DateRangePicker', () => {
 
   it('lists 12 month options in the dropdown', () => {
     const range = makeRange(startOfDay(subMonths(FIXED_NOW, 1)), endOfDay(FIXED_NOW));
-    render(<DateRangePicker currentRange={range} onDateRangeChange={jest.fn()} />);
+    render(<DateRangePicker currentRange={range} onDateRangeChange={vi.fn()} />);
 
     fireEvent.click(getTriggerButton());
 

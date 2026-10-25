@@ -76,7 +76,7 @@ if (typeof window !== 'undefined') {
 }
 
 export class ApiClient {
-  private static API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
+  private static API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api';
 
   static getApiBase(): string {
     return ApiClient.API_BASE;
@@ -1586,7 +1586,7 @@ export class ApiClient {
       { credentials: 'include' }
     );
     if (!res.ok) {
-      let body: unknown = undefined;
+      let body: unknown;
       try {
         body = await res.json();
       } catch {

@@ -1,15 +1,16 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { OverflowMenu } from './OverflowMenu';
+import type { Mock } from 'vitest';
 
 const items = [
-  { label: 'First', onClick: jest.fn() },
-  { label: 'Second', onClick: jest.fn() },
+  { label: 'First', onClick: vi.fn() },
+  { label: 'Second', onClick: vi.fn() },
 ];
 
 describe('OverflowMenu', () => {
   beforeEach(() => {
-    items.forEach((i) => (i.onClick as jest.Mock).mockReset());
+    items.forEach((i) => (i.onClick as Mock).mockReset());
   });
 
   test('renders trigger but no items initially', () => {
@@ -41,7 +42,7 @@ describe('OverflowMenu', () => {
   });
 
   test('skips items where hidden is true', () => {
-    const withHidden = [...items, { label: 'Hidden', onClick: jest.fn(), hidden: true }];
+    const withHidden = [...items, { label: 'Hidden', onClick: vi.fn(), hidden: true }];
     render(<OverflowMenu items={withHidden} triggerAriaLabel="More" />);
     fireEvent.click(screen.getByRole('button', { name: 'More' }));
     expect(screen.queryByText('Hidden')).not.toBeInTheDocument();

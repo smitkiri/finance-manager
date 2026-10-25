@@ -40,7 +40,7 @@ echo "✅ Python dependencies installed."
 echo
 echo "STEP 4: Checking frontend environment..."
 if [ ! -f frontend/.env ]; then
-  echo "REACT_APP_API_BASE_URL=http://localhost:3002/api" > frontend/.env
+  echo "VITE_API_BASE_URL=http://localhost:3002/api" > frontend/.env
   echo "⚠️  Created frontend/.env with default API base URL"
 else
   echo "✅ frontend/.env exists"

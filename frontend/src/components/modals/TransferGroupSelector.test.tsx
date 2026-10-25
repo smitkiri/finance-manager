@@ -3,9 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TransferGroupSelector } from './TransferGroupSelector';
 import { ApiClient } from '../../utils/apiClient';
 import { Expense } from '../../types';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => ({
-  ApiClient: { loadExpenses: jest.fn() },
+vi.mock('../../utils/apiClient', () => ({
+  ApiClient: { loadExpenses: vi.fn() },
 }));
 
 const tx = (id: string, amount: number, type: Expense['type'], date: string): Expense => ({
@@ -23,11 +24,9 @@ const venmos = Array.from({ length: 5 }, (_, i) =>
 );
 
 const setup = async (anchor: Expense) => {
-  (ApiClient.loadExpenses as jest.Mock).mockResolvedValue([anchor, ...venmos]);
-  const onConfirm = jest.fn();
-  render(
-    <TransferGroupSelector isOpen onClose={jest.fn()} anchor={anchor} onConfirm={onConfirm} />
-  );
+  (ApiClient.loadExpenses as Mock).mockResolvedValue([anchor, ...venmos]);
+  const onConfirm = vi.fn();
+  render(<TransferGroupSelector isOpen onClose={vi.fn()} anchor={anchor} onConfirm={onConfirm} />);
   await screen.findByText('Venmo 0');
   const selectAll = () => venmos.forEach((v) => fireEvent.click(screen.getByText(v.description)));
   return { onConfirm, selectAll };

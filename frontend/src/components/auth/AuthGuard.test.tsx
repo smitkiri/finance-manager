@@ -4,14 +4,16 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthGuard } from './AuthGuard';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import { ApiClient } from '../../utils/apiClient';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => {
-  const actual = jest.requireActual('../../utils/apiClient');
+vi.mock('../../utils/apiClient', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/apiClient')>('../../utils/apiClient');
   return {
     ...actual,
     ApiClient: {
       ...actual.ApiClient,
-      getMe: jest.fn(),
+      getMe: vi.fn(),
     },
   };
 });
@@ -42,10 +44,10 @@ function renderAt(path: string) {
 }
 
 describe('AuthGuard', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('shows loading while /auth/me is in flight', async () => {
-    (ApiClient.getMe as jest.Mock).mockImplementation(
+    (ApiClient.getMe as Mock).mockImplementation(
       () => new Promise(() => {}) // never resolves
     );
     renderAt('/');
@@ -53,7 +55,7 @@ describe('AuthGuard', () => {
   });
 
   it('renders children with currentUser when /auth/me succeeds', async () => {
-    (ApiClient.getMe as jest.Mock).mockResolvedValue({
+    (ApiClient.getMe as Mock).mockResolvedValue({
       user: { id: 'u1', name: 'Alice', email: 'a@b.c', householdId: 'h1' },
       household: { id: 'h1', name: 'Alice Household' },
     });
@@ -62,13 +64,13 @@ describe('AuthGuard', () => {
   });
 
   it('redirects to /login?next=<path> when /auth/me rejects (no cookie)', async () => {
-    (ApiClient.getMe as jest.Mock).mockRejectedValue(new Error('401'));
+    (ApiClient.getMe as Mock).mockRejectedValue(new Error('401'));
     renderAt('/transactions');
     expect(await screen.findByText('LOGIN_PAGE')).toBeInTheDocument();
   });
 
   it('returns the demo user in demo mode (backend short-circuits /me without auth)', async () => {
-    (ApiClient.getMe as jest.Mock).mockResolvedValue({
+    (ApiClient.getMe as Mock).mockResolvedValue({
       user: {
         id: 'demo-user',
         name: 'Demo',

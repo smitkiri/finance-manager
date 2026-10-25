@@ -6,21 +6,23 @@ import { MemoryRouter } from 'react-router-dom';
 import { HouseholdSection } from './HouseholdSection';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import { ApiClient } from '../../utils/apiClient';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => {
-  const actual = jest.requireActual('../../utils/apiClient');
+vi.mock('../../utils/apiClient', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/apiClient')>('../../utils/apiClient');
   return {
     ...actual,
     ApiClient: {
       ...actual.ApiClient,
-      renameHousehold: jest.fn(),
-      loadUsers: jest.fn().mockResolvedValue([]),
-      removeMember: jest.fn(),
-      updateUser: jest.fn(),
-      listInvitations: jest.fn().mockResolvedValue([]),
-      createInvitation: jest.fn(),
-      revokeInvitation: jest.fn(),
-      logout: jest.fn().mockResolvedValue(undefined),
+      renameHousehold: vi.fn(),
+      loadUsers: vi.fn().mockResolvedValue([]),
+      removeMember: vi.fn(),
+      updateUser: vi.fn(),
+      listInvitations: vi.fn().mockResolvedValue([]),
+      createInvitation: vi.fn(),
+      revokeInvitation: vi.fn(),
+      logout: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
@@ -57,7 +59,7 @@ function renderSection(props: { demoMode?: boolean } = {}) {
 }
 
 describe('HouseholdSection — rename', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders household name read-only with an Edit button', async () => {
     renderSection();
@@ -66,7 +68,7 @@ describe('HouseholdSection — rename', () => {
   });
 
   it('saves new name via renameHousehold', async () => {
-    (ApiClient.renameHousehold as jest.Mock).mockResolvedValue({
+    (ApiClient.renameHousehold as Mock).mockResolvedValue({
       id: 'h',
       name: 'Jones Family',
     });
@@ -88,10 +90,10 @@ describe('HouseholdSection — rename', () => {
 });
 
 describe('HouseholdSection — members', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders self with Leave and other with Remove', async () => {
-    (ApiClient.loadUsers as jest.Mock).mockResolvedValue([
+    (ApiClient.loadUsers as Mock).mockResolvedValue([
       { id: 'u', email: 'a@x.com', name: 'Alice' },
       { id: 'u2', email: 'b@x.com', name: 'Bob' },
     ]);
@@ -104,11 +106,11 @@ describe('HouseholdSection — members', () => {
   });
 
   it('Rename other member updates via ApiClient.updateUser', async () => {
-    (ApiClient.loadUsers as jest.Mock).mockResolvedValue([
+    (ApiClient.loadUsers as Mock).mockResolvedValue([
       { id: 'u', email: 'a@x.com', name: 'Alice' },
       { id: 'u2', email: 'b@x.com', name: 'Bob' },
     ]);
-    (ApiClient.updateUser as jest.Mock).mockResolvedValue({
+    (ApiClient.updateUser as Mock).mockResolvedValue({
       id: 'u2',
       name: 'Bobby',
       email: 'b@x.com',
@@ -126,11 +128,11 @@ describe('HouseholdSection — members', () => {
   });
 
   it('Remove opens confirm modal then calls removeMember', async () => {
-    (ApiClient.loadUsers as jest.Mock).mockResolvedValue([
+    (ApiClient.loadUsers as Mock).mockResolvedValue([
       { id: 'u', email: 'a@x.com', name: 'Alice' },
       { id: 'u2', email: 'b@x.com', name: 'Bob' },
     ]);
-    (ApiClient.removeMember as jest.Mock).mockResolvedValue(undefined);
+    (ApiClient.removeMember as Mock).mockResolvedValue(undefined);
     renderSection();
     await userEvent.click(await screen.findByRole('button', { name: /^remove$/i }));
     expect(screen.getByRole('dialog')).toHaveTextContent(/Remove Bob/i);
@@ -140,11 +142,11 @@ describe('HouseholdSection — members', () => {
 });
 
 describe('HouseholdSection — invitations', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('creates invite then shows shareable link dialog', async () => {
-    (ApiClient.listInvitations as jest.Mock).mockResolvedValue([]);
-    (ApiClient.createInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.listInvitations as Mock).mockResolvedValue([]);
+    (ApiClient.createInvitation as Mock).mockResolvedValue({
       id: 'i1',
       email: 'new@x.com',
       token: 'tok-abc',
@@ -166,7 +168,7 @@ describe('HouseholdSection — invitations', () => {
   });
 
   it('revoke button removes the row', async () => {
-    (ApiClient.listInvitations as jest.Mock).mockResolvedValue([
+    (ApiClient.listInvitations as Mock).mockResolvedValue([
       {
         id: 'i1',
         email: 'pending@x.com',
@@ -176,7 +178,7 @@ describe('HouseholdSection — invitations', () => {
         invitedBy: { id: 'u', name: 'Alice' },
       },
     ]);
-    (ApiClient.revokeInvitation as jest.Mock).mockResolvedValue(undefined);
+    (ApiClient.revokeInvitation as Mock).mockResolvedValue(undefined);
     renderSection();
     await userEvent.click(await screen.findByRole('button', { name: /revoke/i }));
     expect(ApiClient.revokeInvitation).toHaveBeenCalledWith('i1');

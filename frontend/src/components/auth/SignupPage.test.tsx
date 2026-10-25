@@ -5,16 +5,18 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { SignupPage } from './SignupPage';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { ApiClient } from '../../utils/apiClient';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => {
-  const actual = jest.requireActual('../../utils/apiClient');
+vi.mock('../../utils/apiClient', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/apiClient')>('../../utils/apiClient');
   return {
     ...actual,
     ApiClient: {
       ...actual.ApiClient,
-      signup: jest.fn(),
-      getDemoConfig: jest.fn().mockResolvedValue({ enabled: false }),
-      lookupInvitation: jest.fn(),
+      signup: vi.fn(),
+      getDemoConfig: vi.fn().mockResolvedValue({ enabled: false }),
+      lookupInvitation: vi.fn(),
     },
   };
 });
@@ -34,7 +36,7 @@ function renderAt(path: string) {
 }
 
 describe('SignupPage', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders name, email, password fields', async () => {
     renderAt('/signup');
@@ -44,7 +46,7 @@ describe('SignupPage', () => {
   });
 
   it('creates the account on submit and navigates home on success', async () => {
-    (ApiClient.signup as jest.Mock).mockResolvedValueOnce({
+    (ApiClient.signup as Mock).mockResolvedValueOnce({
       token: 'tok',
       user: { id: 'u1', name: 'A', email: 'a@b.c', householdId: 'h1' },
       household: { id: 'h1', name: "A's Household" },
@@ -67,7 +69,7 @@ describe('SignupPage', () => {
   });
 
   it('shows duplicate-email error and a link to sign in on 409', async () => {
-    (ApiClient.signup as jest.Mock).mockRejectedValueOnce(
+    (ApiClient.signup as Mock).mockRejectedValueOnce(
       new Error('{"detail":"Email already registered"}')
     );
     renderAt('/signup');
@@ -93,17 +95,17 @@ describe('SignupPage', () => {
   });
 
   it('redirects to / in demo mode', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValueOnce({ enabled: true });
+    (ApiClient.getDemoConfig as Mock).mockResolvedValueOnce({ enabled: true });
     renderAt('/signup');
     expect(await screen.findByText('HOME')).toBeInTheDocument();
   });
 });
 
 describe('SignupPage invite mode', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('pre-fills and disables email when ?invite=&email= present', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.lookupInvitation as Mock).mockResolvedValue({
       householdName: 'Smith Family',
       inviterName: 'Alice',
       email: 'bob@x.com',
@@ -118,14 +120,14 @@ describe('SignupPage invite mode', () => {
   });
 
   it('sends inviteToken in submit body when present', async () => {
-    (ApiClient.lookupInvitation as jest.Mock).mockResolvedValue({
+    (ApiClient.lookupInvitation as Mock).mockResolvedValue({
       householdName: 'H',
       inviterName: 'A',
       email: 'b@x.com',
       status: 'pending',
       expiresAt: '2026-12-01',
     });
-    (ApiClient.signup as jest.Mock).mockResolvedValue({
+    (ApiClient.signup as Mock).mockResolvedValue({
       user: { id: 'u', email: 'b@x.com', name: 'B', householdId: 'h' },
       household: { id: 'h', name: 'H' },
       token: 't',

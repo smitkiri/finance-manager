@@ -6,13 +6,13 @@ import { UserMenu } from './UserMenu';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '../utils/apiClient';
 
-jest.mock('../utils/apiClient', () => {
-  const actual = jest.requireActual('../utils/apiClient');
+vi.mock('../utils/apiClient', async () => {
+  const actual = await vi.importActual<typeof import('../utils/apiClient')>('../utils/apiClient');
   return {
     ...actual,
     ApiClient: {
       ...actual.ApiClient,
-      logout: jest.fn().mockResolvedValue(undefined),
+      logout: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
@@ -43,7 +43,7 @@ function renderMenu(demoEnabled = false) {
 }
 
 describe('UserMenu', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders an avatar with the user initial', async () => {
     renderMenu();

@@ -34,7 +34,6 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
       ...prev,
       dateRange: prev.dateRange || globalDateRange,
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globalDateRange]);
 
   // Get all unique labels from expenses

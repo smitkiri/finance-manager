@@ -1,12 +1,13 @@
 import { ApiClient } from './apiClient';
 import { setAuthNavigator, resetAuthNavigatorForTests } from './authNavigation';
+import type { Mock } from 'vitest';
 
 describe('ApiClient.apiFetch 401 interceptor', () => {
-  let originalFetch: typeof global.fetch;
+  let originalFetch: typeof globalThis.fetch;
   let originalLocation: Location;
 
   beforeEach(() => {
-    originalFetch = global.fetch;
+    originalFetch = globalThis.fetch;
     originalLocation = window.location;
     // jsdom Location mock — only the bits we need
     delete (window as any).location;
@@ -18,14 +19,14 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
     (window as any).location = originalLocation;
   });
 
   it('navigates to /login on 401 from a non-auth endpoint', async () => {
-    const navigate = jest.fn();
+    const navigate = vi.fn();
     setAuthNavigator(navigate);
-    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 401 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
@@ -33,9 +34,9 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
   });
 
   it('does NOT navigate on 401 from /api/auth/* endpoints', async () => {
-    const navigate = jest.fn();
+    const navigate = vi.fn();
     setAuthNavigator(navigate);
-    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 401 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/auth/me');
 
@@ -43,9 +44,9 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
   });
 
   it('does not navigate on non-401 errors', async () => {
-    const navigate = jest.fn();
+    const navigate = vi.fn();
     setAuthNavigator(navigate);
-    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 500 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
@@ -53,8 +54,8 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
   });
 
   it('returns the original response so callers see the 401', async () => {
-    setAuthNavigator(jest.fn());
-    global.fetch = jest.fn().mockResolvedValue(new Response('boom', { status: 401 }));
+    setAuthNavigator(vi.fn());
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('boom', { status: 401 }));
 
     const res = await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
@@ -62,22 +63,22 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
   });
 
   it("sends credentials: 'include' so the __Host-fm_session cookie ships with every request", async () => {
-    setAuthNavigator(jest.fn());
-    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    setAuthNavigator(vi.fn());
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(init.credentials).toBe('include');
   });
 
   it('does NOT inject an Authorization header (cookie carries auth now)', async () => {
-    setAuthNavigator(jest.fn());
-    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    setAuthNavigator(vi.fn());
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
 
     await ApiClient.apiFetch('http://localhost:3002/api/expenses');
 
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [, init] = (globalThis.fetch as Mock).mock.calls[0];
     // headers are either undefined (no caller-provided headers) or a plain
     // object with no Authorization key.
     const headers = (init.headers ?? {}) as Record<string, string>;
@@ -87,14 +88,14 @@ describe('ApiClient.apiFetch 401 interceptor', () => {
 });
 
 describe('ApiClient invitation methods', () => {
-  let originalFetch: typeof global.fetch;
+  let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
-    originalFetch = global.fetch;
+    originalFetch = globalThis.fetch;
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
   });
 
   it('createInvitation POSTs to /api/invitations with credentials + returns body', async () => {
@@ -107,12 +108,12 @@ describe('ApiClient invitation methods', () => {
       expiresAt: '...',
       invitedBy: null,
     };
-    global.fetch = jest
+    globalThis.fetch = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify(payload), { status: 201 }));
     const inv = await ApiClient.createInvitation({ email: 'a@b.com' });
     expect(inv.token).toBe('tok');
-    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [url, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(url).toMatch('/api/invitations');
     expect(init.method).toBe('POST');
     expect(init.credentials).toBe('include');
@@ -128,17 +129,17 @@ describe('ApiClient invitation methods', () => {
       status: 'pending',
       expiresAt: '...',
     };
-    global.fetch = jest
+    globalThis.fetch = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
     await ApiClient.lookupInvitation('some-token');
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(init.credentials).toBe('include');
     expect((init.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
   });
 
   it('lookupInvitation surfaces status + body on non-200', async () => {
-    global.fetch = jest
+    globalThis.fetch = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify({ status: 'expired' }), { status: 410 }));
     await expect(ApiClient.lookupInvitation('tok')).rejects.toMatchObject({
@@ -148,7 +149,7 @@ describe('ApiClient invitation methods', () => {
   });
 
   it('acceptInvitation POSTs token and returns user+household', async () => {
-    global.fetch = jest.fn().mockResolvedValue(
+    globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           user: { id: 'u', email: 'e', name: 'n', householdId: 'h' },
@@ -159,31 +160,31 @@ describe('ApiClient invitation methods', () => {
     );
     const res = await ApiClient.acceptInvitation('tok');
     expect(res.household.id).toBe('h');
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(JSON.parse(init.body)).toEqual({ token: 'tok' });
   });
 
   it('removeMember DELETEs /api/users/{id}/membership', async () => {
-    global.fetch = jest.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     await ApiClient.removeMember('user-x');
-    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [url, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(url).toMatch('/api/users/user-x/membership');
     expect(init.method).toBe('DELETE');
   });
 
   it('renameHousehold PATCHes /api/households/{id}', async () => {
-    global.fetch = jest
+    globalThis.fetch = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify({ id: 'h', name: 'new' }), { status: 200 }));
     await ApiClient.renameHousehold('h', 'new');
-    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [url, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(url).toMatch('/api/households/h');
     expect(init.method).toBe('PATCH');
     expect(JSON.parse(init.body)).toEqual({ name: 'new' });
   });
 
   it('signup forwards inviteToken as invite_token', async () => {
-    global.fetch = jest.fn().mockResolvedValue(
+    globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           token: 't',
@@ -199,7 +200,7 @@ describe('ApiClient invitation methods', () => {
       name: 'B',
       inviteToken: 't1',
     });
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const [, init] = (globalThis.fetch as Mock).mock.calls[0];
     expect(JSON.parse(init.body)).toEqual({
       email: 'b@x.com',
       password: 'supersecret',

@@ -5,15 +5,17 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { LoginPage } from './LoginPage';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { ApiClient } from '../../utils/apiClient';
+import type { Mock } from 'vitest';
 
-jest.mock('../../utils/apiClient', () => {
-  const actual = jest.requireActual('../../utils/apiClient');
+vi.mock('../../utils/apiClient', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../utils/apiClient')>('../../utils/apiClient');
   return {
     ...actual,
     ApiClient: {
       ...actual.ApiClient,
-      login: jest.fn(),
-      getDemoConfig: jest.fn().mockResolvedValue({ enabled: false }),
+      login: vi.fn(),
+      getDemoConfig: vi.fn().mockResolvedValue({ enabled: false }),
     },
   };
 });
@@ -34,7 +36,7 @@ function renderAt(path: string) {
 }
 
 describe('LoginPage', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the login form', async () => {
     renderAt('/login');
@@ -44,7 +46,7 @@ describe('LoginPage', () => {
   });
 
   it('calls ApiClient.login on submit and navigates home on success', async () => {
-    (ApiClient.login as jest.Mock).mockResolvedValueOnce({
+    (ApiClient.login as Mock).mockResolvedValueOnce({
       token: 'tok',
       user: { id: 'u1', name: 'A', email: 'a@b.c', householdId: 'h1' },
       household: { id: 'h1', name: 'H' },
@@ -62,7 +64,7 @@ describe('LoginPage', () => {
   });
 
   it('navigates to ?next= target on success', async () => {
-    (ApiClient.login as jest.Mock).mockResolvedValueOnce({
+    (ApiClient.login as Mock).mockResolvedValueOnce({
       token: 'tok',
       user: { id: 'u1', name: 'A', email: 'a@b.c', householdId: 'h1' },
       household: { id: 'h1', name: 'H' },
@@ -75,7 +77,7 @@ describe('LoginPage', () => {
   });
 
   it('ignores an absolute-URL next param', async () => {
-    (ApiClient.login as jest.Mock).mockResolvedValueOnce({
+    (ApiClient.login as Mock).mockResolvedValueOnce({
       token: 'tok',
       user: { id: 'u1', name: 'A', email: 'a@b.c', householdId: 'h1' },
       household: { id: 'h1', name: 'H' },
@@ -88,9 +90,7 @@ describe('LoginPage', () => {
   });
 
   it('shows "Invalid email or password" on 401', async () => {
-    (ApiClient.login as jest.Mock).mockRejectedValueOnce(
-      new Error('{"detail":"Invalid credentials"}')
-    );
+    (ApiClient.login as Mock).mockRejectedValueOnce(new Error('{"detail":"Invalid credentials"}'));
     renderAt('/login');
     await userEvent.type(await screen.findByLabelText(/email/i), 'a@b.c');
     await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
@@ -99,7 +99,7 @@ describe('LoginPage', () => {
   });
 
   it('shows network error message when fetch throws', async () => {
-    (ApiClient.login as jest.Mock).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    (ApiClient.login as Mock).mockRejectedValueOnce(new TypeError('Failed to fetch'));
     renderAt('/login');
     await userEvent.type(await screen.findByLabelText(/email/i), 'a@b.c');
     await userEvent.type(screen.getByLabelText(/password/i), 'password1');
@@ -108,9 +108,7 @@ describe('LoginPage', () => {
   });
 
   it('clears error when the user types again', async () => {
-    (ApiClient.login as jest.Mock).mockRejectedValueOnce(
-      new Error('{"detail":"Invalid credentials"}')
-    );
+    (ApiClient.login as Mock).mockRejectedValueOnce(new Error('{"detail":"Invalid credentials"}'));
     renderAt('/login');
     await userEvent.type(await screen.findByLabelText(/email/i), 'a@b.c');
     await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
@@ -128,7 +126,7 @@ describe('LoginPage', () => {
   });
 
   it('redirects to / when demo mode is enabled', async () => {
-    (ApiClient.getDemoConfig as jest.Mock).mockResolvedValueOnce({ enabled: true });
+    (ApiClient.getDemoConfig as Mock).mockResolvedValueOnce({ enabled: true });
     renderAt('/login');
     expect(await screen.findByText('HOME')).toBeInTheDocument();
   });

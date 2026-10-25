@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FilterBuilder } from './FilterBuilder';
 import { FilterGroup } from '../../types';
+import type { Mock } from 'vitest';
 
 const defaultCategories = ['Food', 'Transport', 'Entertainment'];
 const defaultLabels = ['work', 'personal', 'urgent'];
@@ -9,12 +10,12 @@ const defaultLabels = ['work', 'personal', 'urgent'];
 function renderFilterBuilder(
   filterGroups: FilterGroup[] = [],
   overrides: Partial<{
-    onChange: jest.Mock;
+    onChange: Mock;
     categories: string[];
     allLabels: string[];
   }> = {}
 ) {
-  const onChange = overrides.onChange ?? jest.fn();
+  const onChange = overrides.onChange ?? vi.fn();
   const result = render(
     <FilterBuilder
       filterGroups={filterGroups}

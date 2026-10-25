@@ -29,6 +29,7 @@ npm-debug.log*
 # Build outputs
 build/
 frontend/build/
+frontend/dist/
 dist/
 
 # Tests (don't ship into prod images)
@@ -55,7 +56,6 @@ docs/
 # Lefthook / lint config not needed at runtime
 lefthook.yml
 commitlint.config.js
-.eslintrc.json
 .prettierrc
 .prettierignore
 

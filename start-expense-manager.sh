@@ -39,12 +39,12 @@ else
   rm -f "$BACKUP_FILE"
 fi
 
-# Sync REACT_APP_* vars from root .env to frontend/.env
+# Sync VITE_* vars from root .env to frontend/.env
 cd "$PROJECT_DIR"
 if [ -f .env ]; then
   {
-    echo "REACT_APP_API_BASE_URL=http://localhost:3001/api"
-    grep "^REACT_APP_" .env
+    echo "VITE_API_BASE_URL=http://localhost:3001/api"
+    grep "^VITE_" .env
   } > frontend/.env
 fi
 
