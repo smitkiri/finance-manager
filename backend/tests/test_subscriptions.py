@@ -366,3 +366,137 @@ async def test_price_change_populated_on_detail_endpoint(
     pc = body["price_change"]
     assert pc is not None
     assert pc["current_amount"] == 17.99
+
+
+@pytest.fixture
+async def two_claude_subs(db_session) -> None:
+    for sub_id, sig, name, desc, amount, dates, status in [
+        (
+            "sub_a",
+            "claude ai subscription",
+            "Claude Ai Subscription",
+            "CLAUDE.AI SUBSCRIPTION",
+            "17.00",
+            [date(2025, 10, 2), date(2025, 11, 2), date(2025, 12, 2)],
+            "possibly_cancelled",
+        ),
+        (
+            "sub_b",
+            "anthropic claude sub",
+            "Anthropic Claude Sub",
+            "ANTHROPIC CLAUDE SUB",
+            "20.00",
+            [date(2026, 1, 2), date(2026, 2, 2), date(2026, 3, 2)],
+            "active",
+        ),
+    ]:
+        db_session.add(
+            Subscription(
+                id=sub_id,
+                household_id=HH_ID,
+                name=name,
+                cadence="monthly",
+                expected_amount=Decimal(amount),
+                status=status,
+                first_seen=dates[0],
+                last_seen=dates[-1],
+                detection_signature=sig,
+                user_overrides={
+                    "excludedTxnIds": [f"{sub_id}_x"],
+                    "includedTxnIds": [],
+                    "lockName": False,
+                    "lockAmount": False,
+                    "lockCadence": False,
+                },
+                metadata_={},
+            )
+        )
+        for i, d in enumerate(dates):
+            db_session.add(
+                Transaction(
+                    id=f"{sub_id}_t{i}",
+                    date=d,
+                    description=desc,
+                    category="Software",
+                    amount=Decimal(amount),
+                    type="expense",
+                    household_id=HH_ID,
+                    labels=[],
+                    metadata_={},
+                    excluded_from_calculations=False,
+                    subscription_id=sub_id,
+                )
+            )
+    await db_session.commit()
+
+
+async def test_merge_subscriptions(client, two_claude_subs, db_session) -> None:
+    res = await client.post(
+        "/api/subscriptions/sub_a/merge",
+        json={"sourceIds": ["sub_b"], "name": "Claude"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["id"] == "sub_a"
+    assert body["name"] == "Claude"
+    assert body["user_overrides"]["lockName"] is True
+    assert body["member_count"] == 6
+    assert body["first_seen"] == "2025-10-02"
+    assert body["last_seen"] == "2026-03-02"
+    assert body["expected_amount"] == 20.0
+    # Status of the subscription the merge started from is kept.
+    assert body["status"] == "possibly_cancelled"
+    assert sorted(body["user_overrides"]["excludedTxnIds"]) == [
+        "sub_a_x",
+        "sub_b_x",
+    ]
+
+    db_session.expire_all()
+    assert (
+        await db_session.execute(select(Subscription).where(Subscription.id == "sub_b"))
+    ).scalar_one_or_none() is None
+    target = (
+        await db_session.execute(select(Subscription).where(Subscription.id == "sub_a"))
+    ).scalar_one()
+    assert target.metadata_["mergedSignatures"] == [
+        "anthropic claude sub",
+        "claude ai subscription",
+    ]
+    owners = (
+        (
+            await db_session.execute(
+                select(Transaction.subscription_id).where(
+                    Transaction.household_id == HH_ID
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert set(owners) == {"sub_a"}
+
+
+async def test_merge_without_name_keeps_target_name(client, two_claude_subs) -> None:
+    res = await client.post(
+        "/api/subscriptions/sub_a/merge", json={"sourceIds": ["sub_b"]}
+    )
+    assert res.status_code == 200
+    assert res.json()["name"] == "Claude Ai Subscription"
+    assert res.json()["user_overrides"]["lockName"] is False
+
+
+async def test_merge_rejects_bad_sources(client, two_claude_subs) -> None:
+    res = await client.post("/api/subscriptions/sub_a/merge", json={"sourceIds": []})
+    assert res.status_code == 400
+    res = await client.post(
+        "/api/subscriptions/sub_a/merge", json={"sourceIds": ["sub_a"]}
+    )
+    assert res.status_code == 400
+    res = await client.post(
+        "/api/subscriptions/sub_a/merge", json={"sourceIds": ["sub_missing"]}
+    )
+    assert res.status_code == 404
+    res = await client.post(
+        "/api/subscriptions/sub_missing/merge", json={"sourceIds": ["sub_a"]}
+    )
+    assert res.status_code == 404

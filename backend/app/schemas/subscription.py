@@ -69,6 +69,11 @@ class SubscriptionMembersBody(BaseModel):
     transactionIds: list[str]
 
 
+class SubscriptionMergeBody(BaseModel):
+    sourceIds: list[str]
+    name: str | None = None
+
+
 class DetectionQueuedResponse(BaseModel):
     queued: bool = True
     last_detected_at: datetime | None = None

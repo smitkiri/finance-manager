@@ -68,6 +68,12 @@ class _Cluster(TypedDict):
     members: list[dict]
 
 
+class _Evaluated(TypedDict):
+    cluster: _Cluster
+    pruned: list[dict]
+    cadence: str
+
+
 def detect_subscriptions(
     transactions: list[dict],
     existing_subscriptions: list[dict],
@@ -94,6 +100,7 @@ def detect_subscriptions(
     handled_ids: set[str] = set()
     claimed_txn_ids: set[str] = set()
 
+    evaluated: list[_Evaluated] = []
     for cluster in clusters:
         members = cluster["members"]
         if len(members) < MIN_OCCURRENCES:
@@ -105,22 +112,62 @@ def detect_subscriptions(
         cadence = _infer_cadence(pruned)
         if cadence is None:
             continue
+        evaluated.append({"cluster": cluster, "pruned": pruned, "cadence": cadence})
 
+    # Clusters the user merged into one sub go to that sub first, whatever its
+    # status, so a merge survives re-detection.
+    by_merge_owner: dict[str, list[_Evaluated]] = {}
+    unmerged: list[_Evaluated] = []
+    for item in evaluated:
+        owner_id = _merge_owner(item["cluster"], existing_subscriptions)
+        if owner_id is None:
+            unmerged.append(item)
+        else:
+            by_merge_owner.setdefault(owner_id, []).append(item)
+
+    def _emit(sub: dict[str, Any]) -> None:
+        out_subs.append(sub)
+        for tid in sub["member_txn_ids"]:
+            assignments[tid] = sub["id"]
+            claimed_txn_ids.add(tid)
+
+    existing_by_id = {sub["id"]: sub for sub in existing_subscriptions}
+    for owner_id in sorted(by_merge_owner):
+        items = by_merge_owner[owner_id]
+        existing = existing_by_id[owner_id]
+        # The most recently charged descriptor sets cadence and signature.
+        latest = max(items, key=lambda it: it["pruned"][-1]["date"])
+        seen: set[str] = set()
+        pruned = []
+        for it in items:
+            for m in it["pruned"]:
+                if m["id"] not in seen:
+                    seen.add(m["id"])
+                    pruned.append(m)
+        pruned.sort(key=lambda t: t["date"])
+        signature = latest["cluster"]["signature"]
+        if existing["status"] in {"cancelled", "manual"}:
+            sub = _adopt_into_frozen(existing, pruned, txn_by_id, signature)
+        else:
+            sub = _update_existing(
+                existing, pruned, latest["cadence"], txn_by_id, signature
+            )
+        handled_ids.add(owner_id)
+        _emit(sub)
+
+    for item in unmerged:
+        cluster, pruned, cadence = item["cluster"], item["pruned"], item["cadence"]
         signature = cluster["signature"]
         existing = _match_existing(cluster, matchable, handled_ids)
         if existing is not None:
             if existing["status"] == "cancelled":
-                sub = _adopt_into_cancelled(existing, pruned, txn_by_id, signature)
+                sub = _adopt_into_frozen(existing, pruned, txn_by_id, signature)
             else:
                 sub = _update_existing(existing, pruned, cadence, txn_by_id, signature)
             handled_ids.add(existing["id"])
         else:
             sub = _build_subscription(signature, cadence, pruned)
-
-        out_subs.append(sub)
-        for tid in sub["member_txn_ids"]:
-            assignments[tid] = sub["id"]
-            claimed_txn_ids.add(tid)
+        _emit(sub)
 
     # Carry over existing subs that didn't get a detected match. Auto-detected
     # subs left with no members (their charges were claimed by a merged
@@ -170,6 +217,16 @@ def _match_existing(
     return None
 
 
+def _merge_owner(cluster: _Cluster, existing_subscriptions: list[dict]) -> str | None:
+    """Return the id of the sub whose user merge covers one of the cluster's
+    descriptor variants, if any."""
+    for sub in sorted(existing_subscriptions, key=lambda s: s["id"]):
+        merged = (sub.get("metadata") or {}).get("mergedSignatures") or []
+        if cluster["signatures"].intersection(merged):
+            return sub["id"]
+    return None
+
+
 def _is_orphaned_auto_sub(sub: dict) -> bool:
     if sub["member_txn_ids"] or sub["status"] not in {"active", "possibly_cancelled"}:
         return False
@@ -183,15 +240,15 @@ def _is_orphaned_auto_sub(sub: dict) -> bool:
     )
 
 
-def _adopt_into_cancelled(
+def _adopt_into_frozen(
     existing: dict,
     pruned: list[dict],
     txn_by_id: dict[str, dict],
     signature: str,
 ) -> dict[str, Any]:
-    """Adopt newly-detected matching txns into a cancelled sub without
-    changing its user-set status, name, cadence, or amount. Prevents a
-    duplicate sub from appearing every time detection re-runs."""
+    """Adopt newly-detected matching txns into a cancelled (or merged manual)
+    sub without changing its user-set status, name, cadence, or amount.
+    Prevents a duplicate sub from appearing every time detection re-runs."""
     overrides = existing.get("user_overrides") or {}
     excluded = set(overrides.get("excludedTxnIds") or [])
     included = list(overrides.get("includedTxnIds") or [])
@@ -213,7 +270,7 @@ def _adopt_into_cancelled(
         "name": existing["name"],
         "cadence": existing["cadence"],
         "expected_amount": float(existing["expected_amount"]),
-        "status": "cancelled",
+        "status": existing["status"],
         "first_seen": first_seen,
         "last_seen": last_seen,
         "detection_signature": signature,

@@ -578,3 +578,83 @@ def test_orphaned_sub_with_user_overrides_is_kept() -> None:
     result = detect_subscriptions([], existing_subscriptions=[existing])
     assert [s["id"] for s in result["subscriptions"]] == ["sub_named"]
     assert result["deleted_subscription_ids"] == []
+
+
+def _claude_txns() -> list[dict]:
+    # Two descriptors for one service that detection can't link on its own,
+    # at different prices.
+    old = [
+        _txn(f"a{i}", description="CLAUDE.AI SUBSCRIPTION", amount=17.0, d=d)
+        for i, d in enumerate([date(2025, 10, 2), date(2025, 11, 2), date(2025, 12, 2)])
+    ]
+    new = [
+        _txn(f"b{i}", description="ANTHROPIC CLAUDE SUB", amount=20.0, d=d)
+        for i, d in enumerate([date(2026, 1, 2), date(2026, 2, 2), date(2026, 3, 2)])
+    ]
+    return old + new
+
+
+def _merged_existing(id_: str, **kwargs) -> dict:
+    sub = _existing(
+        id_,
+        signature="claude ai subscription",
+        name="Claude",
+        overrides={
+            "excludedTxnIds": [],
+            "includedTxnIds": [],
+            "lockName": True,
+            "lockAmount": False,
+            "lockCadence": False,
+        },
+        **kwargs,
+    )
+    sub["metadata"] = {
+        "mergedSignatures": ["anthropic claude sub", "claude ai subscription"]
+    }
+    return sub
+
+
+def test_detection_alone_splits_unrelated_descriptors() -> None:
+    result = detect_subscriptions(_claude_txns(), existing_subscriptions=[])
+    assert len(result["subscriptions"]) == 2
+
+
+def test_merged_sub_absorbs_all_merged_descriptor_clusters() -> None:
+    existing = _merged_existing("sub_merged")
+    result = detect_subscriptions(_claude_txns(), existing_subscriptions=[existing])
+
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sub["id"] == "sub_merged"
+    assert sub["name"] == "Claude"
+    assert sub["status"] == "active"
+    assert sub["cadence"] == "monthly"
+    assert sorted(sub["member_txn_ids"]) == ["a0", "a1", "a2", "b0", "b1", "b2"]
+    assert sub["first_seen"] == date(2025, 10, 2)
+    assert sub["last_seen"] == date(2026, 3, 2)
+    assert sub["metadata"]["mergedSignatures"] == [
+        "anthropic claude sub",
+        "claude ai subscription",
+    ]
+    assert set(result["transaction_assignments"].values()) == {"sub_merged"}
+    assert result["deleted_subscription_ids"] == []
+
+
+def test_merged_cancelled_sub_adopts_all_clusters_and_stays_cancelled() -> None:
+    existing = _merged_existing("sub_merged", status="cancelled")
+    result = detect_subscriptions(_claude_txns(), existing_subscriptions=[existing])
+
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sub["status"] == "cancelled"
+    assert len(sub["member_txn_ids"]) == 6
+
+
+def test_merged_manual_sub_adopts_all_clusters_and_stays_manual() -> None:
+    existing = _merged_existing("sub_merged", status="manual")
+    result = detect_subscriptions(_claude_txns(), existing_subscriptions=[existing])
+
+    assert len(result["subscriptions"]) == 1
+    sub = result["subscriptions"][0]
+    assert sub["status"] == "manual"
+    assert len(sub["member_txn_ids"]) == 6

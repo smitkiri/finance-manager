@@ -171,6 +171,95 @@ async def _persist_result(
     await db.flush()
 
 
+class SubscriptionNotFoundError(LookupError):
+    pass
+
+
+async def merge_subscriptions(
+    db: AsyncSession,
+    household_id: str,
+    target_id: str,
+    source_ids: list[str],
+    name: str | None = None,
+) -> Subscription:
+    """Fold the source subs into the target: members, overrides, and merged
+    descriptor signatures move over, then the sources are deleted. Does not
+    commit."""
+    if not source_ids or target_id in source_ids:
+        raise ValueError("Pick at least one other subscription to merge")
+    ids = [target_id, *dict.fromkeys(source_ids)]
+    subs = {
+        s.id: s
+        for s in (
+            await db.execute(
+                select(Subscription).where(
+                    Subscription.id.in_(ids),
+                    Subscription.household_id == household_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    }
+    if len(subs) != len(ids):
+        raise SubscriptionNotFoundError("Subscription not found")
+    target = subs[target_id]
+    sources = [subs[sid] for sid in ids[1:]]
+
+    signatures: set[str] = set()
+    # Ordered sets: dict keys keep first-seen order.
+    included: dict[str, None] = {}
+    excluded: dict[str, None] = {}
+    for s in [target, *sources]:
+        if s.detection_signature:
+            signatures.add(s.detection_signature)
+        signatures.update((s.metadata_ or {}).get("mergedSignatures") or [])
+        overrides = s.user_overrides or {}
+        included.update(dict.fromkeys(overrides.get("includedTxnIds") or []))
+        excluded.update(dict.fromkeys(overrides.get("excludedTxnIds") or []))
+
+    members = list(
+        (
+            await db.execute(
+                select(Transaction).where(
+                    Transaction.subscription_id.in_(ids),
+                    Transaction.household_id == household_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for t in members:
+        t.subscription_id = target.id
+
+    overrides = dict(target.user_overrides or {})
+    overrides["includedTxnIds"] = list(included)
+    overrides["excludedTxnIds"] = [t for t in excluded if t not in included]
+    if name is not None and name.strip():
+        target.name = name.strip()
+        overrides["lockName"] = True
+    target.user_overrides = overrides
+    target.metadata_ = {
+        **(target.metadata_ or {}),
+        "mergedSignatures": sorted(signatures),
+    }
+
+    if members:
+        members.sort(key=lambda t: t.date)
+        target.first_seen = members[0].date
+        target.last_seen = members[-1].date
+        if not overrides.get("lockAmount"):
+            # Latest charge reflects the current price across descriptors.
+            target.expected_amount = abs(members[-1].amount)
+
+    await db.flush()
+    for s in sources:
+        await db.delete(s)
+    await db.flush()
+    return target
+
+
 async def run_detection_bg(household_id: str) -> None:
     """Background-task wrapper: opens its own session, holds household lock.
 
