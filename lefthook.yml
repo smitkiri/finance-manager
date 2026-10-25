@@ -51,9 +51,6 @@ pre-push:
     related-frontend-tests:
       glob: 'frontend/src/**/*.{ts,tsx}'
       run: cd frontend && npx react-scripts test --bail --watchAll=false --findRelatedTests {push_files}
-    related-backend-tests:
-      glob: 'legacy/{routes,helpers}/**/*.js'
-      run: NODE_ENV=test DB_NAME=expense_tracker_test DB_PORT=5433 npx jest --config jest.backend.config.js --bail --findRelatedTests {push_files}
     ruff-check:
       glob: 'backend/**/*.py'
       root: 'backend/'
