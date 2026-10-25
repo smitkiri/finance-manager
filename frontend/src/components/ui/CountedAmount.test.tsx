@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { CountedAmount } from './CountedAmount';
-import { Expense } from '../../types';
+import type { Expense } from '../../types';
 
 const base: Expense = {
   id: 'v0',

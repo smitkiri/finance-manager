@@ -9,7 +9,8 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
-import { DateRange, DayPicker } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
+import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ApiClient } from '../../utils/apiClient';
 

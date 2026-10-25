@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, ArrowRightLeft, Loader2, Check } from 'lucide-react';
-import { Expense } from '../../types';
+import type { Expense } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
 import { ApiClient } from '../../utils/apiClient';
 import { allocate } from '../../utils/transferGroups';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Plus, Trash2 } from 'lucide-react';
-import { StandardizedColumn, CSVPreview, Source } from '../../types';
+import type { StandardizedColumn, CSVPreview, Source } from '../../types';
 import { Sheet } from '../ui/Sheet';
 
 interface SourceModalProps {

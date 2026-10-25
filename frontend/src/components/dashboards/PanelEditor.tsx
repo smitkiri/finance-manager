@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import {
+import type {
   DashboardPanel,
   Dashboard,
   Expense,

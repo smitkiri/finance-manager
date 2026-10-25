@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRightLeft, Loader2 } from 'lucide-react';
-import { Expense, TransferGroupDetail } from '../../types';
+import type { Expense, TransferGroupDetail } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { formatCurrency, formatDate } from '../../utils';
 import { countedAmount } from '../../utils/transferGroups';

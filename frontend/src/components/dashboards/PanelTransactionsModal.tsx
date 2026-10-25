@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { DashboardPanel, Dashboard, Expense } from '../../types';
+import type { DashboardPanel, Dashboard, Expense } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { CountedAmount } from '../ui/CountedAmount';
 import { ITEMS_PER_PAGE } from '../../constants';

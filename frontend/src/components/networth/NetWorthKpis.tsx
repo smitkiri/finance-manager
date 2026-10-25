@@ -1,6 +1,6 @@
 // Props: summary totals, optional 1-month delta, and a formatter.
 import React from 'react';
-import { NetWorthSummary } from '../../types';
+import type { NetWorthSummary } from '../../types';
 
 interface NetWorthKpisProps {
   summary: NetWorthSummary | null;

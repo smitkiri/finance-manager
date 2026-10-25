@@ -1,4 +1,4 @@
-import { Expense, ReportFilter, ReportData, Report } from '../types';
+import type { Expense, ReportFilter, ReportData, Report } from '../types';
 import { generateId } from '../utils';
 
 export const applyReportFilters = (

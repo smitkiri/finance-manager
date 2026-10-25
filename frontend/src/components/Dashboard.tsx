@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StatsCard } from './ui/StatsCard';
 import { ListRow } from './ui/ListRow';
 import { Chart } from './charts/Chart';
-import { Expense, User, DashboardStats } from '../types';
+import type { Expense, User, DashboardStats } from '../types';
 import { calculateStats, formatDate } from '../utils';
 import { countedExpenses } from '../utils/transferGroups';
 import { CountedAmount } from './ui/CountedAmount';

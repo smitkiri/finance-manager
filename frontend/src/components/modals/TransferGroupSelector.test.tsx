@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TransferGroupSelector } from './TransferGroupSelector';
 import { ApiClient } from '../../utils/apiClient';
-import { Expense } from '../../types';
+import type { Expense } from '../../types';
 import type { Mock } from 'vitest';
 
 vi.mock('../../utils/apiClient', () => ({

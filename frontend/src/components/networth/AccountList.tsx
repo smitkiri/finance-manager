@@ -12,7 +12,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
-import { Account, AccountBalance, NetWorthSummary, User } from '../../types';
+import type { Account, AccountBalance, NetWorthSummary, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 
 interface BalanceDeltaProps {

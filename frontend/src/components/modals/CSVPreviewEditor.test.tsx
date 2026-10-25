@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CSVPreviewEditor } from './CSVPreviewEditor';
-import { CSVPreview, Source } from '../../types';
+import type { CSVPreview, Source } from '../../types';
 
 // ---------- Test data factories ----------
 

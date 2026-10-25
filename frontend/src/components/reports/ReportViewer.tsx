@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Download, FileText, Calendar, DollarSign, Tag } from 'lucide-react';
-import { Report, Expense, ReportData } from '../../types';
+import type { Report, Expense, ReportData } from '../../types';
 import { applyReportFilters, generateReportData } from '../../utils/reportUtils';
 import { TransactionList } from '../transactions/TransactionList';
 import { CategoryTable } from '../charts/CategoryTable';

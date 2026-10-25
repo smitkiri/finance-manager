@@ -1,5 +1,5 @@
 import React from 'react';
-import { LegendOptions, PanelMonthData } from '../../types';
+import type { LegendOptions, PanelMonthData } from '../../types';
 import { formatCurrency } from '../../utils';
 
 interface ChartLegendProps {

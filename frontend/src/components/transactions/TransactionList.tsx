@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trash2, Edit, ChevronDown, Plus, ChevronUp } from 'lucide-react';
-import { Expense } from '../../types';
+import type { Expense } from '../../types';
 import { countState } from '../../utils/transferGroups';
 import { CountedAmount } from '../ui/CountedAmount';
 import { LabelSelector } from '../ui/LabelSelector';

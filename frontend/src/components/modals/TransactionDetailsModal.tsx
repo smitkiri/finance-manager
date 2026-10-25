@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import { Expense, Subscription, TransferGroupDetail } from '../../types';
+import type { Expense, Subscription, TransferGroupDetail } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
 import { formatDate } from '../../utils';
 import { countState } from '../../utils/transferGroups';

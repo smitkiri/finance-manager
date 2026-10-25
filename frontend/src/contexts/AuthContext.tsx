@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AuthUser, AuthHousehold } from '../utils/apiClient';
+import type { AuthUser, AuthHousehold } from '../utils/apiClient';
 
 interface AuthContextType {
   currentUser: AuthUser | null;

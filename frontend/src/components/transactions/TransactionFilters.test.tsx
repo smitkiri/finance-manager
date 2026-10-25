@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { TransactionFiltersComponent, TransactionFilters } from './TransactionFilters';
-import { Source } from '../../types';
+import type { TransactionFilters } from './TransactionFilters';
+import { TransactionFiltersComponent } from './TransactionFilters';
+import type { Source } from '../../types';
 
 const mockCategories = ['Food', 'Transport', 'Entertainment'];
 

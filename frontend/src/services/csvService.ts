@@ -1,4 +1,4 @@
-import { Source } from '../types';
+import type { Source } from '../types';
 import { ApiClient } from '../utils/apiClient';
 
 export const csvService = {

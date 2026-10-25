@@ -1,4 +1,4 @@
-import { Expense, ExpenseStats, DateRange } from './types';
+import type { Expense, ExpenseStats, DateRange } from './types';
 
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Save, Trash2, Check } from 'lucide-react';
-import { CSVPreview, Source, StandardizedColumn } from '../../types';
+import type { CSVPreview, Source, StandardizedColumn } from '../../types';
 import { Sheet } from '../ui/Sheet';
 
 interface CSVPreviewEditorProps {
