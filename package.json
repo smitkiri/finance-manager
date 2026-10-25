@@ -4,7 +4,7 @@
   "description": "A modern expense tracking web application",
   "private": true,
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^10.0.6"
   },
   "scripts": {
     "dev": "concurrently --names fastapi,frontend --prefix-colors green,blue \"npm run fastapi\" \"npm run frontend\"",
@@ -22,8 +22,8 @@
     "install:all": "npm install && cd frontend && npm install && cd ../backend && uv sync"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "lefthook": "^2.1.4",
     "prettier": "^3.8.1"
   }
