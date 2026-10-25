@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     db_password: str = "finance_manager_password"
     db_name: str = "finance_manager"
     port: int = 8000
+    # Server-side cap on any single SQL statement. Bounds the damage from
+    # pathological inputs (e.g. user-supplied regex filters) and request floods.
+    # 0 disables the cap.
+    db_statement_timeout_ms: int = 30_000
 
     # Teller bank integration
     finance_manager_teller_integration_enabled: bool = False
@@ -24,6 +28,10 @@ class Settings(BaseSettings):
     demo_max_csv_bytes: int = 1_048_576  # 1 MB
     demo_max_transactions: int = 5_000
     demo_max_per_entity: int = 50
+
+    # Open signup. When False, /api/auth/signup requires a valid invite token
+    # (except for the very first account, so a fresh install can bootstrap).
+    finance_manager_signup_enabled: bool = True
 
     # Households
     finance_manager_default_household_name: str = "Household"

@@ -28,3 +28,17 @@ def test_prod_conf_sets_security_headers():
     ]
     missing = [d for d in required_directives if d not in text]
     assert not missing, f"{PROD_CONF.name} is missing required directives: {missing}"
+
+
+def test_prod_conf_rate_limits_api_and_auth():
+    text = PROD_CONF.read_text()
+    required_directives = [
+        "limit_req_zone $rate_limit_key zone=api",
+        "limit_req_zone $rate_limit_key zone=auth",
+        "$http_cf_connecting_ip",
+        "limit_req zone=api",
+        "limit_req zone=auth",
+        "location ~ ^/api/auth/(login|signup)$",
+    ]
+    missing = [d for d in required_directives if d not in text]
+    assert not missing, f"{PROD_CONF.name} is missing rate-limit directives: {missing}"

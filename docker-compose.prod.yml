@@ -46,6 +46,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       JWT_SIGNING_SECRET: ${JWT_SIGNING_SECRET}
+      # Set to false on internet-facing instances; new members then need an invite.
+      FINANCE_MANAGER_SIGNUP_ENABLED: ${FINANCE_MANAGER_SIGNUP_ENABLED:-true}
       FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED: ${FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED:-false}
       FINANCE_MANAGER_TELLER_APP_ID: ${FINANCE_MANAGER_TELLER_APP_ID:-}
       FINANCE_MANAGER_TELLER_PRIVATE_KEY: /secrets/teller/private_key.pem
@@ -113,7 +115,9 @@ services:
       # NGINX_PORT lets you override the host port for local testing.
       # NGINX_HOST_IP lets you bind to a specific host interface (e.g.
       # your LAN IP) so the port isn't reachable on every interface.
-      # Defaults to 0.0.0.0 (all interfaces).
+      # Defaults to 0.0.0.0 (all interfaces). Behind Cloudflare, bind to
+      # 127.0.0.1 — nginx keys rate limits on CF-Connecting-IP, which anyone
+      # reaching this port directly could forge.
       - '${NGINX_HOST_IP:-0.0.0.0}:${NGINX_PORT:-80}:80'
     # Probes nginx itself (the SPA index), not /api/health: Traefik drops
     # unhealthy containers from routing, and a backend/DB blip shouldn't take

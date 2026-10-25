@@ -35,6 +35,11 @@ def _demo_disabled() -> None:
         )
 
 
+async def _any_user_exists(db: AsyncSession) -> bool:
+    result = await db.execute(select(User.id).limit(1))
+    return result.scalar_one_or_none() is not None
+
+
 async def _email_exists(db: AsyncSession, email: str) -> bool:
     result = await db.execute(
         select(User.id).where(func.lower(User.email) == email.lower()).limit(1)
@@ -67,6 +72,16 @@ async def signup(
     db: AsyncSession = Depends(get_db),
 ):
     _demo_disabled()
+
+    if (
+        body.invite_token is None
+        and not settings.finance_manager_signup_enabled
+        and await _any_user_exists(db)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Signups are disabled on this server",
+        )
 
     if await _email_exists(db, body.email):
         raise HTTPException(

@@ -24,7 +24,3 @@ class ImportWithMappingRequest(BaseModel):
     mapping: MappingConfig
     userId: str
     fileName: str | None = None
-
-
-class SaveColumnMappingRequest(BaseModel):
-    mapping: dict

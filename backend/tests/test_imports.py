@@ -33,6 +33,26 @@ class TestExportCsv:
         assert lines[0] == "Date,Description,Category,Amount,Type"
         assert "Coffee" in lines[1]
 
+    async def test_export_csv_neutralizes_formulas(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        db_session.add(
+            Transaction(
+                id="t1",
+                date=date(2024, 1, 15),
+                description='=HYPERLINK("http://evil","x")',
+                category="@SUM(A1)",
+                amount=Decimal("4.50"),
+                type="expense",
+            )
+        )
+        await db_session.flush()
+
+        response = await client.get("/api/export-csv")
+        row = response.text.strip().split("\n")[1]
+        assert '"\'=HYPERLINK(""http://evil"",""x"")"' in row
+        assert '"\'@SUM(A1)"' in row
+
     async def test_export_csv_empty(
         self, client: AsyncClient, db_session: AsyncSession
     ):
@@ -40,47 +60,12 @@ class TestExportCsv:
         assert response.status_code == 404
 
 
-class TestColumnMappings:
-    async def test_get_empty_mappings(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
-        response = await client.get("/api/column-mappings")
-        assert response.status_code == 200
-        assert response.json() == []
-
-    async def test_save_and_get_mapping(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
-        mapping = {
-            "name": "Test Bank",
-            "mappings": [
-                {
-                    "csvColumn": "Date",
-                    "standardColumn": "Transaction Date",
-                }
-            ],
-        }
-        response = await client.post("/api/column-mappings", json={"mapping": mapping})
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["count"] == 1
-
-        response = await client.get("/api/column-mappings")
-        assert response.status_code == 200
-        mappings = response.json()
-        assert len(mappings) == 1
-        assert mappings[0]["name"] == "Test Bank"
-
-    async def test_save_multiple_mappings(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
-        mapping1 = {"name": "Bank A", "mappings": []}
-        mapping2 = {"name": "Bank B", "mappings": []}
-
-        await client.post("/api/column-mappings", json={"mapping": mapping1})
-        response = await client.post("/api/column-mappings", json={"mapping": mapping2})
-        assert response.json()["count"] == 2
+class TestColumnMappingsRemoved:
+    async def test_column_mappings_routes_are_gone(self, client: AsyncClient):
+        # Previously unauthenticated and unbounded; must stay removed.
+        assert (await client.get("/api/column-mappings")).status_code == 404
+        resp = await client.post("/api/column-mappings", json={"mapping": {}})
+        assert resp.status_code in (404, 405)
 
 
 class TestImportCsv:
@@ -200,7 +185,7 @@ class TestImportWithMapping:
         csv_text = "Trans Date,Desc,Amt\n2024-01-15,Coffee Shop,-4.50\n"
         body = {
             "csvText": csv_text,
-            "userId": "user1",
+            "userId": "default-user",
             "mapping": {
                 "id": "src1",
                 "name": "Test Bank",
@@ -236,7 +221,7 @@ class TestImportWithMapping:
         csv_text = "Trans Date,Desc,Amt\n04/30/2026,Coffee Shop,-4.50\n"
         body = {
             "csvText": csv_text,
-            "userId": "user1",
+            "userId": "default-user",
             "mapping": {
                 "id": "src1",
                 "name": "Test Bank",
@@ -279,7 +264,7 @@ class TestImportWithMapping:
         csv_text = "Trans Date,Desc,Amt\n04/29/2026,Incoming Transfer,100.00\n"
         body = {
             "csvText": csv_text,
-            "userId": "user1",
+            "userId": "default-user",
             "mapping": {
                 "id": "src1",
                 "name": "Test Bank",
@@ -314,7 +299,7 @@ class TestImportWithMapping:
         csv_text = "Date,Description,Amount\n2024-01-15,Coffee,-4.50\n"
         body = {
             "csvText": csv_text,
-            "userId": "user1",
+            "userId": "default-user",
             "mapping": {
                 "id": "src1",
                 "name": "Chase",

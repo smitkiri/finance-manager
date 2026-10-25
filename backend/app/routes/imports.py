@@ -12,22 +12,18 @@ from app.database import get_db
 from app.demo.limits import assert_demo_csv_size, assert_demo_replace_count
 from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
-from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.schemas.imports import (
     ImportCsvRequest,
     ImportWithMappingRequest,
-    SaveColumnMappingRequest,
 )
 from app.utils.csv_parser import parse_csv, parse_csv_with_mapping
 from app.utils.date_parser import parse_date
+from app.utils.household_members import assert_users_in_household
 from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_utils import run_detection, txns_to_dicts
 
 router = APIRouter(prefix="/api", tags=["imports"])
-
-
-COLUMN_MAPPINGS_KEY = "column_mappings"
 
 
 async def _household_transaction_count(db: AsyncSession, household_id: str) -> int:
@@ -37,6 +33,17 @@ async def _household_transaction_count(db: AsyncSession, household_id: str) -> i
         .where(Transaction.household_id == household_id)
     )
     return count or 0
+
+
+# Leading characters that make Excel/Sheets evaluate a cell as a formula.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_text(value: str) -> str:
+    """Escape a text cell for a quoted CSV field, neutralizing formulas."""
+    if value.startswith(_FORMULA_PREFIXES):
+        value = "'" + value
+    return value.replace('"', '""')
 
 
 @router.get("/export-csv")
@@ -57,8 +64,8 @@ async def export_csv(
     lines = ["Date,Description,Category,Amount,Type"]
     for t in transactions:
         # Escape CSV fields
-        desc = t.description.replace('"', '""')
-        cat = (t.category or "").replace('"', '""')
+        desc = _csv_text(t.description)
+        cat = _csv_text(t.category or "")
         amount = float(t.amount)
         lines.append(f'{t.date},"{desc}","{cat}",{amount},{t.type}')
 
@@ -70,45 +77,6 @@ async def export_csv(
     )
 
 
-@router.get("/column-mappings")
-async def get_column_mappings(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Metadata).where(Metadata.key == COLUMN_MAPPINGS_KEY)
-    )
-    meta = result.scalar_one_or_none()
-    if not meta or not meta.value:
-        return []
-    return meta.value
-
-
-@router.post("/column-mappings")
-async def save_column_mapping(
-    body: SaveColumnMappingRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(Metadata).where(Metadata.key == COLUMN_MAPPINGS_KEY)
-    )
-    meta = result.scalar_one_or_none()
-
-    if meta:
-        current = meta.value or []
-        current.append(body.mapping)
-        meta.value = current
-    else:
-        db.add(Metadata(key=COLUMN_MAPPINGS_KEY, value=[body.mapping]))
-
-    await db.commit()
-
-    result = await db.execute(
-        select(Metadata).where(Metadata.key == COLUMN_MAPPINGS_KEY)
-    )
-    meta = result.scalar_one_or_none()
-    count = len(meta.value) if meta and meta.value else 0
-
-    return {"success": True, "count": count}
-
-
 @router.post("/import-csv")
 async def import_csv(
     body: ImportCsvRequest,
@@ -117,6 +85,7 @@ async def import_csv(
     db: AsyncSession = Depends(get_db),
 ):
     assert_demo_csv_size(body.csvText)
+    await assert_users_in_household(db, household_id, [body.userId])
 
     # Parse CSV
     new_transactions = parse_csv(body.csvText, body.fileName, body.userId)
@@ -192,6 +161,7 @@ async def import_with_mapping(
     db: AsyncSession = Depends(get_db),
 ):
     assert_demo_csv_size(body.csvText)
+    await assert_users_in_household(db, household_id, [body.userId])
 
     # Load existing transactions for category auto-fill
     result = await db.execute(

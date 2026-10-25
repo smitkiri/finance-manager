@@ -523,3 +523,48 @@ async def test_restore_works_outside_demo_mode(client: AsyncClient):
     files = {"backupFile": ("backup.json", backup_json, "application/json")}
     response = await client.post("/api/restore", files=files)
     assert response.status_code != 503
+
+
+async def test_delete_selected_transactions_refused_in_demo_mode(
+    client: AsyncClient, db_session: AsyncSession, demo_mode_with_default_user
+):
+    """Demo mode: delete-selected can't be used to wipe every transaction."""
+    from datetime import date
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.models import Transaction
+
+    db_session.add(
+        Transaction(
+            id="t1",
+            date=date(2026, 1, 1),
+            description="Coffee",
+            category="Food",
+            amount=Decimal("3.50"),
+            type="expense",
+        )
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/delete-selected", json={"deleteTransactions": True}
+    )
+    assert response.status_code == 503
+    remaining = (await db_session.execute(select(Transaction))).scalars().all()
+    assert len(remaining) == 1
+
+
+async def test_delete_selected_sources_allowed_in_demo_mode(
+    client: AsyncClient, db_session: AsyncSession, demo_mode_with_default_user
+):
+    """Demo mode: deleting specific sources is still a per-row action."""
+    db_session.add(Source(id="s1", name="Bank A"))
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/delete-selected",
+        json={"deleteSources": True, "sourceIds": ["s1"]},
+    )
+    assert response.status_code == 200
