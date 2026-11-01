@@ -46,6 +46,7 @@ def _install_household_default() -> None:
 
     from app.models import (
         Account,
+        Budget,
         Category,
         Dashboard,
         DateRange,
@@ -74,6 +75,7 @@ def _install_household_default() -> None:
 
     for model in (
         Account,
+        Budget,
         Category,
         Dashboard,
         DateRange,
