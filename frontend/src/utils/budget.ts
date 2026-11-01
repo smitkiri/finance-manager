@@ -3,6 +3,13 @@ import type { BudgetCategory, BudgetHistoryEntry } from '../types';
 // Months are 'YYYY-MM' strings, which sort and compare lexically.
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
+const wholeDollars = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+export const formatWhole = (amount: number): string => wholeDollars.format(amount);
+
 const toMonth = (year: number, monthIndex: number): string =>
   `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 

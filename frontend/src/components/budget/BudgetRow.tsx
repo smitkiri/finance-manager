@@ -1,18 +1,11 @@
 import React from 'react';
-import { historyCellState, isOver } from '../../utils/budget';
+import { formatWhole, historyCellState, isOver } from '../../utils/budget';
 import type { BudgetCategory, BudgetHistoryEntry } from '../../types';
 
 interface BudgetRowProps {
   row: BudgetCategory;
   onEdit: (row: BudgetCategory) => void;
 }
-
-const wholeDollars = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-});
-export const formatWhole = (amount: number): string => wholeDollars.format(amount);
 
 const CELL_CLASSES = {
   over: 'bg-red-600',

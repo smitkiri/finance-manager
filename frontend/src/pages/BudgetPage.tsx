@@ -12,6 +12,8 @@ import {
   sortBudgetRows,
 } from '../utils/budget';
 import { BudgetRow } from '../components/budget/BudgetRow';
+import { BudgetLimitSheet } from '../components/budget/BudgetLimitSheet';
+import { useCategories } from '../hooks/useCategories';
 import type { BudgetCategory, BudgetMonthResponse } from '../types';
 
 const NAV_BUTTON =
@@ -23,9 +25,10 @@ const PRIMARY_BUTTON =
 export const BudgetPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<BudgetMonthResponse | null>(null);
-  const [version] = useState(0);
-  const [, setEditing] = useState<BudgetCategory | null>(null);
-  const [, setAdding] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [editing, setEditing] = useState<BudgetCategory | null>(null);
+  const [adding, setAdding] = useState(false);
+  const { categories: allCategories } = useCategories();
 
   const param = searchParams.get('month');
   const earliestMonth = data?.earliestMonth ?? null;
@@ -138,6 +141,28 @@ export const BudgetPage: React.FC = () => {
         </div>
         {renderBody()}
       </div>
+      {(adding || editing) && (
+        <BudgetLimitSheet
+          key={editing?.category ?? 'add'}
+          isOpen
+          month={month}
+          mode={
+            editing
+              ? { kind: 'edit', category: editing.category, limit: editing.limit }
+              : {
+                  kind: 'add',
+                  availableCategories: allCategories.filter(
+                    (c) => !rows.some((r) => r.category === c)
+                  ),
+                }
+          }
+          onClose={() => {
+            setAdding(false);
+            setEditing(null);
+          }}
+          onSaved={() => setVersion((v) => v + 1)}
+        />
+      )}
     </div>
   );
 };
