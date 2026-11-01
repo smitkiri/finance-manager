@@ -25,20 +25,22 @@ DEFAULT_CATEGORIES = [
 ]
 
 
-@router.get("/categories")
-async def get_categories(
-    household_id: str = Depends(get_current_household_id),
-    db: AsyncSession = Depends(get_db),
-):
+async def household_category_names(db: AsyncSession, household_id: str) -> list[str]:
+    """The household's category list, falling back to the built-in defaults."""
     result = await db.execute(
         select(Category.name)
         .where(Category.household_id == household_id)
         .order_by(Category.name)
     )
-    categories = [row[0] for row in result.all()]
-    if not categories:
-        categories = DEFAULT_CATEGORIES
-    return {"categories": categories}
+    return [row[0] for row in result.all()] or DEFAULT_CATEGORIES
+
+
+@router.get("/categories")
+async def get_categories(
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    return {"categories": await household_category_names(db, household_id)}
 
 
 @router.post("/categories")
