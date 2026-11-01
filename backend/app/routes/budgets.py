@@ -1,14 +1,18 @@
+import secrets
+import time
 from collections import defaultdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import get_current_household_id
 from app.models.budget import Budget
 from app.routes.categories import household_category_names
+from app.schemas.budget import BudgetSaveRequest
 from app.utils.budgets import (
     format_month,
     month_end,
@@ -20,6 +24,10 @@ from app.utils.budgets import (
 )
 
 router = APIRouter(prefix="/api", tags=["budgets"])
+
+
+def _new_id() -> str:
+    return f"bud_{int(time.time() * 1000):x}_{secrets.token_hex(4)}"
 
 
 def _month_or_422(value: str) -> date:
@@ -91,3 +99,46 @@ async def get_budgets(
         "hasData": selected in with_data,
         "categories": categories,
     }
+
+
+@router.put("/budgets")
+async def save_budget(
+    body: BudgetSaveRequest,
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    month = _month_or_422(body.month)
+    has_versions = (
+        await db.execute(
+            select(Budget.id)
+            .where(
+                Budget.household_id == household_id,
+                Budget.category == body.category,
+            )
+            .limit(1)
+        )
+    ).first() is not None
+    if not has_versions:
+        if body.amount is None:
+            raise HTTPException(status_code=400, detail="No limit to remove")
+        if body.category not in await household_category_names(db, household_id):
+            raise HTTPException(status_code=400, detail="Unknown category")
+
+    stmt = insert(Budget).values(
+        id=_new_id(),
+        household_id=household_id,
+        category=body.category,
+        effective_month=month,
+        amount=body.amount,
+    )
+    await db.execute(
+        stmt.on_conflict_do_update(
+            constraint="budgets_household_category_month_uniq",
+            set_={
+                "amount": stmt.excluded.amount,
+                "updated_at": func.current_timestamp(),
+            },
+        )
+    )
+    await db.commit()
+    return {"category": body.category, "month": body.month, "amount": body.amount}

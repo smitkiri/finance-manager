@@ -2,7 +2,8 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Budget, Category, Transaction
@@ -256,3 +257,101 @@ async def test_household_isolation(
 async def test_bad_month_422(client: AsyncClient, month: str):
     response = await client.get("/api/budgets", params={"month": month})
     assert response.status_code == 422
+
+
+async def _put(client: AsyncClient, category: str, month: str, amount) -> Response:
+    return await client.put(
+        "/api/budgets", json={"category": category, "month": month, "amount": amount}
+    )
+
+
+@pytest.mark.asyncio
+async def test_put_creates_then_get_reflects(client: AsyncClient):
+    response = await _put(client, "Groceries", "2026-10", 300)
+    assert response.status_code == 200
+    assert response.json() == {
+        "category": "Groceries",
+        "month": "2026-10",
+        "amount": 300,
+    }
+    assert _row(await _get(client, "2026-10"), "Groceries")["limit"] == 300
+
+
+@pytest.mark.asyncio
+async def test_put_same_month_replaces(client: AsyncClient, db_session: AsyncSession):
+    await _put(client, "Groceries", "2026-10", 300)
+    await _put(client, "Groceries", "2026-10", 250)
+
+    rows = (
+        (await db_session.execute(select(Budget).where(Budget.household_id == HH)))
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 1
+    assert _row(await _get(client, "2026-10"), "Groceries")["limit"] == 250
+
+
+@pytest.mark.asyncio
+async def test_put_null_removes_forward(client: AsyncClient):
+    await _put(client, "Groceries", "2026-09", 300)
+    response = await _put(client, "Groceries", "2026-10", None)
+    assert response.status_code == 200
+
+    assert (await _get(client, "2026-10"))["categories"] == []
+    assert _row(await _get(client, "2026-09"), "Groceries")["limit"] == 300
+
+
+@pytest.mark.asyncio
+async def test_put_unknown_category_400(client: AsyncClient):
+    response = await _put(client, "Nope", "2026-10", 300)
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_put_default_category_ok(client: AsyncClient):
+    response = await _put(client, "Shopping", "2026-10", 200)
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_put_renamed_category_edit_allowed(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(_budget("Dining Out", date(2026, 9, 1), "100"))
+    await db_session.flush()
+
+    response = await _put(client, "Dining Out", "2026-10", 200)
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_put_remove_without_versions_400(client: AsyncClient):
+    response = await _put(client, "Groceries", "2026-10", None)
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("amount", [300.5, -1])
+async def test_put_rejects_fractional_and_negative(client: AsyncClient, amount):
+    response = await _put(client, "Groceries", "2026-10", amount)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_put_household_isolation(
+    raw_client: AsyncClient, db_session: AsyncSession, two_households_two_users
+):
+    _, _, _, h2, token_a = two_households_two_users
+    response = await raw_client.put(
+        "/api/budgets",
+        json={"category": "Groceries", "month": "2026-10", "amount": 300},
+        headers=auth_headers(token_a),
+    )
+    assert response.status_code == 200
+
+    rows = (
+        (await db_session.execute(select(Budget).where(Budget.household_id == h2.id)))
+        .scalars()
+        .all()
+    )
+    assert rows == []
