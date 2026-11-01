@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models import (
     Account,
+    Budget,
     Category,
     Dashboard,
     DateRange,
@@ -446,3 +447,48 @@ async def test_accept_revokes_users_outgoing_invites_in_old_household(
         await db_session.execute(select(Invitation).where(Invitation.id == outgoing.id))
     ).scalar_one()
     assert out.revoked_at is not None
+
+
+@pytest.mark.asyncio
+async def test_accept_deletes_old_household_budgets(
+    raw_client: AsyncClient, db_session: AsyncSession
+):
+    h_a = await _seed_household(db_session, household_id="hh-bud-a", name="HA")
+    h_b = await _seed_household(db_session, household_id="hh-bud-b", name="HB")
+    user_a = await _seed_user(
+        db_session,
+        user_id="u-bud-a",
+        email="alice-bud@example.com",
+        name="Alice",
+        household_id=h_a.id,
+    )
+    db_session.add(
+        Budget(
+            id="bud-old",
+            household_id=h_a.id,
+            category="Food",
+            effective_month=date(2026, 10, 1),
+            amount=Decimal("300"),
+        )
+    )
+    await db_session.flush()
+    invite = await _seed_invitation(
+        db_session,
+        invite_id="inv-bud",
+        household_id=h_b.id,
+        email=user_a.email,
+        token="tok-bud-accept",
+    )
+
+    r = await raw_client.post(
+        "/api/invitations/accept",
+        headers=auth_headers(encode_access_token(user_id=user_a.id)),
+        json={"token": invite.token},
+    )
+    assert r.status_code == 200, r.text
+    rows = (
+        (await db_session.execute(select(Budget).where(Budget.household_id == h_a.id)))
+        .scalars()
+        .all()
+    )
+    assert rows == []

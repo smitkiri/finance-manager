@@ -127,3 +127,14 @@ it('orphan note', async () => {
   renderAt('/budget?month=2026-10');
   expect(await screen.findByText('Category no longer in your list')).toBeInTheDocument();
 });
+
+it('no-data month still lets you add and edit limits', async () => {
+  getBudgets.mockImplementation(async (month: string) =>
+    response({ month, hasData: false, categories: [row('Dining', 300, 0)] })
+  );
+  renderAt('/budget?month=2026-10');
+  await screen.findByText('No transactions imported for October 2026 yet.');
+  expect(screen.getByRole('button', { name: /Add a limit/ })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /Dining/ }));
+  expect(await screen.findByText('Dining limit')).toBeInTheDocument();
+});

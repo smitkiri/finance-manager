@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient, Response
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Budget, Category, Transaction
@@ -391,3 +391,21 @@ async def test_typical_excludes_current_window_outside(
     await db_session.flush()
 
     assert await _typical(client, "Dining", "2026-10") == {"typical": None}
+
+
+@pytest.mark.asyncio
+async def test_month_grouping_independent_of_db_timezone(
+    client: AsyncClient, db_session: AsyncSession
+):
+    await db_session.execute(text("SET TIME ZONE 'Asia/Kolkata'"))
+    db_session.add_all(
+        [
+            _budget("Dining", date(2026, 10, 1), "300"),
+            _txn("meal", "100.00", date(2026, 10, 3)),
+        ]
+    )
+    await db_session.flush()
+
+    october = await _get(client, "2026-10")
+    assert october["hasData"] is True
+    assert _row(october, "Dining")["actual"] == pytest.approx(100.0)

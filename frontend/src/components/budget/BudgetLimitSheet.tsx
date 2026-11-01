@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Sheet } from '../ui/Sheet';
 import { ApiClient } from '../../utils/apiClient';
@@ -32,19 +32,20 @@ export const BudgetLimitSheet: React.FC<BudgetLimitSheetProps> = ({
   const [amount, setAmount] = useState(mode.kind === 'edit' ? String(mode.limit) : '');
   const [typical, setTypical] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  // Once the user types an amount, a late suggestion must not replace it.
+  const amountEdited = useRef(false);
 
   useEffect(() => {
     if (mode.kind !== 'add' || !category) return;
     let cancelled = false;
-    setTypical(null);
     ApiClient.getBudgetTypical(category, month)
       .then((value) => {
         if (cancelled) return;
         setTypical(value);
-        setAmount(value === null ? '' : String(value));
+        if (!amountEdited.current && value !== null) setAmount(String(value));
       })
       .catch(() => {
-        if (!cancelled) setAmount('');
+        // No suggestion; the field stays as it is.
       });
     return () => {
       cancelled = true;
@@ -109,7 +110,12 @@ export const BudgetLimitSheet: React.FC<BudgetLimitSheetProps> = ({
             <select
               className={FIELD}
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setAmount('');
+                setTypical(null);
+                amountEdited.current = false;
+              }}
             >
               <option value="" disabled>
                 Choose a category
@@ -133,7 +139,10 @@ export const BudgetLimitSheet: React.FC<BudgetLimitSheetProps> = ({
             step={1}
             className={FIELD}
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              amountEdited.current = true;
+              setAmount(e.target.value);
+            }}
           />
         </label>
         {typical !== null && (

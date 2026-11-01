@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import async_session_factory
 from app.models.account import Account, AccountBalance
+from app.models.budget import Budget
 from app.models.category import Category
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.date_range import DateRange
@@ -55,6 +56,7 @@ _WIPE_ORDER = [
     Account,
     Transaction,
     TransferGroup,
+    Budget,
     Subscription,
     ImportSession,
     Report,

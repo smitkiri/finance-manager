@@ -1,10 +1,10 @@
 """Month math and spending queries for household budgets."""
 
 import re
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import Date, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.budget import Budget
@@ -49,10 +49,6 @@ def resolve_limit(versions: list[Budget], month: date) -> Decimal | None:
     return max(in_effect, key=lambda v: v.effective_month).amount
 
 
-def _as_date(value: datetime | date) -> date:
-    return value.date() if isinstance(value, datetime) else value
-
-
 async def monthly_actuals(
     db: AsyncSession, household_id: str, start: date, end_inclusive: date
 ) -> dict[tuple[str, date], float]:
@@ -61,7 +57,9 @@ async def monthly_actuals(
         await db.execute(
             select(
                 Transaction.category,
-                func.date_trunc("month", Transaction.date).label("month_start"),
+                func.date_trunc("month", Transaction.date)
+                .cast(Date)
+                .label("month_start"),
                 func.sum(func.abs(counted_amount(None))).label("total"),
             )
             .where(
@@ -69,11 +67,12 @@ async def monthly_actuals(
                 Transaction.type == "expense",
                 *build_stats_filter(start.isoformat(), end_inclusive.isoformat(), None),
             )
-            # GROUP BY position avoids duplicate bind params for date_trunc
+            # GROUP BY position avoids duplicate bind params for date_trunc.
+            # The DATE cast keeps month keys independent of the session TimeZone.
             .group_by(text("1, 2"))
         )
     ).all()
-    return {(row.category, _as_date(row.month_start)): float(row.total) for row in rows}
+    return {(row.category, row.month_start): float(row.total) for row in rows}
 
 
 async def months_with_data(
@@ -82,7 +81,11 @@ async def months_with_data(
     """Month starts that have at least one counted transaction of any type."""
     rows = (
         await db.execute(
-            select(func.date_trunc("month", Transaction.date).label("month_start"))
+            select(
+                func.date_trunc("month", Transaction.date)
+                .cast(Date)
+                .label("month_start")
+            )
             .where(
                 Transaction.household_id == household_id,
                 *build_stats_filter(start.isoformat(), end_inclusive.isoformat(), None),
@@ -90,4 +93,4 @@ async def months_with_data(
             .group_by(text("1"))
         )
     ).all()
-    return {_as_date(row.month_start) for row in rows}
+    return {row.month_start for row in rows}

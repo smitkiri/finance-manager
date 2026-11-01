@@ -95,3 +95,26 @@ it('failure keeps sheet open', async () => {
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to save budget'));
   expect(onClose).not.toHaveBeenCalled();
 });
+
+it('typed amount is not overwritten by a late suggestion', async () => {
+  let resolveTypical: (v: number | null) => void = () => {};
+  getBudgetTypical.mockImplementation(
+    () => new Promise<number | null>((resolve) => (resolveTypical = resolve))
+  );
+  setup({ kind: 'add', availableCategories: ['Dining'] });
+  await userEvent.selectOptions(screen.getByLabelText('Category'), 'Dining');
+  await userEvent.type(amountInput(), '275');
+  resolveTypical(410);
+  await screen.findByText('Typical month: $410');
+  expect(amountInput().value).toBe('275');
+});
+
+it('switching category clears the previous suggestion', async () => {
+  getBudgetTypical.mockResolvedValueOnce(410).mockImplementationOnce(() => new Promise(() => {}));
+  setup({ kind: 'add', availableCategories: ['Dining', 'Groceries'] });
+  await userEvent.selectOptions(screen.getByLabelText('Category'), 'Dining');
+  await waitFor(() => expect(amountInput().value).toBe('410'));
+  await userEvent.selectOptions(screen.getByLabelText('Category'), 'Groceries');
+  expect(amountInput().value).toBe('');
+  expect(saveButton()).toBeDisabled();
+});

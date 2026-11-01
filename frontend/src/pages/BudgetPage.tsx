@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { ApiClient } from '../utils/apiClient';
 import {
   formatMonthLabel,
+  formatWhole,
   isOver,
   lastFullMonth,
   resolveMonthParam,
@@ -81,10 +82,31 @@ export const BudgetPage: React.FC = () => {
       );
     }
     if (!data.hasData) {
+      // No spending to compare yet, but the limits stay editable.
       return (
-        <p className="py-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          {`No transactions imported for ${formatMonthLabel(month)} yet.`}
-        </p>
+        <>
+          <p className="py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            {`No transactions imported for ${formatMonthLabel(month)} yet.`}
+          </p>
+          <ul className="divide-y divide-gray-200 dark:divide-gray-800 border-t border-gray-200 dark:border-gray-800">
+            {rows.map((row) => (
+              <li key={row.category}>
+                <button
+                  type="button"
+                  onClick={() => setEditing(row)}
+                  className="w-full flex items-center justify-between gap-4 py-3 px-1 min-h-[44px] text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-md transition-colors"
+                >
+                  <span className="text-sm text-gray-900 dark:text-white truncate">
+                    {row.category}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+                    {`${formatWhole(row.limit)} limit`}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       );
     }
     return (
@@ -100,7 +122,7 @@ export const BudgetPage: React.FC = () => {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Budget</h1>
-        {showRows && addButton}
+        {loaded && rows.length > 0 && addButton}
       </div>
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-800">
