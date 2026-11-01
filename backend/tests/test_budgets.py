@@ -355,3 +355,39 @@ async def test_put_household_isolation(
         .all()
     )
     assert rows == []
+
+
+async def _typical(client: AsyncClient, category: str, month: str) -> dict:
+    response = await client.get(
+        "/api/budgets/typical", params={"category": category, "month": month}
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+@pytest.mark.asyncio
+async def test_typical_is_median_of_six_months(
+    client: AsyncClient, db_session: AsyncSession
+):
+    amounts = ["100.00", "200.00", "300.00", "400.00", None, "1000.00"]
+    for i, amount in enumerate(amounts):
+        if amount is not None:
+            db_session.add(_txn(f"m{i}", amount, date(2026, 5 + i, 15)))
+    await db_session.flush()
+
+    assert await _typical(client, "Dining", "2026-10") == {"typical": 250}
+
+
+@pytest.mark.asyncio
+async def test_typical_null_without_history(client: AsyncClient):
+    assert await _typical(client, "Dining", "2026-10") == {"typical": None}
+
+
+@pytest.mark.asyncio
+async def test_typical_excludes_current_window_outside(
+    client: AsyncClient, db_session: AsyncSession
+):
+    db_session.add(_txn("nov", "500.00", date(2026, 11, 2)))
+    await db_session.flush()
+
+    assert await _typical(client, "Dining", "2026-10") == {"typical": None}

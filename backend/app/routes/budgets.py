@@ -1,4 +1,5 @@
 import secrets
+import statistics
 import time
 from collections import defaultdict
 from datetime import date
@@ -99,6 +100,24 @@ async def get_budgets(
         "hasData": selected in with_data,
         "categories": categories,
     }
+
+
+@router.get("/budgets/typical")
+async def get_typical(
+    category: str = Query(...),
+    month: str = Query(...),
+    household_id: str = Depends(get_current_household_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Suggested starting limit: the median of the six months ending at
+    `month`, counting months without spending as 0 (like the Everyday card)."""
+    selected = _month_or_422(month)
+    window = month_window(selected, 6)
+    actuals = await monthly_actuals(db, household_id, window[0], month_end(selected))
+    amounts = [actuals.get((category, m), 0.0) for m in window]
+    if not any(amounts):
+        return {"typical": None}
+    return {"typical": round(statistics.median(amounts))}
 
 
 @router.put("/budgets")
