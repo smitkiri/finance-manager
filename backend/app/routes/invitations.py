@@ -16,6 +16,7 @@ from app.dependencies.auth import get_current_household_id, get_current_user
 from app.models import (
     Account,
     AccountBalance,
+    Budget,
     Category,
     Dashboard,
     DashboardPanel,
@@ -316,6 +317,7 @@ async def accept_invitation(
             )
         )
         for model in (
+            Budget,
             Transaction,
             ImportSession,
             Account,

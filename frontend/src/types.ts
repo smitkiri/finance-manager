@@ -412,3 +412,25 @@ export interface SubscriptionPatchBody {
   expected_amount?: number;
   status?: SubscriptionStatus;
 }
+
+export interface BudgetHistoryEntry {
+  month: string;
+  limit: number | null;
+  actual: number;
+  hasData: boolean;
+}
+
+export interface BudgetCategory {
+  category: string;
+  limit: number;
+  actual: number;
+  inCategoryList: boolean;
+  history: BudgetHistoryEntry[];
+}
+
+export interface BudgetMonthResponse {
+  month: string;
+  earliestMonth: string | null;
+  hasData: boolean;
+  categories: BudgetCategory[];
+}

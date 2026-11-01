@@ -1,5 +1,6 @@
 from app.models.account import Account, AccountBalance
 from app.models.base import Base
+from app.models.budget import Budget
 from app.models.category import Category
 from app.models.dashboard import Dashboard, DashboardPanel
 from app.models.date_range import DateRange
@@ -18,6 +19,7 @@ __all__ = [
     "Base",
     "Account",
     "AccountBalance",
+    "Budget",
     "Category",
     "Dashboard",
     "DashboardPanel",

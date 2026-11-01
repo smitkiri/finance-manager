@@ -204,3 +204,33 @@ async def test_reset_preserves_transfer_pairs(db_session: AsyncSession):
     assert len(members) == 3
     for gid, count in members.items():
         assert count == 2, f"group {gid} should have 2 transactions, got {count}"
+
+
+@pytest.mark.asyncio
+async def test_reset_wipes_budgets(db_session: AsyncSession):
+    """A budget saved by a demo visitor must not block the household wipe."""
+    from datetime import date
+    from decimal import Decimal
+
+    from app.demo import reset as reset_mod
+    from app.models.budget import Budget
+
+    db_session.add(
+        Budget(
+            id="stray-budget",
+            household_id="household-default",
+            category="Dining",
+            effective_month=date(2026, 10, 1),
+            amount=Decimal("300"),
+        )
+    )
+    await db_session.flush()
+
+    original = settings.finance_manager_demo_mode
+    settings.finance_manager_demo_mode = True
+    try:
+        await reset_mod._run_reset(db_session)
+    finally:
+        settings.finance_manager_demo_mode = original
+
+    assert (await db_session.execute(select(Budget))).scalars().all() == []

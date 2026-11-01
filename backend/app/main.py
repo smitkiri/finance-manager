@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes.auth import router as auth_router
 from app.routes.backup import router as backup_router
+from app.routes.budgets import router as budgets_router
 from app.routes.categories import router as categories_router
 from app.routes.dashboards import router as dashboards_router
 from app.routes.data import router as data_router
@@ -71,6 +72,7 @@ app.include_router(categories_router)
 app.include_router(net_worth_router)
 app.include_router(date_range_router)
 app.include_router(everyday_categories_router)
+app.include_router(budgets_router)
 app.include_router(expenses_router)
 app.include_router(reports_router)
 app.include_router(sources_router)

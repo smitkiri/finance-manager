@@ -25,6 +25,7 @@ import type {
   SubscriptionCreateBody,
   SubscriptionPatchBody,
   SubscriptionStatus,
+  BudgetMonthResponse,
   TransferGroupDetail,
 } from '../types';
 
@@ -1800,5 +1801,33 @@ export class ApiClient {
     });
     if (!res.ok) throw new Error(`Failed to rerun detection: ${res.status}`);
     return res.json();
+  }
+
+  static async getBudgets(month: string, history = 6): Promise<BudgetMonthResponse> {
+    const qs = new URLSearchParams({ month, history: String(history) });
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/budgets?${qs}`);
+    if (!res.ok) throw new Error(`Failed to load budgets: ${res.status}`);
+    return res.json();
+  }
+
+  static async saveBudget(body: {
+    category: string;
+    month: string;
+    amount: number | null;
+  }): Promise<void> {
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/budgets`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Failed to save budget: ${res.status}`);
+  }
+
+  static async getBudgetTypical(category: string, month: string): Promise<number | null> {
+    const qs = new URLSearchParams({ category, month });
+    const res = await ApiClient.apiFetch(`${ApiClient.API_BASE}/budgets/typical?${qs}`);
+    if (!res.ok) throw new Error(`Failed to load typical month: ${res.status}`);
+    const data: { typical: number | null } = await res.json();
+    return data.typical;
   }
 }
