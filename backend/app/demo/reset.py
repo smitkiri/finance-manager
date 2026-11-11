@@ -179,8 +179,6 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
                 created_by_user_id=created_by,
                 name=a["name"],
                 type=a["type"],
-                teller_account_id=a.get("teller_account_id"),
-                teller_enrollment_id=a.get("teller_enrollment_id"),
             )
         )
 

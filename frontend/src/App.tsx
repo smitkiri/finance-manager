@@ -5,7 +5,7 @@ import { AuthGuard } from './components/auth/AuthGuard';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
 import { AcceptInvitePage } from './components/auth/AcceptInvitePage';
-import { Plus, Upload, Sun, Moon, Building2 } from 'lucide-react';
+import { Plus, Upload, Sun, Moon } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -17,7 +17,6 @@ import type {
   Source,
   User,
   DashboardStats,
-  Account,
 } from './types';
 import { NetWorth } from './components/networth/NetWorth';
 import { TransactionForm } from './components/transactions/TransactionForm';
@@ -34,7 +33,6 @@ import { ApiClient } from './utils/apiClient';
 import { SourceModal } from './components/modals/SourceModal';
 import { Settings } from './components/modals/Settings';
 import { TransactionDetailsModal } from './components/modals/TransactionDetailsModal';
-import { TellerImportModal } from './components/modals/TellerImportModal';
 import { UserFilter } from './components/UserFilter';
 import { UserMenu } from './components/UserMenu';
 import { PersonalDashboards } from './components/dashboards/PersonalDashboards';
@@ -80,9 +78,6 @@ function AppContent() {
   const [expensesLoading, setExpensesLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [dashboardStatsLoading, setDashboardStatsLoading] = useState(false);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [tellerEnabled, setTellerEnabled] = useState(false);
-  const [showTellerImport, setShowTellerImport] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(false);
 
   useEffect(() => {
@@ -114,8 +109,6 @@ function AppContent() {
           loadedDateRange,
           loadedCategories,
           loadedUsers,
-          loadedAccounts,
-          tellerConfig,
           loadedLabels,
           demoConfig,
           loadedEverydayCategories,
@@ -124,8 +117,6 @@ function AppContent() {
           ApiClient.loadDateRange(),
           ApiClient.loadCategories(),
           ApiClient.loadUsers(),
-          ApiClient.loadAccounts(),
-          ApiClient.getTellerConfig(),
           ApiClient.loadLabels(),
           ApiClient.getDemoConfig(),
           ApiClient.loadEverydayCategories(),
@@ -135,8 +126,6 @@ function AppContent() {
         setEverydayCategories(loadedEverydayCategories);
         setAllLabels(loadedLabels);
         setUsers(loadedUsers);
-        setAccounts(loadedAccounts);
-        setTellerEnabled(tellerConfig.enabled);
         setDemoEnabled(demoConfig.enabled);
         if (loadedDateRange) {
           setDateRange(loadedDateRange);
@@ -1020,15 +1009,6 @@ function AppContent() {
                   >
                     {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                   </button>
-                  {tellerEnabled && accounts.some((a) => a.tellerAccountId) && (
-                    <button
-                      onClick={() => setShowTellerImport(true)}
-                      className="hidden lg:flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      <Building2 size={16} />
-                      <span>Import from Bank</span>
-                    </button>
-                  )}
                   <label className="cursor-pointer hidden lg:block">
                     <input
                       type="file"
@@ -1079,12 +1059,6 @@ function AppContent() {
                             ) as HTMLInputElement | null
                           )?.click();
                         },
-                      },
-                      {
-                        label: 'Import from bank',
-                        icon: <Building2 size={18} />,
-                        onClick: () => setShowTellerImport(true),
-                        hidden: !(tellerEnabled && accounts.some((a) => a.tellerAccountId)),
                       },
                       {
                         label: theme === 'light' ? 'Dark mode' : 'Light mode',
@@ -1269,26 +1243,6 @@ function AppContent() {
           onImportWithSource={handleImportWithSource}
           onDeleteSource={handleDeleteSource}
           users={users}
-        />
-      )}
-
-      {/* Teller Import Modal */}
-      {showTellerImport && (
-        <TellerImportModal
-          accounts={accounts}
-          users={users}
-          categories={categories}
-          onClose={() => setShowTellerImport(false)}
-          onImportComplete={(totalAdded) => {
-            bumpTransactionListVersion();
-            toast.success(
-              `Imported ${totalAdded} transaction${totalAdded !== 1 ? 's' : ''} from bank`,
-              {
-                position: 'bottom-right',
-                autoClose: 3000,
-              }
-            );
-          }}
         />
       )}
 

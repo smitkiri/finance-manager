@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import type { Account, NetWorthSummary, NetWorthHistory, User } from '../../types';
 import { ApiClient } from '../../utils/apiClient';
@@ -305,9 +304,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   const [summary, setSummary] = useState<NetWorthSummary | null>(null);
   const [history, setHistory] = useState<NetWorthHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tellerEnabled, setTellerEnabled] = useState(false);
-  const [tellerConnected, setTellerConnected] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   const [balanceAccount, setBalanceAccount] = useState<Account | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -344,39 +340,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    ApiClient.getTellerConfig().then((config) => {
-      setTellerEnabled(config.enabled);
-      setTellerConnected((config.enrollments?.length ?? 0) > 0);
-    });
-  }, []);
-
-  const handleRefreshBalances = async () => {
-    setRefreshing(true);
-    try {
-      const result = await ApiClient.tellerRefreshBalances();
-      if (result.refreshed > 0) {
-        toast.success(
-          `Refreshed ${result.refreshed} account balance${result.refreshed !== 1 ? 's' : ''}`,
-          { position: 'bottom-right', autoClose: 3000 }
-        );
-      }
-      if (result.reconnectRequired && result.reconnectRequired.length > 0) {
-        toast.error(
-          `${result.reconnectRequired.join(', ')} need${result.reconnectRequired.length === 1 ? 's' : ''} to be reconnected in Settings`,
-          { position: 'bottom-right', autoClose: 6000 }
-        );
-      } else if (result.refreshed === 0) {
-        toast.success('Balances are up to date', { position: 'bottom-right', autoClose: 3000 });
-      }
-      await loadData();
-    } catch {
-      toast.error('Failed to refresh balances', { position: 'bottom-right', autoClose: 3000 });
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   const handleAddBalance = async (amount: number, date: string, note?: string) => {
     if (!balanceAccount) return;
@@ -420,8 +383,6 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       autoClose: 3000,
     });
   };
-
-  const manualAccounts = accounts.filter((a) => !a.tellerAccountId);
 
   // Find the history entry closest to 1 month ago
   const oneMonthAgoNetWorth = (() => {
@@ -468,28 +429,16 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Net Worth</h2>
-        {(tellerEnabled && tellerConnected) || manualAccounts.length >= 2 ? (
+        {accounts.length >= 2 && (
           <div className="flex flex-wrap items-center gap-2">
-            {tellerEnabled && tellerConnected && (
-              <button
-                onClick={handleRefreshBalances}
-                disabled={refreshing}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-                Refresh Balances
-              </button>
-            )}
-            {manualAccounts.length >= 2 && (
-              <button
-                onClick={() => setShowBulkModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
-              >
-                Update All
-              </button>
-            )}
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] sm:min-h-0 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+            >
+              Update All
+            </button>
           </div>
-        ) : null}
+        )}
       </div>
 
       {loading ? (
@@ -533,7 +482,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({ selectedUserId, users }) => 
       {/* Bulk Balance Modal */}
       {showBulkModal && (
         <BulkBalanceModal
-          accounts={manualAccounts}
+          accounts={accounts}
           users={users}
           onClose={() => setShowBulkModal(false)}
           onSave={handleBulkSave}

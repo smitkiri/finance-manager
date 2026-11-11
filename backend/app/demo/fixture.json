@@ -14884,41 +14884,31 @@
       "id": "acct-alice-checking",
       "user_id": "user-alice",
       "name": "Alice Checking",
-      "type": "asset",
-      "teller_account_id": null,
-      "teller_enrollment_id": null
+      "type": "asset"
     },
     {
       "id": "acct-alice-savings",
       "user_id": "user-alice",
       "name": "Alice Savings",
-      "type": "asset",
-      "teller_account_id": null,
-      "teller_enrollment_id": null
+      "type": "asset"
     },
     {
       "id": "acct-ben-checking",
       "user_id": "user-ben",
       "name": "Ben Checking",
-      "type": "asset",
-      "teller_account_id": null,
-      "teller_enrollment_id": null
+      "type": "asset"
     },
     {
       "id": "acct-joint-card",
       "user_id": "user-alice",
       "name": "Joint Credit",
-      "type": "liability",
-      "teller_account_id": null,
-      "teller_enrollment_id": null
+      "type": "liability"
     },
     {
       "id": "acct-401k",
       "user_id": "user-alice",
       "name": "Alice 401k",
-      "type": "asset",
-      "teller_account_id": null,
-      "teller_enrollment_id": null
+      "type": "asset"
     }
   ],
   "account_balances": [

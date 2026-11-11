@@ -22,7 +22,6 @@ DB_PASSWORD=<from your Postgres resource>
 DB_NAME=<from your Postgres resource>
 JWT_SIGNING_SECRET=<any non-empty value; ignored at runtime in demo mode>
 FINANCE_MANAGER_DEMO_MODE=true
-FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED=false
 ```
 
 When `FINANCE_MANAGER_DEMO_MODE=true`, the backend short-circuits the auth

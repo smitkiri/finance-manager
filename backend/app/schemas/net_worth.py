@@ -9,8 +9,6 @@ class AccountOut(BaseModel):
     householdId: str
     name: str
     type: str
-    tellerAccountId: str | None = None
-    tellerEnrollmentId: str | None = None
     createdAt: datetime | None = None
     updatedAt: datetime | None = None
 
@@ -22,8 +20,6 @@ class AccountOut(BaseModel):
             householdId=a.household_id,
             name=a.name,
             type=a.type,
-            tellerAccountId=a.teller_account_id,
-            tellerEnrollmentId=a.teller_enrollment_id,
             createdAt=a.created_at,
             updatedAt=a.updated_at,
         )

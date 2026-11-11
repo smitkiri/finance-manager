@@ -1,7 +1,7 @@
 """
 Shared transfer detection helpers.
 
-Used by: transfers, imports, import_sessions, data, teller routes.
+Used by: transfers, imports, import_sessions, data routes.
 """
 
 from collections.abc import Sequence

@@ -15,12 +15,6 @@ class Settings(BaseSettings):
     # 0 disables the cap.
     db_statement_timeout_ms: int = 30_000
 
-    # Teller bank integration
-    finance_manager_teller_integration_enabled: bool = False
-    finance_manager_teller_app_id: str | None = None
-    finance_manager_teller_private_key: str | None = None  # file path
-    finance_manager_teller_cert: str | None = None  # file path
-
     # Demo mode (public hosted demo)
     finance_manager_demo_mode: bool = False
     demo_user_id: str = "demo-user"
@@ -63,15 +57,6 @@ class Settings(BaseSettings):
     # `CORS_ALLOWED_ORIGINS=http://localhost:3000` in `backend/.env` to enable
     # credentialed CORS for that case. Comma-separated for multiple origins.
     cors_allowed_origins: str = ""
-
-    @property
-    def is_teller_enabled(self) -> bool:
-        return (
-            self.finance_manager_teller_integration_enabled
-            and self.finance_manager_teller_app_id is not None
-            and self.finance_manager_teller_private_key is not None
-            and self.finance_manager_teller_cert is not None
-        )
 
     @property
     def database_url(self) -> str:

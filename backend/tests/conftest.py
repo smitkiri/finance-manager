@@ -28,7 +28,7 @@ _schema_initialized = False
 
 # Reset settings to clean defaults so tests are not affected by the
 # developer's backend/.env file. Tests that need specific settings (e.g.
-# teller enabled) should override them explicitly and restore after.
+# demo mode) should override them explicitly and restore after.
 _clean = Settings(_env_file=None)
 for field in Settings.model_fields:
     setattr(settings, field, getattr(_clean, field))

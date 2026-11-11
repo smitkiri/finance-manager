@@ -180,8 +180,6 @@ export interface Account {
   userId: string;
   name: string;
   type: 'asset' | 'liability';
-  tellerAccountId?: string | null;
-  tellerEnrollmentId?: string | null;
   createdAt: string;
   updatedAt: string;
   currentBalance?: number;
@@ -218,27 +216,6 @@ export interface ImportSession {
   sourceName: string;
   fileName: string | null;
   transactionCount: number;
-}
-
-export interface TellerCategoryMapping {
-  tellerCategory: string;
-  userCategory: string;
-  transactionCount: number;
-}
-
-export interface TellerImportPreviewAccount {
-  accountId: string;
-  accountName: string;
-  newCount: number;
-  duplicateCount: number;
-}
-
-export interface TellerImportResult {
-  accountId: string;
-  accountName: string;
-  sessionId: string;
-  added: number;
-  skipped: number;
 }
 
 export interface ReportData {

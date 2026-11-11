@@ -48,14 +48,6 @@ services:
       JWT_SIGNING_SECRET: ${JWT_SIGNING_SECRET}
       # Set to false on internet-facing instances; new members then need an invite.
       FINANCE_MANAGER_SIGNUP_ENABLED: ${FINANCE_MANAGER_SIGNUP_ENABLED:-true}
-      FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED: ${FINANCE_MANAGER_TELLER_INTEGRATION_ENABLED:-false}
-      FINANCE_MANAGER_TELLER_APP_ID: ${FINANCE_MANAGER_TELLER_APP_ID:-}
-      FINANCE_MANAGER_TELLER_PRIVATE_KEY: /secrets/teller/private_key.pem
-      FINANCE_MANAGER_TELLER_CERT: /secrets/teller/certificate.pem
-    volumes:
-      # Bind mount a host folder containing private_key.pem and certificate.pem.
-      # On Coolify, set TELLER_SECRETS_PATH to an absolute path on the server.
-      - ${TELLER_SECRETS_PATH:-./teller_secrets}:/secrets/teller:ro
     networks:
       default: {}
       # Stack-unique alias so nginx (which shares this network with every

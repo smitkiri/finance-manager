@@ -7,7 +7,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.account import Account
 from app.models.category import Category
+from app.models.metadata import Metadata
 from app.models.transaction import Transaction
 from app.models.user import User
 
@@ -170,6 +172,62 @@ class TestRestore:
         result = await db_session.execute(select(User).where(User.id == "user1"))
         user = result.scalar_one()
         assert user.name == "Alice"
+
+    async def test_restore_ignores_legacy_teller_metadata(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Backups from before Teller was removed carry enrollment tokens and
+        category mappings; restore must not write them back."""
+        backup_data = {
+            "users": [],
+            "categories": [],
+            "sources": [],
+            "transactions": [],
+            "reports": [],
+            "date_ranges": [],
+            "metadata": [
+                {
+                    "key": "teller_enrollments:household-default",
+                    "value": [{"accessToken": "secret"}],
+                },
+                {"key": "teller_category_mappings:household-default", "value": {}},
+            ],
+            "accounts": [
+                {
+                    "id": "acct1",
+                    "name": "Checking",
+                    "type": "asset",
+                    "teller_account_id": "acc_1",
+                    "teller_enrollment_id": "enr_1",
+                }
+            ],
+            "account_balances": [],
+        }
+
+        files = {
+            "backupFile": (
+                "backup.json",
+                json.dumps(backup_data).encode(),
+                "application/json",
+            )
+        }
+        response = await client.post("/api/restore", files=files)
+        assert response.status_code == 200
+
+        rows = (
+            (
+                await db_session.execute(
+                    select(Metadata).where(Metadata.key.like("teller%"))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert rows == []
+        account = (
+            await db_session.execute(select(Account).where(Account.id == "acct1"))
+        ).scalar_one()
+        assert account.name == "Checking"
 
     async def test_restore_does_not_create_new_users(
         self, client: AsyncClient, db_session: AsyncSession
