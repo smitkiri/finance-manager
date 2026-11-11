@@ -308,24 +308,10 @@ async def restore(
         )
         await db.execute(stmt)
 
-    # Metadata is a global KV store, but the only keys that should be
-    # restorable are the per-household Teller keys introduced in Phase 2.
-    # Reject everything else outright — restore must never be a vehicle for
-    # cross-tenant metadata pollution (e.g. overwriting another household's
-    # `teller_enrollments:<hid>` row).
-    allowed_metadata_keys = {
-        f"teller_enrollments:{household_id}",
-        f"teller_category_mappings:{household_id}",
-    }
-    for meta in data.get("metadata", []):
-        if meta.get("key") not in allowed_metadata_keys:
-            continue
-        stmt = (
-            insert(Metadata)
-            .values(key=meta["key"], value=meta.get("value"))
-            .on_conflict_do_nothing(index_elements=["key"])
-        )
-        await db.execute(stmt)
+    # The backup's `metadata` section is intentionally not restored. It is a
+    # global KV store, so restoring it could pollute other households; the
+    # only keys it ever allowed were the per-household Teller rows, removed
+    # along with the Teller integration.
 
     for acct in data.get("accounts", []):
         uploaded_attr = acct.get("created_by_user_id") or acct.get("user_id")

@@ -24,15 +24,12 @@ from app.routes.net_worth import router as net_worth_router
 from app.routes.reports import router as reports_router
 from app.routes.sources import router as sources_router
 from app.routes.subscriptions import router as subscriptions_router
-from app.routes.teller import check_credentials_at_startup as _check_teller_credentials
-from app.routes.teller import router as teller_router
 from app.routes.transfers import router as transfers_router
 from app.routes.users import router as users_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    _check_teller_credentials()
     if not settings.finance_manager_demo_mode and not settings.jwt_signing_secret:
         raise RuntimeError(
             "JWT_SIGNING_SECRET is not set. Refusing to serve without auth."
@@ -84,6 +81,5 @@ app.include_router(backup_router)
 app.include_router(transfers_router)
 app.include_router(users_router)
 app.include_router(dashboards_router)
-app.include_router(teller_router)
 app.include_router(invitations_router)
 app.include_router(subscriptions_router)

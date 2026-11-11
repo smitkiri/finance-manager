@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack expense tracking application with a React/TypeScript frontend and Python/FastAPI backend. Multi-user support, CSV import, Teller bank integration, smart transfer detection, reports, and dark mode.
+Full-stack expense tracking application with a React/TypeScript frontend and Python/FastAPI backend. Multi-user support, CSV import, smart transfer detection, reports, and dark mode.
 
 ## Repository Structure
 
@@ -66,7 +66,7 @@ npm run docker:down    # Stop all Docker containers
 
 **Frontend** (`frontend/src/`): React 18 + TypeScript, built with Vite (`frontend/vite.config.ts`); tests run on Vitest + jsdom. Styled with Tailwind CSS. Charts via Recharts, icons via Lucide React. Routing via react-router-dom v7.
 
-**FastAPI Backend** (`backend/app/`): Python 3.12+ with FastAPI, async SQLAlchemy ORM, Pydantic v2 schemas. Managed by uv. Serves all API routes including Teller bank integration.
+**FastAPI Backend** (`backend/app/`): Python 3.12+ with FastAPI, async SQLAlchemy ORM, Pydantic v2 schemas. Managed by uv. Serves all API routes.
 
 **nginx** (`nginx.conf`): Reverse proxy on port 3002. Routes all API traffic to FastAPI (port 8000). Frontend points at nginx via `VITE_API_BASE_URL`.
 
@@ -95,7 +95,7 @@ Local dev (`make up`, `docker-compose.yml`) and production (`docker-compose.prod
 
 Prod-specific files: `docker-compose.prod.yml`, `backend/Dockerfile`, `nginx/Dockerfile`, `nginx/prod.conf`, `.dockerignore`.
 
-In prod, nginx is the only exposed service. It serves the built React app as static files and proxies `/api/*` to `http://backend:8000`. Same-origin, so `VITE_API_BASE_URL=/api`. Teller cert/key files live on a Coolify-managed `teller_secrets` volume mounted read-only at `/secrets/teller/`. See `README.md` § "Deploying to Coolify" for env vars and first-deploy steps.
+In prod, nginx is the only exposed service. It serves the built React app as static files and proxies `/api/*` to `http://backend:8000`. Same-origin, so `VITE_API_BASE_URL=/api`. See `README.md` § "Deploying to Coolify" for env vars and first-deploy steps.
 
 When making changes that affect prod, remember:
 

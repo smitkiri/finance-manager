@@ -28,8 +28,6 @@ class Account(TimestampMixin, Base):
     )
     name: Mapped[str] = mapped_column(String(255))
     type: Mapped[str] = mapped_column(String(20))
-    teller_account_id: Mapped[str | None] = mapped_column(String(255))
-    teller_enrollment_id: Mapped[str | None] = mapped_column(String(255))
 
     balances = relationship(
         "AccountBalance", back_populates="account", cascade="all, delete-orphan"
@@ -39,8 +37,6 @@ class Account(TimestampMixin, Base):
         CheckConstraint("type IN ('asset', 'liability')", name="accounts_type_check"),
         Index("idx_accounts_household", "household_id"),
         Index("idx_accounts_created_by", "created_by_user_id"),
-        Index("idx_accounts_teller_enrollment_id", "teller_enrollment_id"),
-        Index("idx_accounts_teller_account_id", "teller_account_id"),
     )
 
 
