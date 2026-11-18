@@ -20,7 +20,8 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:alpine
+    # 1.31.9 includes the NGINX2Root fixes. Keep aligned with nginx/Dockerfile.
+    image: nginx:1.31.9-alpine
     container_name: expense_tracker_nginx
     ports:
       - '3002:80'

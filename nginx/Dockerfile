@@ -20,7 +20,8 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN npm run build
 
 # ---------- Stage 2: nginx serves the build + proxies /api ----------
-FROM nginx:alpine
+# 1.31.9 includes the NGINX2Root fixes. Keep aligned with docker-compose.yml.
+FROM nginx:1.31.9-alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 # Rendered to /etc/nginx/conf.d/default.conf at boot by the base image's
