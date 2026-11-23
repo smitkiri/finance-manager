@@ -1,7 +1,9 @@
 from datetime import date as date_type
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictStr, field_validator
+
+from app.utils.labels import normalize_label_names
 
 
 class TransferGroupRef(BaseModel):
@@ -20,7 +22,7 @@ class TransactionOut(BaseModel):
     type: str
     user: str | None
     householdId: str
-    labels: list[Any]
+    labels: list[str]
     metadata: dict[str, Any]
     excludedFromCalculations: bool
     importId: str | None = None
@@ -28,7 +30,7 @@ class TransactionOut(BaseModel):
     transferGroup: TransferGroupRef | None = None
 
     @classmethod
-    def from_orm_model(cls, t, group=None) -> TransactionOut:
+    def from_orm_model(cls, t, label_names: list[str], group=None) -> TransactionOut:
         """Serialize a transaction; pass its `TransferGroup` when it has one."""
         return cls(
             id=t.id,
@@ -39,7 +41,7 @@ class TransactionOut(BaseModel):
             type=t.type,
             user=t.created_by_user_id,
             householdId=t.household_id,
-            labels=t.labels or [],
+            labels=label_names,
             metadata=t.metadata_ or {},
             excludedFromCalculations=t.excluded_from_calculations or False,
             importId=t.import_id,
@@ -66,8 +68,13 @@ class TransactionUpdate(BaseModel):
     amount: float | None = None
     type: str | None = None
     user: str | None = None
-    labels: list[Any] | None = None
+    labels: list[StrictStr] | None = None
     excludedFromCalculations: bool | None = None
+
+    @field_validator("labels")
+    @classmethod
+    def normalize_names(cls, value: list[str] | None) -> list[str] | None:
+        return normalize_label_names(value) if value is not None else None
 
 
 class ExpenseBulkItem(BaseModel):
@@ -78,9 +85,14 @@ class ExpenseBulkItem(BaseModel):
     amount: float
     type: str
     user: str | None = None
-    labels: list[Any] | None = None
+    labels: list[StrictStr] | None = None
     metadata: dict[str, Any] | None = None
     excludedFromCalculations: bool | None = False
+
+    @field_validator("labels")
+    @classmethod
+    def normalize_names(cls, value: list[str] | None) -> list[str] | None:
+        return normalize_label_names(value) if value is not None else None
 
 
 class ExpenseBulkSaveRequest(BaseModel):

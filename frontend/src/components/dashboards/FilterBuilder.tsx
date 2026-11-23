@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Plus } from 'lucide-react';
 import type { FilterCondition, FilterGroup } from '../../types';
+import { labelChoices } from '../../utils/labelChoices';
 
 interface FilterBuilderProps {
   filterGroups: FilterGroup[];
@@ -98,9 +99,10 @@ const ConditionValueInput: React.FC<{
 
   if (field === 'labels') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
+    const choices = labelChoices(allLabels, selected);
     return (
       <div className="w-full flex flex-wrap gap-1 p-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm min-h-[48px] md:min-h-[34px] max-h-24 overflow-y-auto">
-        {allLabels.map((label) => (
+        {choices.map((label) => (
           <button
             key={label}
             type="button"
@@ -119,7 +121,7 @@ const ConditionValueInput: React.FC<{
             {label}
           </button>
         ))}
-        {allLabels.length === 0 && (
+        {choices.length === 0 && (
           <span className="text-xs text-gray-500 px-1">No labels available</span>
         )}
       </div>

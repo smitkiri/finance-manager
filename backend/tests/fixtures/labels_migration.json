@@ -1,0 +1,201 @@
+{
+  "normalization": [
+    {
+      "id": "empty",
+      "legacy": [],
+      "expected": []
+    },
+    {
+      "id": "sql-null",
+      "sql_null": true,
+      "legacy": null,
+      "expected": []
+    },
+    {
+      "id": "duplicates",
+      "legacy": ["Flight", "Flight", "Hotel"],
+      "expected": ["Flight", "Hotel"]
+    },
+    {
+      "id": "ascii-whitespace",
+      "legacy": [" \tFlight\n", "\r\f\u000bHotel ", "", " \t\n\r\f\u000b"],
+      "expected": ["Flight", "Hotel"]
+    },
+    {
+      "id": "case-and-unicode",
+      "legacy": ["flight", "Flight", "Café", " Flight ", "New  York"],
+      "expected": ["Café", "Flight", "New  York", "flight", " Flight "]
+    },
+    {
+      "id": "boundary-255",
+      "legacy": [
+        " \txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n"
+      ],
+      "expected": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
+    },
+    {
+      "id": "unicode-boundary-255",
+      "legacy": [
+        "\u000b😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\f"
+      ],
+      "expected": [
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      ]
+    }
+  ],
+  "malformed": [
+    {
+      "id": "json-null",
+      "legacy": null
+    },
+    {
+      "id": "object",
+      "legacy": {
+        "Flight": true
+      }
+    },
+    {
+      "id": "scalar",
+      "legacy": "Flight"
+    },
+    {
+      "id": "number",
+      "legacy": 1
+    },
+    {
+      "id": "boolean",
+      "legacy": true
+    },
+    {
+      "id": "null-element",
+      "legacy": ["Flight", null]
+    },
+    {
+      "id": "numeric-element",
+      "legacy": ["Flight", 7]
+    },
+    {
+      "id": "object-element",
+      "legacy": [{}]
+    },
+    {
+      "id": "array-element",
+      "legacy": [[]]
+    },
+    {
+      "id": "overlength-256",
+      "legacy": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "error_match": "transactions.labels: 1 overlength"
+    },
+    {
+      "id": "unicode-overlength-256",
+      "legacy": [
+        " \t😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n"
+      ],
+      "error_match": "transactions.labels: 1 overlength"
+    }
+  ],
+  "malformed_saved_references": {
+    "reports": [
+      {
+        "labels": "Flight"
+      },
+      {
+        "labels": [null]
+      },
+      ["Flight"],
+      {
+        "labels": [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ]
+      }
+    ],
+    "panels": [
+      {
+        "conditions": []
+      },
+      [
+        {
+          "conditions": "Flight"
+        }
+      ],
+      [
+        {
+          "conditions": [
+            {
+              "field": "labels",
+              "value": [7]
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "conditions": [
+            {
+              "field": "labels",
+              "operator": "includes",
+              "value": [
+                "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+              ]
+            }
+          ]
+        }
+      ]
+    ]
+  },
+  "saved_references": {
+    "report": {
+      "labels": [" Flight ", "Flight", "", "Unused"],
+      "categories": [" Flight "],
+      "future": {
+        "labels": [" Flight "]
+      }
+    },
+    "normalized_report": {
+      "labels": ["Flight", "Unused"],
+      "categories": [" Flight "],
+      "future": {
+        "labels": [" Flight "]
+      }
+    },
+    "panel": [
+      {
+        "conditions": [
+          {
+            "field": "labels",
+            "operator": "excludes",
+            "value": [" Hotel ", "Hotel", "Unused"]
+          },
+          {
+            "field": "category",
+            "operator": "is",
+            "value": [" Hotel "]
+          }
+        ],
+        "future": true
+      }
+    ],
+    "normalized_panel": [
+      {
+        "conditions": [
+          {
+            "field": "labels",
+            "operator": "excludes",
+            "value": ["Hotel", "Unused"]
+          },
+          {
+            "field": "category",
+            "operator": "is",
+            "value": [" Hotel "]
+          }
+        ],
+        "future": true
+      }
+    ]
+  }
+}

@@ -6,6 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import Transaction
+from app.utils.labels import replace_transaction_labels
 
 
 async def _seed(db: AsyncSession):
@@ -18,7 +19,6 @@ async def _seed(db: AsyncSession):
             amount=Decimal("50.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=["essential"],
             metadata_={"sourceId": "src1"},
         ),
         Transaction(
@@ -29,7 +29,6 @@ async def _seed(db: AsyncSession):
             amount=Decimal("3000.00"),
             type="income",
             created_by_user_id="bob",
-            labels=[],
             metadata_={"sourceId": "src2"},
         ),
         Transaction(
@@ -40,12 +39,12 @@ async def _seed(db: AsyncSession):
             amount=Decimal("5.50"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={},
         ),
     ]
     db.add_all(txns)
     await db.flush()
+    await replace_transaction_labels(db, "household-default", {"t1": ["essential"]})
 
 
 @pytest.mark.asyncio
@@ -137,7 +136,6 @@ async def _seed_for_stats(db: AsyncSession):
             amount=Decimal("50.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={},
         ),
         Transaction(
@@ -148,7 +146,6 @@ async def _seed_for_stats(db: AsyncSession):
             amount=Decimal("30.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={},
         ),
         Transaction(
@@ -159,7 +156,6 @@ async def _seed_for_stats(db: AsyncSession):
             amount=Decimal("3000.00"),
             type="income",
             created_by_user_id="alice",
-            labels=[],
             metadata_={},
         ),
         Transaction(
@@ -170,7 +166,6 @@ async def _seed_for_stats(db: AsyncSession):
             amount=Decimal("1200.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={},
         ),
         # Excluded transaction — should not appear in stats
@@ -182,7 +177,6 @@ async def _seed_for_stats(db: AsyncSession):
             amount=Decimal("999.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={},
             excluded_from_calculations=True,
         ),

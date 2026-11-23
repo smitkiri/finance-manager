@@ -9,6 +9,7 @@ from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
 from app.models.transaction import Transaction
 from app.schemas.import_session import ImportSessionOut
+from app.utils.labels import lock_household_labels
 from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_groups import recompute_groups
 from app.utils.transfer_utils import run_detection
@@ -47,6 +48,7 @@ async def delete_import_session(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await lock_household_labels(db, household_id)
     # Confirm the session belongs to this household
     own_result = await db.execute(
         select(ImportSession.id).where(

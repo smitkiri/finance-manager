@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import Transaction
+from app.utils.labels import replace_transaction_labels
 from app.utils.query_builder import (
     build_expenses_filter,
     build_filter_groups_clause,
@@ -27,7 +28,6 @@ async def _seed_transactions(db: AsyncSession):
             amount=Decimal("50.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=["essential"],
             metadata_={"sourceId": "src1"},
         ),
         Transaction(
@@ -38,7 +38,6 @@ async def _seed_transactions(db: AsyncSession):
             amount=Decimal("3000.00"),
             type="income",
             created_by_user_id="bob",
-            labels=["recurring"],
             metadata_={"sourceId": "src2"},
         ),
         Transaction(
@@ -49,7 +48,6 @@ async def _seed_transactions(db: AsyncSession):
             amount=Decimal("500.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={"sourceId": "src1"},
         ),
         Transaction(
@@ -60,12 +58,16 @@ async def _seed_transactions(db: AsyncSession):
             amount=Decimal("5.50"),
             type="expense",
             created_by_user_id="alice",
-            labels=["small"],
             metadata_={},
         ),
     ]
     db.add_all(txns)
     await db.flush()
+    await replace_transaction_labels(
+        db,
+        "household-default",
+        {"t1": ["essential"], "t2": ["recurring"], "t4": ["small"]},
+    )
 
 
 @pytest.mark.asyncio
@@ -208,7 +210,6 @@ async def _seed_stats_transactions(db: AsyncSession):
             amount=Decimal(amount),
             type=typ,
             created_by_user_id=user,
-            labels=[],
             metadata_={},
             **kw,
         )

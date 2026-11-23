@@ -18,7 +18,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -31,6 +31,7 @@ from app.models.date_range import DateRange
 from app.models.household import Household
 from app.models.import_session import ImportSession
 from app.models.invitation import Invitation
+from app.models.label import Label
 from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
@@ -38,6 +39,7 @@ from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.models.transfer_group import TransferGroup
 from app.models.user import User
+from app.utils.labels import replace_transaction_labels
 from app.utils.subscription_utils import run_detection
 from app.utils.transfer_groups import adopt_legacy_transfer_info
 
@@ -55,6 +57,7 @@ _WIPE_ORDER = [
     AccountBalance,
     Account,
     Transaction,
+    Label,
     TransferGroup,
     Budget,
     Subscription,
@@ -71,6 +74,8 @@ _WIPE_ORDER = [
 
 
 async def _wipe_all(db: AsyncSession) -> None:
+    # Match ordinary label mutations' household-before-row lock order.
+    await db.execute(select(Household.id).order_by(Household.id).with_for_update())
     for model in _WIPE_ORDER:
         await db.execute(delete(model))
 
@@ -149,6 +154,7 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
         )
 
     # Transactions
+    household_names: dict[str, dict[str, list[str]]] = {}
     for t in fixture["transactions"]:
         # Fixtures may still use `user_id`; accept either field name.
         created_by = t.get("created_by_user_id") or t.get("user_id")
@@ -162,12 +168,16 @@ async def _insert_fixture(db: AsyncSession, fixture: dict[str, Any]) -> None:
                 type=t["type"],
                 household_id=_hid(t),
                 created_by_user_id=created_by,
-                labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
                 transfer_info=t.get("transfer_info"),
                 excluded_from_calculations=t.get("excluded_from_calculations", False),
             )
         )
+        household_names.setdefault(_hid(t), {})[t["id"]] = t.get("labels") or []
+
+    await db.flush()
+    for household_id, names in sorted(household_names.items()):
+        await replace_transaction_labels(db, household_id, names)
 
     # Accounts
     for a in fixture["accounts"]:

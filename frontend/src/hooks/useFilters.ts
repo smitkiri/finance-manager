@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import type { Expense, DateRange } from '../types';
 import { filterExpensesByDateRange } from '../utils';
+import { labelChoices } from '../utils/labelChoices';
 
-export const useFilters = (expenses: Expense[]) => {
+export const useFilters = (expenses: Expense[], vocabulary: string[]) => {
   const [filter, setFilter] = useState('all');
   const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -10,11 +11,7 @@ export const useFilters = (expenses: Expense[]) => {
     end: new Date(), // Today
   });
 
-  // Memoize all unique labels from all expenses
-  const allLabels = useMemo(
-    () => Array.from(new Set(expenses.flatMap((expense) => expense.labels || []))),
-    [expenses]
-  );
+  const allLabels = useMemo(() => labelChoices(vocabulary, labelFilter), [vocabulary, labelFilter]);
 
   // Memoize filtered expenses to prevent recalculation on every render
   const { filteredExpenses } = useMemo(() => {

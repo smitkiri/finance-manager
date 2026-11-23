@@ -8,6 +8,7 @@ import { countedAmount } from '../../utils/transferGroups';
 interface ReportCreatorProps {
   expenses: Expense[];
   categories: string[];
+  allLabels: string[];
   sources: Source[];
   onCreateReport: (report: Report) => void;
   onCancel: () => void;
@@ -17,6 +18,7 @@ interface ReportCreatorProps {
 export const ReportCreator: React.FC<ReportCreatorProps> = ({
   expenses,
   categories,
+  allLabels,
   sources,
   onCreateReport,
   onCancel,
@@ -35,9 +37,6 @@ export const ReportCreator: React.FC<ReportCreatorProps> = ({
       dateRange: prev.dateRange || globalDateRange,
     }));
   }, [globalDateRange]);
-
-  // Get all unique labels from expenses
-  const allLabels = Array.from(new Set(expenses.flatMap((expense) => expense.labels || [])));
 
   // Update preview when filters change
   useEffect(() => {

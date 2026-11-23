@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useId } from 'react';
 import { Plus, X } from 'lucide-react';
+
+const trimLabelName = (name: string) => name.replace(/^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g, '');
 
 interface LabelSelectorProps {
   isOpen: boolean;
@@ -21,8 +23,29 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
   position,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const normalizedSearch = trimLabelName(searchTerm);
+  const isNameTooLong = Array.from(normalizedSearch).length > 255;
+  const nameErrorId = useId();
   const [filteredLabels, setFilteredLabels] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectorRef = useRef<HTMLDivElement>(null);
+  const [selectorLeft, setSelectorLeft] = useState(position.x);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const keepInsideViewport = () => {
+      const width = selectorRef.current?.getBoundingClientRect().width;
+      if (!width) return;
+      const viewportWidth = Math.min(
+        window.innerWidth,
+        document.documentElement.clientWidth || window.innerWidth
+      );
+      setSelectorLeft(Math.min(Math.max(position.x, width / 2 + 8), viewportWidth - width / 2 - 8));
+    };
+    keepInsideViewport();
+    window.addEventListener('resize', keepInsideViewport);
+    return () => window.removeEventListener('resize', keepInsideViewport);
+  }, [isOpen, position.x, filteredLabels]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -36,7 +59,7 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
       .filter((label) => !existingLabels.includes(label))
       .slice(0, 2);
 
-    if (searchTerm.trim() === '') {
+    if (trimLabelName(searchTerm) === '') {
       setFilteredLabels(recentlyUsedLabels);
     } else {
       const filtered = allLabels
@@ -52,7 +75,8 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedTerm = searchTerm.trim();
+    if (isNameTooLong) return;
+    const trimmedTerm = normalizedSearch;
     if (trimmedTerm && !existingLabels.includes(trimmedTerm)) {
       onAddLabel(trimmedTerm);
       setSearchTerm('');
@@ -81,9 +105,10 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
 
       {/* Label Selector */}
       <div
+        ref={selectorRef}
         className="fixed z-50 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 min-w-64 max-w-80"
         style={{
-          left: position.x,
+          left: selectorLeft,
           top: position.y,
           transform: 'translate(-50%, -100%)',
           marginTop: '-8px',
@@ -108,8 +133,19 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type to search or create new label..."
+              aria-invalid={isNameTooLong || undefined}
+              aria-describedby={isNameTooLong ? nameErrorId : undefined}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            {isNameTooLong && (
+              <p
+                id={nameErrorId}
+                role="alert"
+                className="mt-2 text-sm text-red-600 dark:text-red-400"
+              >
+                Label names must be 255 characters or fewer.
+              </p>
+            )}
           </form>
         </div>
 
@@ -127,9 +163,9 @@ export const LabelSelector: React.FC<LabelSelectorProps> = ({
                 </button>
               ))}
             </div>
-          ) : searchTerm.trim() !== '' ? (
-            <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-              Press Enter to create "{searchTerm.trim()}"
+          ) : isNameTooLong ? null : normalizedSearch !== '' ? (
+            <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 break-words">
+              Press Enter to create "{normalizedSearch}"
             </div>
           ) : (
             <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">

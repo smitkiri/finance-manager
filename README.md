@@ -225,6 +225,53 @@ The CLI prints `DONE: password set for user <id> (email <email>)` on success.
 
 Finance Manager supports a "demo mode" that powers a public hosted demo with sample data that resets daily. See [docs/DEMO.md](docs/DEMO.md) for setup instructions.
 
+## Labels
+
+Labels belong to a household and are stored as definitions linked to transactions.
+Transaction requests and responses continue to use `labels: string[]`. Names are
+case-sensitive, with leading/trailing ASCII whitespace removed; blank names and
+exact duplicates are discarded. Internal whitespace and Unicode are preserved.
+Responses return label names sorted in Python string order.
+Names may contain at most 255 Unicode codepoints after ASCII trimming. Longer
+names are rejected rather than truncated, including imports, restore and rename;
+migration preflight reports existing overlong names for repair before cutover.
+
+`GET /api/labels` returns all household names, including unused definitions, so
+labels outside the current transaction page or date range remain selectable.
+Edits, replacement saves and import undo retain unused definitions. Explicitly
+deleting all household transactions clears the vocabulary; demo resets rebuild it.
+The existing UI allows adding up to three labels; migration/import preserve rows
+that already have more.
+
+Label management is available through authenticated household APIs:
+
+| Endpoint                                                         | Purpose                                                                                |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `GET /api/labels/catalog`                                        | Definitions with ID, name, `createdAt`, `createdBy` (`user` or `ai`) and `usageCount`. |
+| `PATCH /api/labels/{id}` with `{ "name": "Lodging" }`            | Rename a definition; an existing target name returns 409.                              |
+| `POST /api/labels/{sourceId}/merge` with `{ "targetId": "..." }` | Merge source links into the target and remove the source definition.                   |
+
+Rename/merge rewrite saved report and dashboard label references atomically.
+Other open browser tabs require a refresh. A later save from a stale client can
+recreate an old name because transaction APIs remain name-based; permanent
+aliases and optimistic concurrency are outside this migration.
+
+JSON backups retain each transaction's label-name array and optionally include
+top-level `labels` records containing `name`, `created_at` and `created_by` to
+preserve unused definitions and origin. Legacy backups remain accepted. Restore
+is additive: skipped transactions keep their current labels. New backups also
+retain attached names when read by the old application, which ignores the new
+vocabulary section.
+
+Deploy the label migration and matching backend/frontend as one coordinated
+release after quiescing old instances, writes and background jobs. Avoid a mixed
+schema rolling deployment. Rehearse upgrade, backup restore and rollback on a
+disposable copy first; the parity tool is documented in
+[backend/scripts/README.md](backend/scripts/README.md). Downgrade reconstructs
+current attached names but cannot recover original whitespace, duplicates,
+ordering, unused definitions, origin or earlier rename identities. Keep a
+restorable database dump for exact recovery.
+
 ## 🧑‍💻 Technology Stack
 
 - **Frontend**: React 18 with TypeScript

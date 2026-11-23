@@ -346,7 +346,6 @@ class TestTransferGroupBackup:
                     category="Shopping",
                     amount=Decimal(amount),
                     type=typ,
-                    labels=[],
                     metadata_={},
                 )
             )

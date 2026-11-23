@@ -299,7 +299,9 @@ async def serialize_transactions(
 ) -> list[dict]:
     """`TransactionOut` dicts with group refs, loading all groups in one query."""
     from app.schemas.transaction import TransactionOut
+    from app.utils.labels import load_transaction_label_names
 
+    label_names = await load_transaction_label_names(db, txns)
     group_ids = {t.transfer_group_id for t in txns if t.transfer_group_id}
     groups: dict[str, TransferGroup] = {}
     if group_ids:
@@ -309,7 +311,9 @@ async def serialize_transactions(
         groups = {g.id: g for g in result.scalars().all()}
     return [
         TransactionOut.from_orm_model(
-            t, groups.get(t.transfer_group_id) if t.transfer_group_id else None
+            t,
+            label_names[t.id],
+            groups.get(t.transfer_group_id) if t.transfer_group_id else None,
         ).model_dump()
         for t in txns
     ]

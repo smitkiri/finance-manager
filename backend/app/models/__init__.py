@@ -7,6 +7,7 @@ from app.models.date_range import DateRange
 from app.models.household import Household
 from app.models.import_session import ImportSession
 from app.models.invitation import Invitation
+from app.models.label import Label, TransactionLabel
 from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
@@ -27,11 +28,13 @@ __all__ = [
     "Household",
     "ImportSession",
     "Invitation",
+    "Label",
     "Metadata",
     "Report",
     "Source",
     "Subscription",
     "Transaction",
+    "TransactionLabel",
     "TransferGroup",
     "User",
 ]

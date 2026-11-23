@@ -24,6 +24,7 @@ from app.models import (
     Household,
     ImportSession,
     Invitation,
+    Label,
     Report,
     Source,
     Transaction,
@@ -42,6 +43,7 @@ from app.schemas.invitation import (
 )
 from app.schemas.user import UserOut
 from app.utils.invitation_tokens import generate_invitation_token
+from app.utils.labels import lock_household_labels
 
 router = APIRouter(prefix="/api/invitations", tags=["invitations"])
 
@@ -240,6 +242,17 @@ async def accept_invitation(
 
     now = datetime.now(UTC).replace(tzinfo=None)
 
+    # Discover the destination without taking an invitation-row lock first.
+    # Household cleanup deletes vocabulary, so use the same household-before-
+    # row lock order as label writes, then recheck the invitation under lock.
+    destination = await db.scalar(
+        select(Invitation.household_id).where(Invitation.token == payload.token)
+    )
+    if destination is None:
+        raise HTTPException(status_code=410, detail="This invite is no longer valid")
+    for household_id in sorted({current_user.household_id, destination}):
+        await lock_household_labels(db, household_id)
+
     invite = (
         await db.execute(
             select(Invitation)
@@ -319,6 +332,7 @@ async def accept_invitation(
         for model in (
             Budget,
             Transaction,
+            Label,
             ImportSession,
             Account,
             Category,

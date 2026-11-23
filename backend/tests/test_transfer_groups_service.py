@@ -31,7 +31,6 @@ def _txn(tid, amount, typ, d=date(2024, 1, 1), user="alice", **kw):
         type=typ,
         household_id=kw.pop("household_id", HH),
         created_by_user_id=user,
-        labels=[],
         metadata_={},
         **kw,
     )

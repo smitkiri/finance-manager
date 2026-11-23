@@ -1,0 +1,44 @@
+[
+  { "name": "all-transactions", "path": "/api/expenses" },
+  { "name": "vocabulary", "path": "/api/labels" },
+  { "name": "statistics", "path": "/api/stats" },
+  { "name": "saved-reports", "path": "/api/reports" },
+  { "name": "dashboards", "path": "/api/dashboards" },
+  { "name": "label-any", "path": "/api/expenses", "params": { "labels": "Flight,Hotel" } },
+  { "name": "label-search", "path": "/api/expenses", "params": { "search": "fLiGh" } },
+  {
+    "name": "pagination",
+    "path": "/api/expenses",
+    "params": { "labels": "Flight,Hotel", "limit": 2, "offset": 2 }
+  },
+  {
+    "name": "panel-includes",
+    "method": "POST",
+    "path": "/api/dashboard-panels/preview",
+    "body": {
+      "filterGroups": [
+        {
+          "conditions": [
+            { "field": "labels", "operator": "includes", "value": ["Flight", "Hotel"] }
+          ]
+        }
+      ],
+      "limit": 100
+    }
+  },
+  {
+    "name": "panel-excludes",
+    "method": "POST",
+    "path": "/api/dashboard-panels/preview",
+    "body": {
+      "filterGroups": [
+        {
+          "conditions": [
+            { "field": "labels", "operator": "excludes", "value": ["Flight", "Hotel"] }
+          ]
+        }
+      ],
+      "limit": 100
+    }
+  }
+]

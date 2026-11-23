@@ -18,6 +18,7 @@ interface TransactionListProps {
   onRemoveLabel: (expenseId: string, label: string) => void;
   onViewDetails: (expense: Expense) => void;
   categories: string[];
+  allLabels: string[];
   selectedUserId?: string | null;
 }
 
@@ -33,6 +34,7 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
   onRemoveLabel,
   onViewDetails,
   categories,
+  allLabels,
   selectedUserId,
 }) => {
   const [visibleCount, setVisibleCount] = useState(30);
@@ -75,12 +77,6 @@ const TransactionListComponent: React.FC<TransactionListProps> = ({
         return bUsage - aUsage;
       }),
     [categories, categoryUsage]
-  );
-
-  // Memoize all unique labels from all expenses
-  const allLabels = useMemo(
-    () => Array.from(new Set(expenses.flatMap((expense) => expense.labels || []))),
-    [expenses]
   );
 
   const toggleDropdown = useCallback((expenseId: string) => {

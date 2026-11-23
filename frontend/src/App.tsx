@@ -42,10 +42,12 @@ import { DemoBanner } from './components/DemoBanner';
 import { Logo } from './components/Logo';
 import { ITEMS_PER_PAGE } from './constants';
 import { useBreakpoint } from './hooks/useBreakpoint';
+import { useLabelVocabulary } from './hooks/useLabelVocabulary';
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
-  const { currentUser } = useAuth();
+  const { currentUser, currentHousehold } = useAuth();
+  const allLabels = useLabelVocabulary(currentHousehold?.id ?? null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -62,7 +64,6 @@ function AppContent() {
   const isSettingsRoute = location.pathname === '/settings';
   const [categories, setCategories] = useState<string[]>([]);
   const [everydayCategories, setEverydayCategories] = useState<string[]>([]);
-  const [allLabels, setAllLabels] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sources, setSources] = useState<Source[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<Expense | null>(null);
@@ -109,7 +110,6 @@ function AppContent() {
           loadedDateRange,
           loadedCategories,
           loadedUsers,
-          loadedLabels,
           demoConfig,
           loadedEverydayCategories,
         ] = await Promise.all([
@@ -117,14 +117,12 @@ function AppContent() {
           ApiClient.loadDateRange(),
           ApiClient.loadCategories(),
           ApiClient.loadUsers(),
-          ApiClient.loadLabels(),
           ApiClient.getDemoConfig(),
           ApiClient.loadEverydayCategories(),
         ]);
         setSources(loadedSources);
         setCategories(loadedCategories);
         setEverydayCategories(loadedEverydayCategories);
-        setAllLabels(loadedLabels);
         setUsers(loadedUsers);
         setDemoEnabled(demoConfig.enabled);
         if (loadedDateRange) {
@@ -320,6 +318,7 @@ function AppContent() {
         setDuplicateSource(null);
       } catch (error) {
         console.error('Error adding expense:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to save transaction.');
       }
     },
     [bumpTransactionListVersion]
@@ -361,6 +360,7 @@ function AppContent() {
         setIsFormOpen(false);
       } catch (error) {
         console.error('Error updating expense:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to save transaction.');
       }
     },
     [editingExpense]
@@ -374,6 +374,7 @@ function AppContent() {
         bumpTransactionListVersion();
       } catch (error) {
         console.error('Error deleting expense:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to delete transaction.');
       }
     },
     [bumpTransactionListVersion]
@@ -427,6 +428,7 @@ function AppContent() {
         setTransactionList((prev) => prev.map((e) => (e.id === expenseId ? returnedExpense : e)));
       } catch (error) {
         console.error('Error adding label:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to add label.');
       }
     },
     [expenses, transactionList]
@@ -454,6 +456,7 @@ function AppContent() {
         setTransactionList((prev) => prev.map((e) => (e.id === expenseId ? returnedExpense : e)));
       } catch (error) {
         console.error('Error removing label:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to remove label.');
       }
     },
     [expenses, transactionList]
@@ -1107,24 +1110,17 @@ function AppContent() {
                 sources={sources}
                 users={users}
                 onRefreshData={async () => {
-                  const [
-                    loadedExpenses,
-                    loadedSources,
-                    loadedCategories,
-                    loadedUsers,
-                    loadedLabels,
-                  ] = await Promise.all([
-                    ApiClient.loadExpenses(),
-                    ApiClient.loadSources(),
-                    ApiClient.loadCategories(),
-                    ApiClient.loadUsers(),
-                    ApiClient.loadLabels(),
-                  ]);
+                  const [loadedExpenses, loadedSources, loadedCategories, loadedUsers] =
+                    await Promise.all([
+                      ApiClient.loadExpenses(),
+                      ApiClient.loadSources(),
+                      ApiClient.loadCategories(),
+                      ApiClient.loadUsers(),
+                    ]);
                   setExpenses(loadedExpenses);
                   setSources(loadedSources);
                   setCategories(loadedCategories);
                   setUsers(loadedUsers);
-                  setAllLabels(loadedLabels);
                   bumpTransactionListVersion();
                 }}
                 onExportCSV={handleExportCSV}
@@ -1138,6 +1134,7 @@ function AppContent() {
               <Reports
                 expenses={filteredExpenses}
                 categories={categories}
+                allLabels={allLabels}
                 sources={sources}
                 globalDateRange={dateRange}
               />

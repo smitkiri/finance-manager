@@ -6,9 +6,11 @@ from app.database import get_db
 from app.demo.limits import refuse_in_demo_mode
 from app.dependencies.auth import get_current_household_id
 from app.models.import_session import ImportSession
+from app.models.label import Label
 from app.models.source import Source
 from app.models.transaction import Transaction
 from app.schemas.data import DeleteSelectedRequest, UndoImportRequest
+from app.utils.labels import lock_household_labels
 from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_groups import delete_household_groups, recompute_groups
 from app.utils.transfer_utils import run_detection
@@ -23,10 +25,12 @@ async def delete_all(
     db: AsyncSession = Depends(get_db),
 ):
     refuse_in_demo_mode()
+    await lock_household_labels(db, household_id)
     await db.execute(
         delete(Transaction).where(Transaction.household_id == household_id)
     )
     await delete_household_groups(db, household_id)
+    await db.execute(delete(Label).where(Label.household_id == household_id))
     await db.execute(delete(Source).where(Source.household_id == household_id))
     await db.commit()
     bg.add_task(run_detection_bg, household_id)
@@ -43,10 +47,12 @@ async def delete_selected(
     if body.deleteTransactions:
         # Wipes the whole household, same as /delete-all.
         refuse_in_demo_mode()
+        await lock_household_labels(db, household_id)
         await db.execute(
             delete(Transaction).where(Transaction.household_id == household_id)
         )
         await delete_household_groups(db, household_id)
+        await db.execute(delete(Label).where(Label.household_id == household_id))
 
     if body.deleteSources and body.sourceIds:
         await db.execute(
@@ -67,6 +73,7 @@ async def undo_import(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await lock_household_labels(db, household_id)
     # Count and delete transactions for this session within the household
     result = await db.execute(
         select(Transaction).where(

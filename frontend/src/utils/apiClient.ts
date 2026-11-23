@@ -78,12 +78,23 @@ if (typeof window !== 'undefined') {
 
 export class ApiClient {
   private static API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api';
+  private static labelChangeListeners = new Set<() => void>();
+
+  static onLabelsChanged(listener: () => void): () => void {
+    ApiClient.labelChangeListeners.add(listener);
+    return () => {
+      ApiClient.labelChangeListeners.delete(listener);
+    };
+  }
 
   static getApiBase(): string {
     return ApiClient.API_BASE;
   }
 
   static async apiFetch(url: string, options?: RequestInit): Promise<Response> {
+    // Capture subscribers before the request. A response from a previous
+    // household cannot refresh a newly mounted household's vocabulary.
+    const labelListeners = [...ApiClient.labelChangeListeners];
     // `credentials: 'include'` is what carries the __Host-fm_session cookie
     // cross-origin in dev (where the SPA lives on :3000 and the API on :3002
     // via nginx). In prod nginx serves both from the same origin and the
@@ -100,6 +111,18 @@ export class ApiClient {
     if (response.status === 401 && !url.includes('/api/auth/')) {
       const { navigateToLogin } = await import('./authNavigation');
       navigateToLogin(window.location.pathname + window.location.search);
+    }
+
+    const method = options?.method?.toUpperCase() ?? 'GET';
+    const path = new URL(url, window.location.origin).pathname;
+    const changesLabels =
+      /\/(expenses(?:\/[^/]+)?|import-csv|import-with-mapping|restore|undo-import|delete-all|delete-selected|import-sessions\/[^/]+|labels\/[^/]+(?:\/merge)?)$/.test(
+        path
+      );
+    if (response.ok && method !== 'GET' && method !== 'HEAD' && changesLabels) {
+      for (const listener of labelListeners) {
+        if (ApiClient.labelChangeListeners.has(listener)) listener();
+      }
     }
 
     return response;
@@ -153,6 +176,20 @@ export class ApiClient {
     return res.json();
   }
 
+  private static async expenseWriteError(response: Response) {
+    const result = await response.json().catch(() => null);
+    const detail = result?.detail ?? result?.error;
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail
+              .map((item: { msg?: string }) => item.msg ?? 'Invalid transaction data')
+              .join('; ')
+          : 'Failed to save transaction';
+    return Object.assign(new Error(message), { status: response.status });
+  }
+
   static async saveExpenses(expenses: Expense[]): Promise<void> {
     try {
       const metadata: StorageMetadata = {
@@ -175,12 +212,22 @@ export class ApiClient {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save expenses');
+        throw await this.expenseWriteError(response);
       }
 
       console.warn(`Saved ${expenses.length} expenses to server`);
     } catch (error) {
       console.error('Error saving expenses:', error);
+      // Validation/auth failures must not be presented as a successful offline
+      // save. Keep the existing fallback only when the server is unavailable.
+      if (
+        error instanceof Error &&
+        'status' in error &&
+        typeof error.status === 'number' &&
+        error.status >= 400 &&
+        error.status < 500
+      )
+        throw error;
       // Fallback to localStorage if server is not available
       localStorage.setItem('expenses', JSON.stringify(expenses));
       console.warn('Saved to localStorage as fallback');
@@ -390,7 +437,7 @@ export class ApiClient {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update expense on server');
+        throw await this.expenseWriteError(response);
       }
 
       const returnedExpense = await response.json();
@@ -814,15 +861,10 @@ export class ApiClient {
   }
 
   static async loadLabels(): Promise<string[]> {
-    try {
-      const response = await ApiClient.apiFetch(`${this.API_BASE}/labels`);
-      if (!response.ok) throw new Error('Failed to load labels from server');
-      const result = await response.json();
-      return result.labels;
-    } catch (error) {
-      console.error('Error loading labels:', error);
-      return [];
-    }
+    const response = await ApiClient.apiFetch(`${this.API_BASE}/labels`);
+    if (!response.ok) throw new Error('Failed to load labels from server');
+    const result = await response.json();
+    return result.labels;
   }
 
   static async addCategory(category: string): Promise<string[]> {

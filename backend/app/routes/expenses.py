@@ -1,7 +1,7 @@
 from datetime import date as date_type
 from decimal import Decimal
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import case, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert
@@ -18,6 +18,13 @@ from app.schemas.transaction import (
     TransactionUpdate,
 )
 from app.utils.household_members import assert_users_in_household
+from app.utils.labels import (
+    ASCII_WHITESPACE,
+    BATCH_SIZE,
+    lock_household_labels,
+    normalize_label_names,
+    replace_transaction_labels,
+)
 from app.utils.query_builder import (
     build_expenses_filter,
     build_stats_filter,
@@ -34,11 +41,11 @@ from app.utils.transfer_groups import (
 router = APIRouter(prefix="/api", tags=["expenses"])
 
 
-def _parse_list(value: str | None) -> list[str] | None:
+def _parse_list(value: str | None, trim_chars: str | None = None) -> list[str] | None:
     """Parse comma-separated query param into list."""
     if not value:
         return None
-    return [s.strip() for s in value.split(",") if s.strip()]
+    return [s.strip(trim_chars) for s in value.split(",") if s.strip(trim_chars)]
 
 
 def _effective(counted, original) -> float | None:
@@ -69,7 +76,7 @@ async def get_expenses(
         "userId": userId,
         "categories": _parse_list(categories),
         "types": _parse_list(types),
-        "labels": _parse_list(labels),
+        "labels": _parse_list(labels, ASCII_WHITESPACE),
         "sources": _parse_list(sources),
         "minAmount": minAmount,
         "maxAmount": maxAmount,
@@ -319,6 +326,8 @@ async def update_expense(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    if body.labels is not None:
+        await lock_household_labels(db, household_id)
     result = await db.execute(
         select(Transaction).where(
             Transaction.id == expense_id, Transaction.household_id == household_id
@@ -355,7 +364,7 @@ async def update_expense(
         txn.created_by_user_id = body.user
         updated = True
     if body.labels is not None:
-        txn.labels = body.labels
+        await replace_transaction_labels(db, household_id, {txn.id: body.labels})
         updated = True
     if body.excludedFromCalculations is not None:
         txn.excluded_from_calculations = body.excludedFromCalculations
@@ -392,6 +401,24 @@ async def bulk_save_expenses(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    names_by_id = {
+        exp.id: normalize_label_names(exp.labels or []) for exp in body.expenses
+    }
+    if len(names_by_id) != len(body.expenses):
+        raise HTTPException(422, "Duplicate transaction IDs")
+    await lock_household_labels(db, household_id)
+    posted_ids = list(names_by_id)
+    for start in range(0, len(posted_ids), BATCH_SIZE):
+        collision = await db.scalar(
+            select(Transaction.id)
+            .where(
+                Transaction.id.in_(posted_ids[start : start + BATCH_SIZE]),
+                Transaction.household_id != household_id,
+            )
+            .limit(1)
+        )
+        if collision:
+            raise HTTPException(409, "Transaction ID is already in use")
     assert_demo_replace_count(
         len(body.expenses),
         cap=settings.demo_max_transactions,
@@ -443,7 +470,6 @@ async def bulk_save_expenses(
             type=exp.type,
             household_id=household_id,
             created_by_user_id=exp.user,
-            labels=exp.labels or [],
             metadata_=exp.metadata or {},
             excluded_from_calculations=exp.excludedFromCalculations or False,
             transfer_group_id=group_id,
@@ -451,6 +477,7 @@ async def bulk_save_expenses(
         )
         db.add(txn)
     await db.flush()
+    await replace_transaction_labels(db, household_id, names_by_id)
     await recompute_groups(db, (g for g, _ in membership.values()))
 
     # Store metadata if provided

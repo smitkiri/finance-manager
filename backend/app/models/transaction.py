@@ -35,7 +35,6 @@ class Transaction(Base):
     created_by_user_id: Mapped[str | None] = mapped_column(
         String(255), ForeignKey("users.id", ondelete="SET NULL")
     )
-    labels: Mapped[Any] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     metadata_: Mapped[Any] = mapped_column(
         "metadata", JSONB, server_default=text("'{}'::jsonb")
     )

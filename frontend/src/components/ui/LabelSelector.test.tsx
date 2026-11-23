@@ -22,6 +22,68 @@ beforeEach(() => {
 });
 
 describe('LabelSelector', () => {
+  test.each(['x'.repeat(255), '😀'.repeat(255)])(
+    'accepts a 255-codepoint name after ASCII trimming',
+    (name) => {
+      const onAddLabel = vi.fn();
+      renderSelector({ onAddLabel });
+      const input = screen.getByPlaceholderText('Type to search or create new label...');
+      fireEvent.change(input, { target: { value: ` \t${name}\n ` } });
+      fireEvent.submit(input.closest('form')!);
+      expect(onAddLabel).toHaveBeenCalledWith(name);
+    }
+  );
+
+  test('rejects overlong names without truncating and clears the error after correction', () => {
+    const onAddLabel = vi.fn();
+    const onClose = vi.fn();
+    renderSelector({ onAddLabel, onClose });
+    const input = screen.getByPlaceholderText('Type to search or create new label...');
+    const name = '😀'.repeat(256);
+    fireEvent.change(input, { target: { value: name } });
+    fireEvent.submit(input.closest('form')!);
+    expect(input).toHaveValue(name);
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('255 characters or fewer');
+    expect(onAddLabel).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: 'Shorter' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.submit(input.closest('form')!);
+    expect(onAddLabel).toHaveBeenCalledWith('Shorter');
+  });
+
+  test('trims ASCII whitespace when creating a label and preserves Unicode whitespace', () => {
+    const onAddLabel = vi.fn();
+    renderSelector({ onAddLabel });
+    const input = screen.getByPlaceholderText('Type to search or create new label...');
+    fireEvent.change(input, { target: { value: ' \t\u00a0Trip\u00a0\n ' } });
+    fireEvent.submit(input.closest('form')!);
+    expect(onAddLabel).toHaveBeenCalledWith('\u00a0Trip\u00a0');
+  });
+
+  test.each([375, 768])(
+    'keeps the popup inside a %ipx viewport near the right edge',
+    (viewportWidth) => {
+      const viewport = vi
+        .spyOn(document.documentElement, 'clientWidth', 'get')
+        .mockReturnValue(viewportWidth);
+      const measure = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockReturnValue({ width: 256 } as DOMRect);
+      try {
+        const { container } = renderSelector({ position: { x: viewportWidth - 12, y: 300 } });
+        const popup = container.querySelector<HTMLDivElement>('div.fixed.z-50')!;
+        const center = Number.parseFloat(popup.style.left);
+        expect(center - 128).toBeGreaterThanOrEqual(8);
+        expect(center + 128).toBeLessThanOrEqual(viewportWidth - 8);
+      } finally {
+        viewport.mockRestore();
+        measure.mockRestore();
+      }
+    }
+  );
+
   // 1. Returns null when isOpen is false
   test('returns null when isOpen is false', () => {
     const { container } = renderSelector({ isOpen: false });

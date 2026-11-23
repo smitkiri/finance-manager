@@ -20,6 +20,7 @@ from app.routes.households import router as households_router
 from app.routes.import_sessions import router as import_sessions_router
 from app.routes.imports import router as imports_router
 from app.routes.invitations import router as invitations_router
+from app.routes.labels import router as labels_router
 from app.routes.net_worth import router as net_worth_router
 from app.routes.reports import router as reports_router
 from app.routes.sources import router as sources_router
@@ -66,6 +67,7 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(households_router)
 app.include_router(categories_router)
+app.include_router(labels_router)
 app.include_router(net_worth_router)
 app.include_router(date_range_router)
 app.include_router(everyday_categories_router)

@@ -6,6 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import Transaction
+from app.utils.labels import replace_transaction_labels
 
 
 @pytest.mark.asyncio
@@ -73,7 +74,6 @@ async def test_get_labels_returns_unique_labels(
             amount=Decimal("10.00"),
             type="expense",
             created_by_user_id="u1",
-            labels=["groceries", "weekly"],
         )
     )
     db_session.add(
@@ -85,10 +85,14 @@ async def test_get_labels_returns_unique_labels(
             amount=Decimal("20.00"),
             type="expense",
             created_by_user_id="u1",
-            labels=["groceries", "monthly"],
         )
     )
     await db_session.flush()
+    await replace_transaction_labels(
+        db_session,
+        "household-default",
+        {"t1": ["groceries", "weekly"], "t2": ["groceries", "monthly"]},
+    )
 
     response = await client.get("/api/labels")
     assert response.status_code == 200

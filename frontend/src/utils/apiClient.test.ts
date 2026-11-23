@@ -2,6 +2,96 @@ import { ApiClient } from './apiClient';
 import { setAuthNavigator, resetAuthNavigatorForTests } from './authNavigation';
 import type { Mock } from 'vitest';
 
+describe('transaction write validation errors', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    localStorage.removeItem('expenses');
+  });
+
+  it('rejects a full-replacement 422 without saving invalid local data', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: [{ msg: 'Label names must be 255 characters or fewer.' }],
+          }),
+          { status: 422 }
+        )
+      )
+    );
+    await expect(ApiClient.saveExpenses([])).rejects.toThrow('255 characters or fewer');
+    expect(localStorage.getItem('expenses')).toBeNull();
+  });
+
+  it('preserves network-unavailable fallback', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+    await expect(ApiClient.saveExpenses([])).resolves.toBeUndefined();
+    expect(localStorage.getItem('expenses')).toBe('[]');
+  });
+
+  it('surfaces the backend label validation message for PATCH', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: 'Label names must be 255 characters or fewer.',
+          }),
+          { status: 422 }
+        )
+      )
+    );
+    await expect(
+      ApiClient.updateExpense({
+        id: 'one',
+        date: '2024-01-01',
+        description: 'Synthetic',
+        category: 'Travel',
+        type: 'expense',
+        amount: 1,
+        user: 'alice',
+        labels: ['x'.repeat(256)],
+      })
+    ).rejects.toThrow('255 characters or fewer');
+  });
+});
+
+describe('successful label-affecting writes', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ['POST', '/api/expenses'],
+    ['PATCH', '/api/expenses/one'],
+    ['POST', '/api/import-csv'],
+    ['POST', '/api/import-with-mapping'],
+    ['POST', '/api/restore'],
+    ['POST', '/api/undo-import'],
+    ['DELETE', '/api/import-sessions/one'],
+    ['DELETE', '/api/delete-all'],
+    ['POST', '/api/delete-selected'],
+    ['PATCH', '/api/labels/one'],
+    ['POST', '/api/labels/one/merge'],
+  ])('notifies once after %s %s', async (method, path) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
+    const listener = vi.fn();
+    const unsubscribe = ApiClient.onLabelsChanged(listener);
+    try {
+      await ApiClient.apiFetch(path, { method });
+      expect(listener).toHaveBeenCalledOnce();
+    } finally {
+      unsubscribe();
+    }
+  });
+});
+
 describe('ApiClient.apiFetch 401 interceptor', () => {
   let originalFetch: typeof globalThis.fetch;
   let originalLocation: Location;
