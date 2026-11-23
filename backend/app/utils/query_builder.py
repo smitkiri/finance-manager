@@ -7,9 +7,9 @@ into SQLAlchemy filter clauses.
 
 from datetime import date as date_type
 
-from sqlalchemy import Text, and_, case, cast, exists, func, or_, select, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import and_, case, exists, func, or_, select, text
 
+from app.models.label import Label, TransactionLabel
 from app.models.transaction import Transaction
 from app.models.transfer_group import TransferGroup
 
@@ -59,6 +59,21 @@ def _parse_date(d: str) -> date_type:
     return date_type.fromisoformat(str(d)[:10])
 
 
+def _label_match(predicate):
+    """Correlate names without multiplying outer rows, counts or totals."""
+    return (
+        select(1)
+        .select_from(TransactionLabel)
+        .join(Label, Label.id == TransactionLabel.label_id)
+        .where(
+            TransactionLabel.transaction_id == Transaction.id,
+            Label.household_id == Transaction.household_id,
+            predicate,
+        )
+        .correlate(Transaction)
+    )
+
+
 def build_expenses_filter(params: dict) -> list:
     """Build SQLAlchemy filter clauses from query parameters.
 
@@ -95,16 +110,7 @@ def build_expenses_filter(params: dict) -> list:
     search = params.get("search")
     if search and search.strip():
         term = f"%{search.strip().lower()}%"
-        label_subq = (
-            select(text("1"))
-            .select_from(
-                func.jsonb_array_elements_text(
-                    func.coalesce(Transaction.labels, cast("[]", JSONB))
-                ).alias("lbl")
-            )
-            .where(func.lower(text("lbl")).like(term))
-            .correlate(Transaction)
-        )
+        label_subq = _label_match(func.lower(Label.name).like(term))
         filters.append(
             or_(
                 func.lower(Transaction.description).like(term),
@@ -115,16 +121,7 @@ def build_expenses_filter(params: dict) -> list:
 
     labels = params.get("labels")
     if labels and len(labels) > 0:
-        label_subq = (
-            select(text("1"))
-            .select_from(
-                func.jsonb_array_elements_text(
-                    func.coalesce(Transaction.labels, cast("[]", JSONB))
-                ).alias("lbl")
-            )
-            .where(cast(text("lbl"), Text).in_(labels))
-            .correlate(Transaction)
-        )
+        label_subq = _label_match(Label.name.in_(labels))
         filters.append(exists(label_subq))
 
     sources = params.get("sources")
@@ -210,16 +207,7 @@ def build_filter_groups_clause(filter_groups: list[dict] | None):
                     cond_clauses.append(Transaction.category.not_in(value))
 
             elif field == "labels" and isinstance(value, list) and len(value) > 0:
-                label_subq = (
-                    select(text("1"))
-                    .select_from(
-                        func.jsonb_array_elements_text(
-                            func.coalesce(Transaction.labels, cast("[]", JSONB))
-                        ).alias("lbl")
-                    )
-                    .where(cast(text("lbl"), Text).in_(value))
-                    .correlate(Transaction)
-                )
+                label_subq = _label_match(Label.name.in_(value))
                 if operator == "excludes":
                     cond_clauses.append(~exists(label_subq))
                 else:  # "includes"

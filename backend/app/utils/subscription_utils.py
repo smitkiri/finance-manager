@@ -15,6 +15,7 @@ from app.database import async_session_factory
 from app.models.household import Household
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
+from app.utils.labels import load_transaction_label_names, lock_household_labels
 from app.utils.subscription_detection import DetectionResult, detect_subscriptions
 
 _log = logging.getLogger(__name__)
@@ -30,7 +31,9 @@ def _lock_for(household_id: str) -> asyncio.Lock:
     return lock
 
 
-def _txns_to_dicts(txns: Sequence[Transaction]) -> list[dict]:
+def _txns_to_dicts(
+    txns: Sequence[Transaction], label_names: dict[str, list[str]]
+) -> list[dict]:
     return [
         {
             "id": t.id,
@@ -40,7 +43,7 @@ def _txns_to_dicts(txns: Sequence[Transaction]) -> list[dict]:
             "amount": float(t.amount),
             "type": t.type,
             "user": t.created_by_user_id,
-            "labels": t.labels or [],
+            "labels": label_names[t.id],
             "metadata": t.metadata_ or {},
             "transferGroupId": t.transfer_group_id,
             "excludedFromCalculations": t.excluded_from_calculations,
@@ -75,6 +78,9 @@ async def run_detection(
     strip_existing: bool = False,
 ) -> dict:
     """Run full detection for the household and persist results."""
+    # Detection writes transaction memberships and finally the household's
+    # timestamp. Match label mutation lock order to avoid row-lock inversion.
+    await lock_household_labels(db, household_id)
     txns_result = await db.execute(
         select(Transaction).where(Transaction.household_id == household_id)
     )
@@ -94,7 +100,8 @@ async def run_detection(
             t.subscription_id = None
         await db.flush()
 
-    txn_dicts = _txns_to_dicts(txns)
+    label_names = await load_transaction_label_names(db, txns)
+    txn_dicts = _txns_to_dicts(txns, label_names)
     existing_dicts = _subs_to_dicts(existing)
 
     result = detect_subscriptions(txn_dicts, existing_dicts)

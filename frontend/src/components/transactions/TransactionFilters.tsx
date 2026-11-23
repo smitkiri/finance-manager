@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tag, Filter, DollarSign, X, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Source } from '../../types';
+import { labelChoices } from '../../utils/labelChoices';
 
 export interface TransactionFilters {
   categories?: string[];
@@ -27,10 +28,11 @@ export const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
   onFiltersChange,
   categories,
   sources,
-  allLabels,
+  allLabels: vocabulary,
   isCompact = false,
   onClearFilters,
 }) => {
+  const allLabels = labelChoices(vocabulary, filters.labels);
   const handleCategoryChange = (category: string, checked: boolean) => {
     const currentCategories = filters.categories || [];
     const newCategories = checked

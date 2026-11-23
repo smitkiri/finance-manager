@@ -67,24 +67,3 @@ async def save_categories(
         )
     await db.commit()
     return {"success": True, "count": len(body.categories)}
-
-
-@router.get("/labels")
-async def get_labels(
-    household_id: str = Depends(get_current_household_id),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        text("""
-            SELECT DISTINCT lbl
-            FROM transactions,
-                jsonb_array_elements_text(
-                    COALESCE(labels, '[]'::jsonb)
-                ) AS lbl
-            WHERE transactions.household_id = :hid
-            ORDER BY lbl
-        """),
-        {"hid": household_id},
-    )
-    labels = [row[0] for row in result.all()]
-    return {"labels": labels}

@@ -84,7 +84,17 @@ Browser → Frontend (3000) → nginx (3002) → FastAPI (8000) → PostgreSQL (
 2. Falls back to browser localStorage if backend is unavailable
 3. nginx routes all API traffic to FastAPI
 4. FastAPI uses SQLAlchemy ORM for all database access
-5. JSONB columns store flexible data: labels, metadata, transfer_info, source mappings, report filters
+5. Labels use household-owned `labels` definitions and `transaction_labels` associations. Transaction APIs keep `labels: string[]`; batch-loaded names are serialized explicitly. JSONB stores metadata, transfer_info, source mappings and saved report/panel filters.
+6. `useLabelVocabulary` loads the full household vocabulary independently of transaction pages/date ranges. `ApiClient.apiFetch` notifies current subscribers after successful label-affecting writes; subscribers are captured before the request so responses from a previous household cannot refresh a new household. Keep selected names visible when vocabulary changes.
+
+### Label storage and compatibility
+
+- Name identity is case-sensitive after trimming ASCII space, tab, LF, CR, form feed and vertical tab. Internal whitespace and Unicode remain significant. Blank attachments are discarded; names are deduplicated and returned in Python string order. Names are limited to 255 Unicode codepoints after trimming; reject longer names without truncation in writes/imports/restore/rename and migration preflight. The selector counts codepoints rather than UTF-16 units or raw input length.
+- Unused definitions survive transaction edits, replacement and import undo. Explicit deletion of all household transactions clears the vocabulary; demo reset rebuilds it.
+- `GET /api/labels` retains `{ labels: string[] }`, including unused definitions. `/api/labels/catalog` exposes IDs, timestamps, `user|ai` origin and usage counts. Rename (`PATCH /api/labels/{id}`) and merge (`POST /api/labels/{sourceId}/merge` with `targetId`) are API-only in Phase 1 and update saved report/dashboard label references atomically.
+- Backups keep transaction name arrays and optionally add top-level vocabulary records without portable IDs. Legacy backups remain accepted. Additive restore attaches uploaded names only to newly inserted transactions; existing rows keep their labels.
+- Other open tabs need a refresh after API rename/merge. A stale name-based transaction save can recreate an old name; there are no permanent aliases or optimistic concurrency in this phase.
+- Release the schema and matching application together with old instances/background writes quiesced. Do not roll out a mixed-schema application or deploy the column-removal migration separately. Downgrade cannot restore original whitespace/order, unused vocabulary, provenance or pre-rename identities; exact recovery requires a dump.
 
 ### Production deployment (Coolify)
 

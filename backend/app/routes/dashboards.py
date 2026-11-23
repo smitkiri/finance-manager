@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from datetime import date as date_type
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from app.schemas.dashboard import (
     PanelPreviewRequest,
     PanelUpdateRequest,
 )
+from app.utils.labels import lock_household_labels, normalize_panel_label_references
 from app.utils.query_builder import (
     build_filter_groups_clause,
     build_month_series,
@@ -186,6 +187,13 @@ async def create_panel(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    try:
+        filters = normalize_panel_label_references(body.filterGroups)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail="Invalid panel label filters"
+        ) from exc
+    await lock_household_labels(db, household_id)
     if not await _verify_dashboard_in_household(db, dashboard_id, household_id):
         return JSONResponse(status_code=404, content={"error": "Dashboard not found"})
     await assert_demo_can_add_entity(db, DashboardPanel, household_id)
@@ -203,7 +211,7 @@ async def create_panel(
         dashboard_id=dashboard_id,
         title=body.title,
         chart_type=body.chartType,
-        filter_groups=body.filterGroups,
+        filter_groups=filters,
         series_mode=body.seriesMode,
         net_orientation=body.netOrientation,
         legend_options=body.legendOptions,
@@ -233,6 +241,13 @@ async def update_panel(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    try:
+        filters = normalize_panel_label_references(body.filterGroups)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail="Invalid panel label filters"
+        ) from exc
+    await lock_household_labels(db, household_id)
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:
         return JSONResponse(
@@ -252,7 +267,7 @@ async def update_panel(
     if body.chartType is not None:
         panel.chart_type = body.chartType
     if body.filterGroups is not None:
-        panel.filter_groups = body.filterGroups
+        panel.filter_groups = filters
     if body.seriesMode is not None:
         panel.series_mode = body.seriesMode
     if body.netOrientation is not None:

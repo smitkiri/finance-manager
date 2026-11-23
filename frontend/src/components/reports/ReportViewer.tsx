@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from '../../utils';
 interface ReportViewerProps {
   report: Report;
   expenses: Expense[];
+  allLabels: string[];
   onBack: () => void;
   onDelete: () => void;
 }
@@ -17,6 +18,7 @@ interface ReportViewerProps {
 export const ReportViewer: React.FC<ReportViewerProps> = ({
   report,
   expenses,
+  allLabels,
   onBack,
   onDelete,
 }) => {
@@ -245,6 +247,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           </h3>
         </div>
         <TransactionList
+          allLabels={allLabels}
           expenses={reportData.transactions}
           onEdit={() => {}} // No editing in report view
           onDelete={() => {}} // No deleting in report view

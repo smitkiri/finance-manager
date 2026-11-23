@@ -20,6 +20,11 @@ from app.schemas.imports import (
 from app.utils.csv_parser import parse_csv, parse_csv_with_mapping
 from app.utils.date_parser import parse_date
 from app.utils.household_members import assert_users_in_household
+from app.utils.labels import (
+    load_transaction_label_names,
+    lock_household_labels,
+    replace_transaction_labels,
+)
 from app.utils.subscription_utils import run_detection_bg
 from app.utils.transfer_utils import run_detection, txns_to_dicts
 
@@ -85,6 +90,7 @@ async def import_csv(
     db: AsyncSession = Depends(get_db),
 ):
     assert_demo_csv_size(body.csvText)
+    await lock_household_labels(db, household_id)
     await assert_users_in_household(db, household_id, [body.userId])
 
     # Parse CSV
@@ -131,7 +137,6 @@ async def import_csv(
                 type=t["type"],
                 household_id=household_id,
                 created_by_user_id=t.get("user") or body.userId or None,
-                labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
                 excluded_from_calculations=t.get("excludedFromCalculations", False),
                 import_id=session_id,
@@ -139,6 +144,11 @@ async def import_csv(
         )
     await db.flush()
 
+    await replace_transaction_labels(
+        db,
+        household_id,
+        {t["id"]: t.get("labels", []) for t in new_transactions},
+    )
     # Transfer detection runs over the household's full set (commits the inserts)
     detection = await run_detection(db, household_id=household_id)
     bg.add_task(run_detection_bg, household_id)
@@ -161,6 +171,7 @@ async def import_with_mapping(
     db: AsyncSession = Depends(get_db),
 ):
     assert_demo_csv_size(body.csvText)
+    await lock_household_labels(db, household_id)
     await assert_users_in_household(db, household_id, [body.userId])
 
     # Load existing transactions for category auto-fill
@@ -168,7 +179,8 @@ async def import_with_mapping(
         select(Transaction).where(Transaction.household_id == household_id)
     )
     existing_orm = result.scalars().all()
-    existing_dicts = txns_to_dicts(existing_orm)
+    label_names = await load_transaction_label_names(db, existing_orm)
+    existing_dicts = txns_to_dicts(existing_orm, label_names)
 
     # Parse with mapping
     mapping_dict = body.mapping.model_dump()
@@ -221,7 +233,6 @@ async def import_with_mapping(
                 type=t["type"],
                 household_id=household_id,
                 created_by_user_id=t.get("user") or body.userId,
-                labels=t.get("labels", []),
                 metadata_=t.get("metadata", {}),
                 excluded_from_calculations=t.get("excludedFromCalculations", False),
                 import_id=session_id,
@@ -229,6 +240,11 @@ async def import_with_mapping(
         )
     await db.flush()
 
+    await replace_transaction_labels(
+        db,
+        household_id,
+        {t["id"]: t.get("labels", []) for t in new_transactions},
+    )
     # Transfer detection runs over the household's full set (commits the inserts)
     detection = await run_detection(db, household_id=household_id)
     bg.add_task(run_detection_bg, household_id)

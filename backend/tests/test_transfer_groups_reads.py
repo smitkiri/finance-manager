@@ -24,7 +24,6 @@ def _txn(tid, amount, typ, d, user="alice", **kw):
         type=typ,
         household_id=HH,
         created_by_user_id=user,
-        labels=[],
         metadata_={},
         **kw,
     )

@@ -18,12 +18,14 @@ from app.models import (
     DateRange,
     Household,
     Invitation,
+    Label,
     Report,
     Source,
     Transaction,
     User,
 )
 from app.utils.jwt_tokens import encode_access_token
+from app.utils.labels import ensure_labels, replace_transaction_labels
 from app.utils.passwords import hash_password
 from tests.conftest import auth_headers
 
@@ -248,6 +250,10 @@ async def test_accept_deletes_all_old_household_data(
     )
     await db_session.flush()
 
+    await replace_transaction_labels(db_session, h_a.id, {"txn-wide": ["Attached"]})
+    await ensure_labels(db_session, h_a.id, ["Unused"])
+    await ensure_labels(db_session, h_b.id, ["Retained destination"])
+
     invite = await _seed_invitation(
         db_session,
         invite_id="inv-wide",
@@ -266,6 +272,7 @@ async def test_accept_deletes_all_old_household_data(
 
     for model in [
         Transaction,
+        Label,
         Account,
         Category,
         Source,
@@ -283,6 +290,9 @@ async def test_accept_deletes_all_old_household_data(
             .all()
         )
         assert rows == [], f"{model.__name__} not cleaned for old household"
+    assert list(
+        await db_session.scalars(select(Label.name).where(Label.household_id == h_b.id))
+    ) == ["Retained destination"]
 
 
 @pytest.mark.asyncio

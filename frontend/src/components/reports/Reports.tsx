@@ -11,6 +11,7 @@ import { countedAmount } from '../../utils/transferGroups';
 interface ReportsProps {
   expenses: Expense[];
   categories: string[];
+  allLabels: string[];
   sources: Source[];
   globalDateRange: DateRange;
 }
@@ -18,6 +19,7 @@ interface ReportsProps {
 export const Reports: React.FC<ReportsProps> = ({
   expenses,
   categories,
+  allLabels,
   sources,
   globalDateRange,
 }) => {
@@ -127,6 +129,7 @@ export const Reports: React.FC<ReportsProps> = ({
       <ReportViewer
         report={selectedReport}
         expenses={expenses}
+        allLabels={allLabels}
         onBack={() => setSelectedReport(null)}
         onDelete={() => handleDeleteReport(selectedReport.id)}
       />
@@ -138,6 +141,7 @@ export const Reports: React.FC<ReportsProps> = ({
       <ReportCreator
         expenses={expenses}
         categories={categories}
+        allLabels={allLabels}
         sources={sources}
         onCreateReport={handleCreateReport}
         onCancel={() => setIsCreatingReport(false)}

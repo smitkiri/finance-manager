@@ -9,13 +9,17 @@ from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.household import Household
 from app.models.transaction import Transaction
 from app.models.transfer_group import TransferGroup
+from app.utils.labels import load_transaction_label_names, lock_household_labels
 from app.utils.transfer_detection import detect_transfers
 from app.utils.transfer_groups import create_group, dissolve_groups_where
 
 
-def txns_to_dicts(all_txns: Sequence[Transaction]) -> list[dict]:
+def txns_to_dicts(
+    all_txns: Sequence[Transaction], label_names: dict[str, list[str]]
+) -> list[dict]:
     """Convert ORM Transaction objects to dicts for transfer detection."""
     return [
         {
@@ -26,7 +30,7 @@ def txns_to_dicts(all_txns: Sequence[Transaction]) -> list[dict]:
             "amount": float(t.amount),
             "type": t.type,
             "user": t.created_by_user_id,
-            "labels": t.labels or [],
+            "labels": label_names[t.id],
             "metadata": t.metadata_ or {},
             "excludedFromCalculations": t.excluded_from_calculations,
         }
@@ -49,6 +53,16 @@ async def run_detection(
     Returns dict with success/transfersDetected/totalTransactions,
     or None if no transactions exist.
     """
+    if household_id is not None:
+        await lock_household_labels(db, household_id)
+    else:
+        # Legacy all-household jobs must use a deterministic lock order too.
+        # Reruns detach existing groups before new group INSERTs acquire
+        # household FK locks; acquire households before either operation.
+        with db.no_autoflush:
+            await db.execute(
+                select(Household.id).order_by(Household.id).with_for_update()
+            )
     if strip_existing:
         clauses = [TransferGroup.source == "auto"]
         if household_id is not None:
@@ -69,9 +83,10 @@ async def run_detection(
             by_household.setdefault(txn.household_id, []).append(txn)
 
     detected = 0
+    label_names = await load_transaction_label_names(db, all_txns)
     for hid, candidates in by_household.items():
         by_id = {t.id: t for t in candidates}
-        result = detect_transfers(txns_to_dicts(candidates))
+        result = detect_transfers(txns_to_dicts(candidates, label_names))
         for pair in result["transfers"]:
             credit = by_id[pair["credit"]["id"]]
             debit = by_id[pair["debit"]["id"]]

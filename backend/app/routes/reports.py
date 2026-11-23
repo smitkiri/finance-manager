@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
@@ -11,6 +11,7 @@ from app.demo.limits import assert_demo_can_add_entity
 from app.dependencies.auth import get_current_household_id
 from app.models.report import Report
 from app.schemas.report import ReportOut, ReportSaveRequest
+from app.utils.labels import lock_household_labels, normalize_report_label_references
 
 router = APIRouter(prefix="/api", tags=["reports"])
 
@@ -34,6 +35,13 @@ async def save_report(
     household_id: str = Depends(get_current_household_id),
     db: AsyncSession = Depends(get_db),
 ):
+    try:
+        filters = normalize_report_label_references(body.report.filters or {})
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail="Invalid report label filters"
+        ) from exc
+    await lock_household_labels(db, household_id)
     await assert_demo_can_add_entity(db, Report, household_id)
     r = body.report
     now = datetime.now(UTC).replace(tzinfo=None)
@@ -46,7 +54,7 @@ async def save_report(
             name=r.name,
             description=r.description,
             household_id=household_id,
-            filters=r.filters or {},
+            filters=filters,
             created_at=created,
             last_modified=modified,
         )
@@ -55,12 +63,16 @@ async def save_report(
             set_={
                 "name": r.name,
                 "description": r.description,
-                "filters": r.filters or {},
+                "filters": filters,
                 "last_modified": modified,
             },
+            where=Report.household_id == household_id,
         )
+        .returning(Report.id)
     )
-    await db.execute(stmt)
+    saved_id = (await db.execute(stmt)).scalar_one_or_none()
+    if saved_id is None:
+        return JSONResponse(status_code=404, content={"error": "Report not found"})
     await db.commit()
 
     return {"success": True, "reportId": r.id}

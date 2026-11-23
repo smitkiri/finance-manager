@@ -42,7 +42,6 @@ def _make_txn(
         amount=Decimal(str(amount)),
         type="expense",
         household_id="hh1",
-        labels=[],
         metadata_={},
         excluded_from_calculations=False,
     )

@@ -21,7 +21,6 @@ async def _seed_transfer_transactions(db: AsyncSession):
             amount=Decimal("100.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={"sourceId": "src1"},
         ),
         Transaction(
@@ -32,7 +31,6 @@ async def _seed_transfer_transactions(db: AsyncSession):
             amount=Decimal("100.00"),
             type="income",
             created_by_user_id="alice",
-            labels=[],
             metadata_={"sourceId": "src2"},
         ),
         Transaction(
@@ -43,7 +41,6 @@ async def _seed_transfer_transactions(db: AsyncSession):
             amount=Decimal("50.00"),
             type="expense",
             created_by_user_id="alice",
-            labels=[],
             metadata_={"sourceId": "src1"},
         ),
     ]
@@ -114,7 +111,6 @@ async def test_rerun_keeps_manual_groups_and_rebuilds_auto(
                 amount=Decimal("30.00"),
                 type="income",
                 created_by_user_id="alice",
-                labels=[],
                 metadata_={"sourceId": "src1"},
             ),
             Transaction(
@@ -125,7 +121,6 @@ async def test_rerun_keeps_manual_groups_and_rebuilds_auto(
                 amount=Decimal("80.00"),
                 type="expense",
                 created_by_user_id="alice",
-                labels=[],
                 metadata_={"sourceId": "src1"},
             ),
         ]

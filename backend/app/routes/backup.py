@@ -2,7 +2,7 @@ import json
 from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -14,12 +14,22 @@ from app.dependencies.auth import get_current_household_id, get_current_user
 from app.models.account import Account, AccountBalance
 from app.models.category import Category
 from app.models.date_range import DateRange
+from app.models.label import Label
 from app.models.metadata import Metadata
 from app.models.report import Report
 from app.models.source import Source
 from app.models.transaction import Transaction
 from app.models.transfer_group import TransferGroup
 from app.models.user import User
+from app.utils.labels import (
+    load_transaction_label_names,
+    lock_household_labels,
+    normalize_label_names,
+    normalize_report_label_references,
+    replace_transaction_labels,
+    restore_label_definitions,
+    validate_label_definitions,
+)
 from app.utils.transfer_groups import adopt_legacy_transfer_info, recompute_groups
 
 router = APIRouter(prefix="/api", tags=["backup"])
@@ -116,6 +126,12 @@ async def backup(
     if dateTo:
         txn_query = txn_query.where(Transaction.date <= date.fromisoformat(dateTo))
     transactions = (await db.execute(txn_query)).scalars().all()
+    label_names = await load_transaction_label_names(db, transactions)
+    definitions = (
+        (await db.execute(select(Label).where(Label.household_id == household_id)))
+        .scalars()
+        .all()
+    )
     group_ids = {t.transfer_group_id for t in transactions if t.transfer_group_id}
     transfer_groups = (
         (await db.execute(select(TransferGroup).where(TransferGroup.id.in_(group_ids))))
@@ -134,7 +150,17 @@ async def backup(
         "metadata": [_row_to_dict(r) for r in metadata_rows],
         "accounts": [_row_to_dict(r) for r in accounts],
         "account_balances": [_row_to_dict(r) for r in account_balances],
-        "transactions": [_row_to_dict(r) for r in transactions],
+        "transactions": [
+            {**_row_to_dict(r), "labels": label_names[r.id]} for r in transactions
+        ],
+        "labels": [
+            {
+                "name": label.name,
+                "created_at": _serialize(label.created_at),
+                "created_by": label.created_by,
+            }
+            for label in sorted(definitions, key=lambda label: label.name)
+        ],
         "transfer_groups": [_row_to_dict(r) for r in transfer_groups],
     }
 
@@ -155,8 +181,46 @@ async def restore(
     content = await backupFile.read()
     try:
         data = json.loads(content)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError, UnicodeDecodeError:
         return JSONResponse(status_code=400, content={"error": "Invalid JSON"})
+
+    # Validate all label payloads before the first insert. Explicit vocabulary
+    # records may restore unused labels independently of transaction conflicts.
+    # Transaction-only names are resolved only for rows actually inserted below.
+    try:
+        if not isinstance(data, dict):
+            raise ValueError("Expected a backup object")
+        vocabulary = validate_label_definitions(data.get("labels", []))
+        uploaded_transactions = data.get("transactions", [])
+        if not isinstance(uploaded_transactions, list) or any(
+            not isinstance(txn, dict) for txn in uploaded_transactions
+        ):
+            raise ValueError("Expected transaction objects")
+        if any(
+            txn.get("labels") is not None and not isinstance(txn["labels"], list)
+            for txn in uploaded_transactions
+        ):
+            raise ValueError("Transaction labels must be arrays")
+        transaction_names = [
+            normalize_label_names([] if txn.get("labels") is None else txn["labels"])
+            for txn in uploaded_transactions
+        ]
+        uploaded_reports = data.get("reports", [])
+        if not isinstance(uploaded_reports, list) or any(
+            not isinstance(report, dict) for report in uploaded_reports
+        ):
+            raise ValueError("Expected report objects")
+        restored_reports = [
+            (report, normalize_report_label_references(report.get("filters")))
+            for report in uploaded_reports
+        ]
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=422, detail="Invalid backup label data"
+        ) from exc
+
+    await lock_household_labels(db, household_id)
+    await restore_label_definitions(db, household_id, vocabulary)
 
     # Restore order matters for FK dependencies. Backup content is forced into
     # the caller's household — even if the file came from a different household,
@@ -237,7 +301,8 @@ async def restore(
         else set()
     )
 
-    for txn in data.get("transactions", []):
+    inserted_names: dict[str, list[str]] = {}
+    for txn, names in zip(uploaded_transactions, transaction_names, strict=True):
         txn_date = txn["date"]
         if isinstance(txn_date, str):
             txn_date = date.fromisoformat(txn_date)
@@ -259,7 +324,6 @@ async def restore(
                 type=txn["type"],
                 household_id=household_id,
                 created_by_user_id=_attribute(uploaded_attr),
-                labels=txn.get("labels", []),
                 metadata_=txn.get("metadata", {}),
                 transfer_info=txn.get("transfer_info"),
                 excluded_from_calculations=txn.get("excluded_from_calculations", False),
@@ -267,15 +331,20 @@ async def restore(
                 transfer_role=role,
             )
             .on_conflict_do_nothing(index_elements=["id"])
+            .returning(Transaction.id)
         )
-        await db.execute(stmt)
+        inserted_id = (await db.execute(stmt)).scalar_one_or_none()
+        if inserted_id is not None:
+            inserted_names[inserted_id] = names
+
+    await replace_transaction_labels(db, household_id, inserted_names)
 
     # Effective amounts are derived, so recompute rather than trust the upload;
     # legacy backups only carry `transfer_info` pairs.
     await recompute_groups(db, valid_group_ids)
     await adopt_legacy_transfer_info(db, household_id)
 
-    for report in data.get("reports", []):
+    for report, filters in restored_reports:
         stmt = (
             insert(Report)
             .values(
@@ -283,7 +352,7 @@ async def restore(
                 name=report.get("name", ""),
                 household_id=household_id,
                 description=report.get("description"),
-                filters=report.get("filters"),
+                filters=filters,
             )
             .on_conflict_do_nothing(index_elements=["id"])
         )

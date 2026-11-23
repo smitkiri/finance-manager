@@ -266,6 +266,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         onRemoveLabel={onRemoveLabel}
         onViewDetails={onViewDetails}
         categories={categories}
+        allLabels={allLabels ?? []}
         selectedUserId={selectedUserId}
       />
     </div>
